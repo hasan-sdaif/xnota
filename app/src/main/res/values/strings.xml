@@ -516,8 +516,25 @@
     <!-- Home screen and explorer -->
     <string name="collapse_sidebar">Collapse sidebar</string>
     <string name="home">Home</string>
-    <string name="home_welcome_title">Welcome back</string>
-    <string name="home_welcome_subtitle">Everything in one place</string>
+    <!-- The home presentation: the sidebar's greeting cards, the hero, the stats row, the quick cards. -->
+    <string name="sidebar_greeting">Welcome</string>
+    <string name="sidebar_workspace">Your private writing space</string>
+    <string name="files_are_yours">Your files are yours</string>
+    <string name="privacy_local">Local and private by design</string>
+    <string name="hero_eyebrow">Your digital creative space</string>
+    <string name="hero_title_a">Your ideas deserve</string>
+    <string name="hero_title_b">a finer space.</string>
+    <string name="hero_copy">Notebooks, pen-written notes and PDF files in one calm place. Start writing and let XNota handle the order.</string>
+    <string name="hero_start">Start a notebook</string>
+    <string name="stat_files">Notebooks and notes</string>
+    <string name="stat_pdfs">PDF files</string>
+    <string name="stat_pages">Pages written</string>
+    <string name="stat_items">Items</string>
+    <string name="stat_last_activity">Last activity</string>
+    <string name="quick_sub_note">Write with pen or keyboard</string>
+    <string name="quick_sub_canvas">Free infinite canvas</string>
+    <string name="quick_sub_import">Annotate and highlight pages</string>
+    <string name="quick_sub_folder">Organize your space</string>
     <string name="new_note">New note</string>
     <string name="new_note_in">New note in %1$s</string>
     <string name="close_new_note">Close without creating</string>

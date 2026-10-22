@@ -533,8 +533,25 @@
     <!-- Home screen and explorer -->
     <string name="collapse_sidebar">طي الشريط الجانبي</string>
     <string name="home">الرئيسية</string>
-    <string name="home_welcome_title">مرحباً بك مجدداً</string>
-    <string name="home_welcome_subtitle">كل شيء في مكان واحد</string>
+    <!-- The home presentation: the sidebar's greeting cards, the hero, the stats row, the quick cards. -->
+    <string name="sidebar_greeting">مرحباً بك</string>
+    <string name="sidebar_workspace">مساحة كتابتك الخاصة</string>
+    <string name="files_are_yours">ملفاتك ملكك</string>
+    <string name="privacy_local">يعمل محلياً واحتراماً للخصوصية</string>
+    <string name="hero_eyebrow">مساحة إبداعك الرقمية</string>
+    <string name="hero_title_a">أفكارك تستحق</string>
+    <string name="hero_title_b">مساحة أجمل.</string>
+    <string name="hero_copy">دفاترك وملاحظاتك المكتوبة بالقلم وملفات PDF في مكان واحد هادئ. ابدأ الكتابة ودع XNota يتولى التنظيم.</string>
+    <string name="hero_start">ابدأ دفتراً جديداً</string>
+    <string name="stat_files">دفاتر وملاحظات</string>
+    <string name="stat_pdfs">ملفات PDF</string>
+    <string name="stat_pages">صفحات مكتوبة</string>
+    <string name="stat_items">عناصر</string>
+    <string name="stat_last_activity">آخر نشاط</string>
+    <string name="quick_sub_note">اكتب بالقلم أو لوحة المفاتيح</string>
+    <string name="quick_sub_canvas">لوحة رسم حرة بلا حدود</string>
+    <string name="quick_sub_import">ظلل وعلق فوق الصفحات</string>
+    <string name="quick_sub_folder">نظم مساحتك</string>
     <string name="new_note">ملاحظة جديدة</string>
     <string name="new_note_in">ملاحظة جديدة في %1$s</string>
     <string name="close_new_note">إغلاق دون إنشاء</string>

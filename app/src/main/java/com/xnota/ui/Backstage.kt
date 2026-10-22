@@ -52,6 +52,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -424,10 +425,23 @@ private fun BackstageContent(
             ) {
                 BackstageSidebar(Modifier.width(DRAWER_WIDTH), nav, dismissDrawer)
             }
+            // The bar's create menu opens the same import chooser the explorer's create button does;
+            // the pick still lands in the folder on screen, which is composed beneath the bar.
+            var bottomWizardOpen by remember { mutableStateOf(false) }
+            if (bottomWizardOpen) {
+                ImportWizardDialog(
+                    onImport = { calls.importFromApps(it) },
+                    onDismiss = { bottomWizardOpen = false },
+                )
+            }
             BackstageBottomBar(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(RAIL_WIDTH),
                 nav,
-            ) { animateClose = true; drawerOpen = true }
+                onOpenDrawer = { animateClose = true; drawerOpen = true },
+                onCreateMode = { createMode = it },
+                onImportPdf = calls.importPdf,
+                onImportFromApps = { bottomWizardOpen = true },
+            )
         }
     } else {
         // Expanding pushes the explorer along with the panel; collapsing hands it the room at once and the panel
@@ -559,6 +573,8 @@ private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: ()
             }
         }
         Spacer(Modifier.height(6.dp))
+        SidebarProfileCard(Modifier.padding(horizontal = 12.dp))
+        Spacer(Modifier.height(10.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Command(NotaIcons.home, stringResource(R.string.home), selected = nav.homeSelected) { nav.onHome() }
             nav.recent?.let { on -> Command(NotaIcons.clock, stringResource(R.string.recent), selected = on) { nav.onRecent() } }
@@ -594,6 +610,8 @@ private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: ()
             }
         }
         RailDivider()
+        SidebarOfflineCard(Modifier.padding(horizontal = 12.dp))
+        Spacer(Modifier.height(8.dp))
         if (nav.trashCount >= 0) {
             Command(NotaIcons.trash, stringResource(R.string.trash), selected = nav.view == BackstageView.TRASH, count = nav.trashCount.takeIf { it > 0 }?.toString()) {
                 nav.onSelectView(BackstageView.TRASH)
@@ -601,6 +619,93 @@ private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: ()
         }
         Command(NotaIcons.sliders, stringResource(R.string.preferences), selected = nav.view == BackstageView.PREFERENCES) { nav.onSelectView(BackstageView.PREFERENCES) }
         Command(NotaIcons.info, stringResource(R.string.about), selected = nav.view == BackstageView.ABOUT) { nav.onSelectView(BackstageView.ABOUT) }
+    }
+}
+
+/**
+ * The sidebar's profile card, the reference's greeting block: the app's mark on an emerald tile,
+ * who this space belongs to, and the live-dot line that says what it is. Sits on the same
+ * emerald-tinted surface the selected rows read, so the head of the sidebar carries the identity.
+ */
+@Composable
+private fun SidebarProfileCard(modifier: Modifier = Modifier) {
+    val palette = LocalPalette.current
+    val shape = RoundedCornerShape(17.dp)
+    Row(
+        modifier
+            .clip(shape)
+            .background(palette.selectionBackground.toComposeColor())
+            .border(1.dp, palette.border.toComposeColor(), shape)
+            .padding(13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(palette.accent.toComposeColor()),
+            contentAlignment = Alignment.Center,
+        ) {
+            // The mark stays "X" — name-agnostic, the same letter the rail's logo carries.
+            Text("X", color = palette.onAccent.toComposeColor(), fontWeight = FontWeight.Black, fontSize = 16.sp)
+        }
+        Column {
+            Text(
+                stringResource(R.string.sidebar_greeting),
+                color = palette.text.toComposeColor(),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.W700,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(3.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(7.dp).clip(CircleShape).background(palette.accent.toComposeColor()))
+                Text(
+                    stringResource(R.string.sidebar_workspace),
+                    color = palette.textDim.toComposeColor(),
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The sidebar's offline pledge, the reference's bottom card: the archive glyph and the two lines
+ * that say where the files live — on the device, private by design.
+ */
+@Composable
+private fun SidebarOfflineCard(modifier: Modifier = Modifier) {
+    val palette = LocalPalette.current
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier
+            .clip(shape)
+            .background(palette.surface.toComposeColor())
+            .border(1.dp, palette.border.toComposeColor(), shape)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(NotaIcons.archive, null, tint = palette.accent.toComposeColor(), modifier = Modifier.size(20.dp))
+        Column {
+            Text(
+                stringResource(R.string.files_are_yours),
+                color = palette.text.toComposeColor(),
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.W700,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                stringResource(R.string.privacy_local),
+                color = palette.textDim.toComposeColor(),
+                fontSize = 9.5.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -660,12 +765,21 @@ private fun BackstageRail(modifier: Modifier, nav: SidebarNav, onExpand: () -> U
 }
 
 /**
- * xnota: the rail rotated flat — the same destinations as a horizontal bar along the
- * screen's bottom edge ("Navigation side: Bottom" in Preferences). The hamburger slides the full
- * sidebar over the content as a drawer, the way phones do, so colours and pins stay reachable.
+ * xnota: the rail rotated flat — the reference's mobile nav along the screen's bottom edge
+ * ("Navigation side: Bottom" in Preferences). The hamburger slides the full sidebar over the
+ * content as a drawer, so the drawer-only destinations (colours, smart folders, pins, About)
+ * stay reachable; the bar itself keeps the reference's five: home, files, the emerald create
+ * button in the centre, trash and preferences.
  */
 @Composable
-private fun BackstageBottomBar(modifier: Modifier, nav: SidebarNav, onOpenDrawer: () -> Unit) {
+private fun BackstageBottomBar(
+    modifier: Modifier,
+    nav: SidebarNav,
+    onOpenDrawer: () -> Unit,
+    onCreateMode: (CreateMode) -> Unit,
+    onImportPdf: () -> Unit,
+    onImportFromApps: () -> Unit,
+) {
     val palette = LocalPalette.current
     Row(
         modifier.background(palette.panel.toComposeColor()).padding(horizontal = 8.dp),
@@ -676,44 +790,59 @@ private fun BackstageBottomBar(modifier: Modifier, nav: SidebarNav, onOpenDrawer
                 Icon(NotaIcons.menu, stringResource(R.string.show_sidebar), tint = palette.text.toComposeColor(), modifier = Modifier.size(24.dp))
             }
         }
-        Spacer(Modifier.width(8.dp))
-        Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
-            RailItem(NotaIcons.home, stringResource(R.string.home), selected = nav.homeSelected) { nav.onHome() }
-            nav.recent?.let { on -> RailItem(NotaIcons.clock, stringResource(R.string.recent), selected = on) { nav.onRecent() } }
-            nav.smartFolders.forEach { f ->
-                key(f.name) {
-                    var menuOpen by remember { mutableStateOf(false) }
-                    Box {
-                        RailItem(NotaIcons.magicWand, f.name, selected = f.name == nav.activeSmart, onLongClick = { menuOpen = true }) { nav.onOpenSmart(f) }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.delete_smart_folder)) },
-                                leadingIcon = { Icon(NotaIcons.trash, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
-                                onClick = { menuOpen = false; nav.onDeleteSmart(f) },
-                            )
-                        }
-                    }
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            BottomNavItem(NotaIcons.home, stringResource(R.string.home), selected = nav.homeSelected) { nav.onHome() }
+            nav.recent?.let { on -> BottomNavItem(NotaIcons.clock, stringResource(R.string.recent), selected = on) { nav.onRecent() } }
+            // The centre create button: the reference's emerald mark, opening the explorer's own
+            // create menu so the bar and the create button can never drift apart.
+            var menuOpen by remember { mutableStateOf(false) }
+            Box {
+                Box(
+                    Modifier
+                        .size(43.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(palette.accent.toComposeColor())
+                        .clickable { menuOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(NotaIcons.plus, stringResource(R.string.create_new), tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(22.dp))
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    NewItemMenuItems({ menuOpen = false }, onCreateMode, onImportPdf, onImportFromApps)
                 }
             }
-            nav.pins.forEachIndexed { i, pin ->
-                key(pin.uri) {
-                    var menuOpen by remember { mutableStateOf(false) }
-                    Box {
-                        RailItem(NotaIcons.folder, pin.name, selected = i == nav.activePin, onLongClick = { menuOpen = true }) { nav.onOpenPin(pin) }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.unpin_from_sidebar)) },
-                                leadingIcon = { Icon(NotaIcons.close, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
-                                onClick = { menuOpen = false; nav.onUnpin(pin) },
-                            )
-                        }
-                    }
-                }
-            }
+            if (nav.trashCount >= 0) BottomNavItem(NotaIcons.trash, stringResource(R.string.trash), selected = nav.view == BackstageView.TRASH) { nav.onSelectView(BackstageView.TRASH) }
+            BottomNavItem(NotaIcons.sliders, stringResource(R.string.preferences), selected = nav.view == BackstageView.PREFERENCES) { nav.onSelectView(BackstageView.PREFERENCES) }
         }
-        if (nav.trashCount >= 0) RailItem(NotaIcons.trash, stringResource(R.string.trash), selected = nav.view == BackstageView.TRASH) { nav.onSelectView(BackstageView.TRASH) }
-        RailItem(NotaIcons.sliders, stringResource(R.string.preferences), selected = nav.view == BackstageView.PREFERENCES) { nav.onSelectView(BackstageView.PREFERENCES) }
-        RailItem(NotaIcons.info, stringResource(R.string.about), selected = nav.view == BackstageView.ABOUT) { nav.onSelectView(BackstageView.ABOUT) }
+    }
+}
+
+/** One destination of the bottom bar: the rail's pill-and-label recipe at the bar's own size. */
+@Composable
+private fun BottomNavItem(icon: ImageVector, label: String, selected: Boolean = false, onClick: () -> Unit) {
+    val palette = LocalPalette.current
+    val pill = RoundedCornerShape(16.dp)
+    Column(
+        Modifier.width(72.dp).clip(pill).clickable(onClick = onClick).padding(top = 6.dp, bottom = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.size(width = 56.dp, height = 32.dp).clip(pill)
+                .background(if (selected) palette.selectionBackground.toComposeColor() else Color.Transparent),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, null, tint = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(), modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            label,
+            color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
+            fontSize = 9.5.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
     }
 }
 
@@ -776,34 +905,37 @@ private fun BackstageMain(
 @Composable
 private fun Command(icon: ImageVector, label: String, selected: Boolean = false, count: String? = null, onClick: () -> Unit) {
     val palette = LocalPalette.current
+    val shape = RoundedCornerShape(12.dp)
     Row(
         Modifier
             .fillMaxWidth()
+            .padding(horizontal = 12.dp)
             .height(48.dp)
+            .clip(shape)
             .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = label, tint = (if (selected) palette.selectionForeground else palette.accent).toComposeColor(), modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = label, tint = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(16.dp))
         Text(
             label,
             color = if (selected) palette.selectionForeground.toComposeColor() else palette.text.toComposeColor(),
-            fontSize = 15.sp,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            fontSize = 14.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             modifier = Modifier.weight(1f),
         )
         if (count != null) Text(count, color = palette.textDim.toComposeColor(), fontSize = 13.sp)
     }
 }
 
-/** One rail destination: an icon in a pill that fills when selected, its label beneath. */
+/** One rail destination: an icon in a fully-rounded pill that fills when selected, its label beneath. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RailItem(icon: ImageVector, label: String, selected: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val palette = LocalPalette.current
-    val pill = MaterialTheme.shapes.large
+    val pill = RoundedCornerShape(16.dp)
     Column(
         Modifier.width(RAIL_WIDTH).combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(top = 6.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -813,13 +945,13 @@ private fun RailItem(icon: ImageVector, label: String, selected: Boolean = false
                 .background(if (selected) palette.selectionBackground.toComposeColor() else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, null, tint = (if (selected) palette.selectionForeground else palette.accent).toComposeColor(), modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(), modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.height(4.dp))
         Text(
             label,
-            color = palette.text.toComposeColor(),
-            fontSize = 11.sp,
+            color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
+            fontSize = 10.5.sp,
             fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -834,10 +966,10 @@ private fun SidebarLabel(text: String) {
     Text(
         text,
         color = LocalPalette.current.textDim.toComposeColor(),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = 0.4.sp,
-        modifier = Modifier.padding(start = 18.dp, top = 16.dp, bottom = 6.dp),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.W800,
+        letterSpacing = 0.8.sp,
+        modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 4.dp),
     )
 }
 
@@ -851,10 +983,12 @@ private fun ColorCommand(color: Rgba, name: String, selected: Boolean, onClick: 
         Row(
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 12.dp)
                 .height(48.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
@@ -864,8 +998,8 @@ private fun ColorCommand(color: Rgba, name: String, selected: Boolean, onClick: 
             Text(
                 name,
                 color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
-                fontSize = 15.sp,
-                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                fontSize = 14.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -918,15 +1052,17 @@ private fun SmartFolderCommand(
         Row(
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 12.dp)
                 .height(48.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 NotaIcons.magicWand, null,
-                tint = (if (selected) palette.selectionForeground else palette.accent).toComposeColor(),
+                tint = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(),
                 modifier = Modifier.size(20.dp),
             )
             Spacer(Modifier.width(16.dp))
@@ -934,8 +1070,8 @@ private fun SmartFolderCommand(
                 Text(
                     folder.name,
                     color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
-                    fontSize = 15.sp,
-                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                    fontSize = 14.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -971,19 +1107,21 @@ private fun PinnedCommand(label: String, selected: Boolean, onClick: () -> Unit,
         Row(
             Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 12.dp)
                 .height(48.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(NotaIcons.folder, null, tint = (if (selected) palette.selectionForeground else palette.accent).toComposeColor(), modifier = Modifier.size(20.dp))
+            Icon(NotaIcons.folder, null, tint = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(), modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(16.dp))
             Text(
                 label,
                 color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
-                fontSize = 15.sp,
-                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                fontSize = 14.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1908,7 +2046,17 @@ private fun ExplorerSection(
                 ),
         ) {
             val shelfBlock: (@Composable () -> Unit)? = if (!shelves) null else ({
-                DashboardHeader(onCreateMode, calls.importPdf)
+                // The home root's whole presentation: hero, the shelf's real numbers, the quick cards.
+                // Counts and the last-activity line come off the very list the Recent shelf renders.
+                HomePresentation(
+                    onCreateMode = onCreateMode,
+                    onImportPdf = calls.importPdf,
+                    recents = recents.orEmpty(),
+                    kindOf = kindOf,
+                    pagesOf = { editor.cachedMeta(it)?.pages ?: 0 },
+                    lastActivity = recents.orEmpty().firstOrNull()?.let { entryDate(it.entry) } ?: "",
+                    digits = words::digits,
+                )
                 Spacer(Modifier.height(8.dp))
                 HomeShelves(
                     body, recents.orEmpty(), editor.sidebarPins, rootName ?: stringResource(R.string.folder),

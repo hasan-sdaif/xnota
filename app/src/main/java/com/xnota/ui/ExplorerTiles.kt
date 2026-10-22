@@ -46,9 +46,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -729,6 +734,31 @@ internal fun HomeShelves(
                 items(recents.take(8).size) { i -> RecentCard(b, recents[i], onOpenRecent) }
             }
             Spacer(Modifier.height(20.dp))
+        } else {
+            // The reference's quiet dashed frame, shown where the shelf has nothing to list yet.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .drawBehind {
+                        drawRoundRect(
+                            color = palette.border.toComposeColor(),
+                            cornerRadius = CornerRadius(18.dp.toPx()),
+                            style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))),
+                        )
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    stringResource(R.string.recent_empty),
+                    color = palette.textDim.toComposeColor(),
+                    fontSize = 11.5.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+            Spacer(Modifier.height(20.dp))
         }
         if (pins.isNotEmpty()) {
             ShelfTitle(stringResource(R.string.pinned))
@@ -755,34 +785,105 @@ internal fun HomeShelves(
     }
 }
 
-/** One card on the Recent shelf: the page, its name, when it was opened and the folder it's in, on the surface-backed rounded card of the reference design. */
+/** The look of a Recent card's cover, chosen from what the entry is and how much it holds. */
+internal enum class CoverKind { NOTEBOOK, PAPER, PLAIN }
+
+/** A Recent card's cover: an annotated PDF reads as warm paper, anything multi-paged as a notebook, the rest stays plain. */
+internal fun coverKind(kind: EntryKind, pages: Int): CoverKind = when {
+    kind == EntryKind.PDF -> CoverKind.PAPER
+    pages > 1 -> CoverKind.NOTEBOOK
+    else -> CoverKind.PLAIN
+}
+
+/**
+ * One card on the Recent shelf, the reference's document card: a kind-tinted cover that carries the
+ * file's own name over its accent bar (the page count, or when it was opened, beneath), then the
+ * title with its meta on the card body. The tap opens the file exactly as it always did.
+ */
 @Composable
 private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) -> Unit) {
     val palette = LocalPalette.current
     val e = r.entry
-    val shape = MaterialTheme.shapes.medium
+    val shape = MaterialTheme.shapes.large
     val code = b.colorOf(e)?.let { codeTint(it, palette) }
+    val kind = b.kind(e)
+    val pages = b.pages(e)
+    val cover = coverKind(kind, pages)
+    // The cover's art: the reference's gradients — the palette everywhere except the PDF's literal warm paper.
+    val (coverBrush, coverInk) = when (cover) {
+        CoverKind.PAPER -> Brush.linearGradient(listOf(Color(0xFFF5F0E4), Color(0xFFE6DAC7))) to Color(0xFF223A32)
+        CoverKind.NOTEBOOK -> Brush.linearGradient(listOf(palette.accentAlpha(56).toComposeColor(), palette.surface.toComposeColor())) to palette.text.toComposeColor()
+        CoverKind.PLAIN -> Brush.linearGradient(listOf(palette.surfaceHi.toComposeColor(), palette.bg.toComposeColor())) to palette.text.toComposeColor()
+    }
+    val whenOpened = openedLabel(b.words, r.opened, b.now, b.zone)
     Column(
         Modifier
-            .width(168.dp)
+            .width(170.dp)
             .clip(shape)
             .background(palette.menuBg.toComposeColor())
             .border(1.dp, code ?: palette.border.toComposeColor(), shape)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onOpen(e) }
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onOpen(e) },
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(shape)) {
-            EntryThumb(b.editor, e, ThumbShape.TOP, Modifier.fillMaxSize())
-            ThumbBadges(b, e, 6.dp)
+        Box(Modifier.fillMaxWidth().height(108.dp).background(coverBrush)) {
+            Column(Modifier.align(Alignment.Center).padding(horizontal = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    b.label(e),
+                    color = coverInk,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.W800,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(6.dp))
+                Box(Modifier.size(width = 44.dp, height = 2.dp).background(palette.accent.toComposeColor()))
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    if (pages > 0) b.words.digits("$pages") else whenOpened,
+                    color = coverInk.copy(alpha = 0.68f),
+                    fontSize = 9.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (kind == EntryKind.PDF) {
+                // The reference's chip: what it is, and how many pages it carries when that is known.
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(palette.bg.withAlpha(140).toComposeColor())
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        if (pages > 0) "PDF · " + b.words.digits("$pages") else "PDF",
+                        color = if (cover == CoverKind.PAPER) Color(0xFF223A32) else palette.text.toComposeColor(),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.W700,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
-        Spacer(Modifier.height(4.dp))
-        Text(b.label(e), color = palette.text.toComposeColor(), fontSize = 13.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(openedLabel(b.words, r.opened, b.now, b.zone), color = palette.textDim.toComposeColor(), fontSize = 11.5.sp, maxLines = 1)
-        r.where?.let { where ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                Icon(NotaIcons.folder, null, tint = palette.textDim.toComposeColor(), modifier = Modifier.size(12.dp))
-                Text(where, color = palette.textDim.toComposeColor(), fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                b.label(e),
+                color = palette.text.toComposeColor(),
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.W700,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(kindIcon(kind), null, tint = palette.textDim.toComposeColor(), modifier = Modifier.size(12.dp))
+                Text(
+                    listOfNotNull(whenOpened.ifBlank { null }, r.where).joinToString(" · "),
+                    color = palette.textDim.toComposeColor(),
+                    fontSize = 9.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
