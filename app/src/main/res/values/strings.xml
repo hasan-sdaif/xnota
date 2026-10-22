@@ -1075,6 +1075,11 @@
     <string name="unpin">Unpin</string>
     <string name="pinned_to_top">Pinned to top</string>
     <string name="duplicate_note">Duplicate</string>
+    <string name="history">History</string>
+    <string name="history_restore">Restore</string>
+    <string name="history_confirm">Roll this note back to the picked version and save it?</string>
+    <string name="history_empty">No saved versions yet — versions are kept while you edit the note.</string>
+    <string name="history_keep_hint">Keeps the last 20 versions, saved every 2 minutes while you edit.</string>
     <string name="continue_where">Continue where you left off</string>
     <string name="empty_folder_actions">Start something new</string>
     <string name="pref_storage">Storage</string>

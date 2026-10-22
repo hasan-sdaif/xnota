@@ -1160,6 +1160,11 @@
     <string name="unpin">إلغاء التثبيت</string>
     <string name="pinned_to_top">مثبَّت في الأعلى</string>
     <string name="duplicate_note">إنشاء نسخة</string>
+    <string name="history">السجلّ</string>
+    <string name="history_restore">استعادة</string>
+    <string name="history_confirm">إعادة هذه الملاحظة إلى النسخة المختارة وحفظها؟</string>
+    <string name="history_empty">لا نسخ محفوظة بعد — تُحفظ النسخ أثناء تحرير الملاحظة.</string>
+    <string name="history_keep_hint">يُحتفظ بآخر 20 نسخة، تُحفظ كل دقيقتين أثناء التحرير.</string>
     <string name="continue_where">أكمل من حيث توقفت</string>
     <string name="empty_folder_actions">ابدأ بشيء جديد</string>
     <string name="pref_storage">التخزين</string>

@@ -115,6 +115,8 @@ internal class EntryActions(
     val editTags: (BrowseEntry) -> Unit,
     /** Show the statistics panel (the fork); notes only. */
     val stats: (BrowseEntry) -> Unit,
+    /** Open the version-history dialog (the fork); notes only. */
+    val history: (BrowseEntry) -> Unit,
     /** Copy the file beside itself (the fork). */
     val duplicate: (BrowseEntry) -> Unit,
 )
@@ -319,6 +321,7 @@ internal fun EntryMenuFor(b: ExplorerBody, e: BrowseEntry, expanded: Boolean, on
         onToggleTopPin = { m.toggleTopPin(e) },
         onEditTags = if (!e.isDir && com.xnota.core.util.DocumentKind.ofName(e.name) == com.xnota.core.util.DocumentKind.NOTE) ({ m.editTags(e) }) else null,
         onStats = if (!e.isDir && com.xnota.core.util.DocumentKind.ofName(e.name) == com.xnota.core.util.DocumentKind.NOTE) ({ m.stats(e) }) else null,
+        onHistory = if (!e.isDir && com.xnota.core.util.DocumentKind.ofName(e.name) == com.xnota.core.util.DocumentKind.NOTE) ({ m.history(e) }) else null,
         onDuplicate = if (e.isDir) null else ({ m.duplicate(e) }),
         deleteLabel = b.deleteLabel,
     )

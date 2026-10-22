@@ -1143,6 +1143,8 @@ private fun ExplorerSection(
     // The tag editor and the statistics panel (the fork): one entry at a time.
     var tagEditing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     var statsShowing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
+    // The version-history dialog (the fork): one entry at a time, like the two above.
+    var historyShowing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     // The fork's "save this search as a smart folder" prompt.
     var savingSmart by remember(root) { mutableStateOf(false) }
     var fieldError by remember(root) { mutableStateOf<String?>(null) }
@@ -1508,6 +1510,7 @@ private fun ExplorerSection(
                 toggleTopPin = { e -> editor.toggleTopPin(e.documentUri); refreshSoon() },
                 editTags = { e -> tagEditing = e },
                 stats = { e -> statsShowing = e },
+                history = { e -> historyShowing = e },
                 duplicate = { e -> editor.duplicateDocument(e)?.let { refreshSoon() } },
             ),
         )
@@ -2224,6 +2227,89 @@ private fun ExplorerSection(
         )
     }
 
+    // The fork's version history: the note's kept snapshots, read on IO the way the statistics
+    // panel reads its numbers. Picking one highlights it and arms the Restore button, which rolls
+    // the note back — in place when it is the open one, over its file otherwise.
+    historyShowing?.let { entry ->
+        val versions = produceState<List<com.xnota.core.util.VersionLog.Version>?>(null, entry, editor.historyVersion) {
+            value = editor.noteVersionsFor(entry.documentUri)
+        }.value
+        // Re-keyed on the list itself, so a snapshot landing while the dialog is open re-reads it
+        // and drops a pick that would otherwise point one version off.
+        var picked by remember(entry, versions) { mutableIntStateOf(-1) }
+        val zone = ZoneId.systemDefault()
+        AlertDialog(
+            onDismissRequest = { historyShowing = null },
+            title = { Text(stringResource(R.string.history)) },
+            text = {
+                if (versions == null) {
+                    Text(stringResource(R.string.stats_loading))
+                } else if (versions.isEmpty()) {
+                    Text(stringResource(R.string.history_empty))
+                } else {
+                    Column(
+                        Modifier
+                            .heightIn(max = 380.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(entryLabel(entry), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(8.dp))
+                        for ((i, v) in versions.withIndex()) {
+                            val chosen = i == picked
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(if (chosen) palette.selectionBackground.toComposeColor() else Color.Transparent)
+                                    .clickable { picked = i }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        formatWhen(words, v.timestamp, now, "relative", true, clock24, zone),
+                                        fontSize = 13.sp,
+                                    )
+                                    Text(
+                                        formatFull(words, v.timestamp, clock24, zone) + " · " +
+                                            formatSize(v.size.toLong(), words::digits),
+                                        fontSize = 11.sp,
+                                        color = palette.textDim.toComposeColor(),
+                                    )
+                                }
+                                if (chosen) {
+                                    Icon(NotaIcons.check, null, tint = palette.accent.toComposeColor(), modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                        if (picked >= 0) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(stringResource(R.string.history_confirm), fontSize = 12.sp, color = palette.textDim.toComposeColor())
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.history_keep_hint), fontSize = 11.sp, color = palette.textDim.toComposeColor())
+                    }
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { historyShowing = null }) { Text(stringResource(R.string.done)) }
+                    if (picked >= 0) {
+                        TextButton(onClick = {
+                            val index = picked
+                            val uri = entry.documentUri
+                            historyShowing = null
+                            scope.launch {
+                                val ok = editor.restoreVersionFor(uri, index)
+                                if (ok) refreshSoon() else opError = context.getString(R.string.err_open_note)
+                            }
+                        }) { Text(stringResource(R.string.history_restore)) }
+                    }
+                }
+            },
+        )
+    }
+
     renaming?.let { entry ->
         NameDialog(
             title = if (entry.isDir) stringResource(R.string.rename_folder) else stringResource(R.string.rename_note),
@@ -2452,6 +2538,7 @@ internal fun EntryMenu(
     onToggleTopPin: (() -> Unit)? = null,
     onEditTags: (() -> Unit)? = null,
     onStats: (() -> Unit)? = null,
+    onHistory: (() -> Unit)? = null,
     onDuplicate: (() -> Unit)? = null,
     deleteLabel: String = stringResource(R.string.delete),
 ) {
@@ -2474,6 +2561,11 @@ internal fun EntryMenu(
             if (onNameColor != null) DropdownMenuItem(text = { Text(stringResource(R.string.name_colour_ellipsis)) }, onClick = { onDismiss(); onNameColor() })
             if (onEditTags != null) DropdownMenuItem(text = { Text(stringResource(R.string.edit_tags)) }, onClick = { onDismiss(); onEditTags() })
             if (onStats != null) DropdownMenuItem(text = { Text(stringResource(R.string.stats_title)) }, onClick = { onDismiss(); onStats() })
+            if (onHistory != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.history)) },
+                onClick = { onDismiss(); onHistory() },
+                leadingIcon = { Icon(NotaIcons.restore, null, modifier = Modifier.size(17.dp)) },
+            )
             if (onTogglePin != null) {
                 DropdownMenuItem(text = { Text(if (pinned) stringResource(R.string.unpin_from_sidebar) else stringResource(R.string.pin_to_sidebar)) }, onClick = { onDismiss(); onTogglePin() })
             }

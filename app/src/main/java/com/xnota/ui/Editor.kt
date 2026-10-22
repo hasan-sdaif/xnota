@@ -757,6 +757,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         displayName: String?,
     ) {
         flushAutosave() // a paged note may be open underneath; do not leave its edits unwritten
+        maybeSnapshotHistory() // nor its last edits unsnapshotted while a canvas holds the stage
         doc.path = uri
         doc.displayName = displayName
         val canvas = infinite
@@ -2545,6 +2546,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
      */
     private fun noteSessionClosing(scroll: Pt?) {
         val uri = currentUri
+        maybeSnapshotHistory() // the close-flush: the last edits land in the version log too
         flushDailyWords()
         if (uri != null) {
             var next = settings
@@ -2563,6 +2565,221 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         }
         sessionEdited = false
         readingSecondsSession = 0
+    }
+
+    // ── Version history (the fork): snapshots of the open note, kept while it is edited ──────
+
+    /** Bumped whenever a version snapshot lands or a restore swaps one in, so a history dialog recomposes. */
+    var historyVersion by mutableStateOf(0)
+        private set
+
+    /**
+     * The [contentVersion] the last history snapshot was taken at — the tick's "changed since the
+     * last snapshot" gate, the same shape [saveSession]'s contentChanged check uses. Reset to the
+     * incoming note's version by [replaceDocument], so a freshly opened note is not snapshotted
+     * until it is actually edited. A session restore deliberately leaves the old value behind, so
+     * the first tick after reopening keeps what the session brought back (deduped by hash when
+     * nothing had changed).
+     */
+    private var lastHistoryContentVersion = contentVersion
+
+    /** The history write in flight, so snapshot appends serialize the way note writes do. */
+    private var historyWriteJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * One beat of the version-history clock: the shell calls this every two minutes while a note
+     * is open, and a snapshot is kept only when the note changed since the last one.
+     */
+    fun historyTick() {
+        maybeSnapshotHistory()
+    }
+
+    /**
+     * Keep a snapshot of the open note when its content moved since the last snapshot: the
+     * two-minute history clock reaches this while the note is edited, [noteSessionClosing] once
+     * more as the session ends (the close-flush, so the last edits land even when the note closes
+     * inside the interval), and [replaceDocument] for the note being swapped out. A no-op unless
+     * a file-backed note ([currentUri]) is the paged document on top and its [contentVersion]
+     * moved; the document is snapshotted on the main thread — as every save here is — and filed
+     * on IO, the appends serialized through [historyWriteJob].
+     */
+    private fun maybeSnapshotHistory() {
+        val uri = currentUri ?: return // a note never saved anywhere has nothing to restore onto
+        if (canvasOpen) return // a canvas is what is being edited on top; history is the notes' own
+        if (contentVersion == lastHistoryContentVersion) return
+        lastHistoryContentVersion = contentVersion
+        val snapshot = state.document.snapshot() // main thread: its own page lists over the live items
+        val pending = historyWriteJob
+        historyWriteJob = autosaveScope.launch {
+            pending?.join() // appends serialize, so the ring's read-modify-write never interleaves
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                appendVersionSnapshot(uri, snapshot)
+            }
+            historyVersion++
+        }
+    }
+
+    /**
+     * Serialize [doc] — the `.xnote` bundle whose manifest is the note's JSON — digest it, file it
+     * under the note's history key, and append it to the ring ([com.xnota.core.util.VersionLog]
+     * keeps the last [com.xnota.core.util.VersionLog.DEFAULT_MAX]). A snapshot's name is its
+     * content hash, so an unchanged note writes no new file, and whatever falls off the ring is
+     * deleted here. IO.
+     */
+    private fun appendVersionSnapshot(uri: String, doc: Document) {
+        val stem = historyStemOf(uri)
+        runCatching {
+            val ring = readHistoryRing(stem)
+            val snapDir = historySnapDir()
+            val tmp = java.io.File.createTempFile("hist", ".xnote", snapDir)
+            try {
+                val digest = java.security.MessageDigest.getInstance("SHA-256")
+                java.io.FileOutputStream(tmp).use { out ->
+                    codec.write(doc, java.security.DigestOutputStream(out, digest))
+                }
+                val hash = sha256Hex(digest.digest())
+                val snap = java.io.File(snapDir, "$stem.$hash.snap")
+                if (ring.append(hash, System.currentTimeMillis(), tmp.length().toInt()) || !snap.exists()) {
+                    if (!tmp.renameTo(snap)) { tmp.copyTo(snap, overwrite = true); tmp.delete() }
+                } else {
+                    tmp.delete() // unchanged from the newest version: only its stamp was refreshed
+                }
+                writeHistoryRing(stem, ring)
+                // The ring's keep-last-N is what stays; its fallen-off snapshots go now.
+                val kept = ring.list().mapTo(HashSet()) { it.contentHash }
+                snapDir.listFiles { f -> f.name.startsWith("$stem.") && f.name.endsWith(".snap") }?.forEach { f ->
+                    if (f.name.removePrefix("$stem.").removeSuffix(".snap") !in kept) f.delete()
+                }
+            } finally {
+                tmp.delete() // a no-op once the snapshot was renamed away
+            }
+        }
+    }
+
+    /** The note's persisted version ring, or an empty one when it has no history yet. IO. */
+    private fun readHistoryRing(stem: String): com.xnota.core.util.VersionLog {
+        val f = java.io.File(java.io.File(appContext.filesDir, HISTORY_DIR), "$stem.json")
+        return com.xnota.core.util.VersionLog.fromJson(runCatching { f.takeIf { it.exists() }?.readText() }.getOrNull())
+    }
+
+    /** Persist the ring through a temp + rename, so a reader never catches it half-written. IO. */
+    private fun writeHistoryRing(stem: String, ring: com.xnota.core.util.VersionLog) {
+        runCatching {
+            val dir = java.io.File(appContext.filesDir, HISTORY_DIR)
+            if (!dir.isDirectory) dir.mkdirs()
+            val f = java.io.File(dir, "$stem.json")
+            val tmp = java.io.File.createTempFile("ring", ".json", dir)
+            try {
+                tmp.writeText(ring.toJson())
+                if (!tmp.renameTo(f)) { tmp.copyTo(f, overwrite = true); tmp.delete() }
+            } finally {
+                tmp.delete() // a no-op once the rename carried it away
+            }
+        }
+    }
+
+    /**
+     * The history identity of the note at [uri]: its [documentKey] — provider authority plus
+     * document id, the same identity every per-note side store keys by — with the characters a
+     * file name cannot hold folded to '_' and capped, plus a digest of the raw key so two keys
+     * that fold alike never share a history. The ring is `<stem>.json`; the snapshots
+     * `<stem>.<hash>.snap` under [HISTORY_SNAP_DIR].
+     */
+    private fun historyStemOf(uri: String): String {
+        val key = documentKey(uri)
+        return key.replace(HISTORY_UNSAFE, "_").take(HISTORY_STEM_MAX) +
+            "-" + sha256Hex(key.toByteArray(Charsets.UTF_8)).take(8)
+    }
+
+    /** Where the snapshots live, beside the rings. IO (created on demand). */
+    private fun historySnapDir(): java.io.File {
+        val d = java.io.File(java.io.File(appContext.filesDir, HISTORY_DIR), HISTORY_SNAP_DIR)
+        if (!d.isDirectory) d.mkdirs()
+        return d
+    }
+
+    /** The snapshot file for one [hash] of the note whose stem is [stem]. */
+    private fun historySnapFile(stem: String, hash: String): java.io.File =
+        java.io.File(historySnapDir(), "$stem.$hash.snap")
+
+    /** The lowercase hex SHA-256 of [bytes]: a snapshot's content identity. */
+    private fun sha256Hex(bytes: ByteArray): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    /**
+     * The versions kept for the current note, newest first (row 0 is the version [restoreVersion]
+     * rolls back to). Reads the persisted ring — a small file — so it is cheap enough to call
+     * where the note is already on screen. Empty when the note has no history yet.
+     */
+    fun noteVersions(): List<com.xnota.core.util.VersionLog.Version> {
+        val uri = currentUri ?: return emptyList()
+        return readHistoryRing(historyStemOf(uri)).list().asReversed()
+    }
+
+    /**
+     * The versions kept for the note at [uri], newest first — for the explorer's history dialog,
+     * which asks about notes that are not the open one. Reads the persisted ring on IO.
+     */
+    suspend fun noteVersionsFor(uri: String): List<com.xnota.core.util.VersionLog.Version> =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            readHistoryRing(historyStemOf(uri)).list().asReversed()
+        }
+
+    /**
+     * Roll the current note back to kept version [index] (0 = its newest). False when no note is
+     * open, or there is no such version. See [restoreVersionFor] for what a restore does.
+     */
+    suspend fun restoreVersion(index: Int): Boolean {
+        val uri = currentUri ?: return false
+        return restoreVersionFor(uri, index)
+    }
+
+    /**
+     * Roll the note at [uri] back to kept version [index] (0 = its newest snapshot). A note that
+     * is open — in whichever pane holds it — is restored in place through the ordinary
+     * document-open machinery (codec read → [replaceDocument], so undo history, caches and view
+     * reset exactly as an open does), then pointed back at its own file and left dirty, so the
+     * next autosave writes the restore out. A note that is not open is rolled back by writing the
+     * snapshot's bytes over its file directly. The reads and the copy run on IO; the model swap
+     * runs on the caller's (main) dispatcher, like every open here.
+     */
+    suspend fun restoreVersionFor(uri: String, index: Int): Boolean {
+        // A split's second pane owns its own open note; restore in place wherever it is held.
+        openPanes.firstOrNull { it !== this && it.noteOpen && !it.canvasOpen && it.currentUri == uri }
+            ?.let { return it.restoreVersionFor(uri, index) }
+        val stem = historyStemOf(uri)
+        val snap = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val version = readHistoryRing(stem).restore(index) ?: return@withContext null
+            historySnapFile(stem, version.contentHash).takeIf { it.isFile }
+        } ?: return false
+        if (noteOpen && !canvasOpen && currentUri == uri) {
+            val doc = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { java.io.FileInputStream(snap).use { codec.read(it, pdfDir, imageDir) } }.getOrNull()
+            } ?: return false
+            // The restored document belongs to the note's own file, not to the history store.
+            doc.path = uri
+            doc.displayName = state.document.displayName
+            doc.dirty = true // the restore is itself the change the next autosave writes out
+            replaceDocument(doc)
+            maybeBindAutosave(uri)
+            if (state.document.dirty) scheduleAutosave()
+            historyVersion++
+            return true
+        }
+        // Not open: the snapshot's bytes go over the file, exactly as a restore-over does.
+        val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                appContext.contentResolver.openOutputStream(android.net.Uri.parse(uri), "wt")?.use { out ->
+                    java.io.FileInputStream(snap).use { input -> input.copyTo(out, copyBuffer) }
+                } != null
+            }.getOrDefault(false)
+        }
+        if (ok) {
+            rememberStamp(uri) // read back what the provider reports, not what we wrote
+            invalidateThumb(uri) // the tile re-renders against the restored content
+            treeVersion++
+        }
+        return ok
     }
 
     /** Where [uri] was last scrolled to, applied once the fresh layout is in place. */
@@ -2631,6 +2848,18 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
         /** Days of edit history kept for the streak. */
         const val EDIT_DAYS_KEPT = 120
+
+        /** Version history (the fork): the filesDir folder its rings and snapshots live under. */
+        const val HISTORY_DIR = "history"
+
+        /** The subfolder of [HISTORY_DIR] the snapshot files themselves live under. */
+        const val HISTORY_SNAP_DIR = "snaps"
+
+        /** How much of a sanitized note key a history file name keeps before its digest. */
+        const val HISTORY_STEM_MAX = 72
+
+        /** The characters a history file name cannot hold, folded to '_' (see [historyStemOf]). */
+        val HISTORY_UNSAFE = Regex("[^A-Za-z0-9_-]")
 
         /** Tone generator volume (0-100) and the two tone lengths. */
         const val TONE_VOLUME = 35
@@ -6204,6 +6433,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         saveViewState() // remember the outgoing folder note's view before switching away
         flowText.endSession() // flushes the typing burst so the autosave below carries it
         flushAutosave() // save the outgoing note if it was autosaving to the folder
+        maybeSnapshotHistory() // and keep its last edits in the version log before it goes inert
         autosaveUri = null
         // File readouts belong to the outgoing note; a file-backed open re-sets them after the swap.
         state.lastOpenCompacted = doc.compactedOnLoad
@@ -6222,6 +6452,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         state.relayout()
         installInitialView(doc.path) // this note's remembered view, or fit width — never the last note's
         refreshContent()
+        lastHistoryContentVersion = contentVersion // the incoming note: no snapshot until it is edited
         view.requestRender()
     }
 

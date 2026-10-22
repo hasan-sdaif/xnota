@@ -1304,6 +1304,15 @@ private fun EditorPane(
             editor.readingTick()
         }
     }
+    // The fork's version history: every two minutes this pane's note is open, a snapshot is kept —
+    // only when the note changed since the last one, capped by the ring's own keep-last-N.
+    LaunchedEffect(editor.noteOpen, editor.currentUri) {
+        val uri = editor.currentUri
+        while (isActive && editor.noteOpen && editor.currentUri == uri) {
+            kotlinx.coroutines.delay(120_000)
+            editor.historyTick()
+        }
+    }
     // The fork's keep-screen-on: the pref holds the display awake while the pane shows a note.
     val keepOnView = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.DisposableEffect(keepOnView, editor.noteOpen, editor.prefsVersion) {
