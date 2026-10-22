@@ -1489,7 +1489,7 @@
     <string name="whats_new">What\'s new</string>
     <!-- The 1.8.0 relaunch: the identity forced, the reference home, the room chrome, the card pass. -->
     <string name="changelog_brand_relaunch">The brand relaunch: the XNota identity now renders unconditionally — every install upgrades to it, whatever it had picked before</string>
-    <string name="changelog_reference_home">The reference design's home: the hero card, real counts of your files, and the recent shelf as proper document cards</string>
+    <string name="changelog_reference_home">The reference design\'s home: the hero card, real counts of your files, and the recent shelf as proper document cards</string>
     <string name="changelog_room_chrome">The writing room and the PDF reader wear the reference chrome: toolbar pills, panel cards and the reader stage</string>
     <string name="changelog_secondary_cards">Settings, About, Trash and the new-note screen are real cards now, with the accent-pill category row</string>
     <string name="changelog_emerald_identity">The emerald identity: the whole interface\'s colours rebuilt from the reference design — neon green over deep teal</string>
