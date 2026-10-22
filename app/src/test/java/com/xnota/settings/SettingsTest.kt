@@ -358,22 +358,51 @@ class SettingsTest {
         }
     }
 
-    @Test fun materialDefaultsUseSystemWithFirstPresetsReady() {
-        val defaults = Preferences.fromJson(JSONObject())
-        assertEquals(MaterialColourMode.SYSTEM, defaults.materialMode)
+    @Test fun freshInstallKeepsSystemModeWithTheEmeraldSeeds() {
+        // A fresh install reads no file at all: the constructor's own defaults, "system" mode
+        // with the emerald seeds ready. (The v4 identity reset applies to files, not defaults.)
+        val fresh = Preferences()
+        assertEquals(MaterialColourMode.SYSTEM, fresh.materialMode)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, fresh.materialDualSeed)
         // The 1.7 emerald identity: neon-green accent seed over a teal surface seed.
-        assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, defaults.materialSingleSeed)
-        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, defaults.materialDualSeed)
-        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, defaults.materialSurfaceSeed)
-        assertEquals(Rgba(0, 230, 118), defaults.materialDualSeed)
-        assertEquals(Rgba(15, 91, 74), defaults.materialSurfaceSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, fresh.materialSingleSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, fresh.materialSurfaceSeed)
+        assertEquals(Rgba(0, 230, 118), fresh.materialDualSeed)
+        assertEquals(Rgba(15, 91, 74), fresh.materialSurfaceSeed)
         // The vibrant scheme style and the floating toolbar are the redesigned defaults too.
-        assertEquals(MaterialStyle.VIBRANT, defaults.materialStyle)
-        assertTrue(defaults.toolbarLook.floating)
-        assertEquals("shelves", defaults.homeOpensTo)
+        assertEquals(MaterialStyle.VIBRANT, fresh.materialStyle)
+        assertTrue(fresh.toolbarLook.floating)
+        assertEquals("shelves", fresh.homeOpensTo)
         for (key in listOf("material_mode", "material_seed", "material_single_seed", "material_dual_seed", "material_surface_seed")) {
-            assertFalse(defaults.toJson().has(key))
+            assertFalse(fresh.toJson().has(key))
         }
+    }
+
+    @Test fun anyPreIdentityFileYieldsTheWholeMaterialSetOnce() {
+        // v4 (the 1.8 lesson): 1.7.0's default-only switch stayed invisible behind explicit picks,
+        // so a pre-v4 file — whatever it carried, a gold preset in single tone, a blue surface,
+        // a wallpaper-following mode — hands the whole material set to the emerald identity once.
+        val pre = JSONObject()
+            .put("pref_schema", 3)
+            .put("material_mode", "single")
+            .put("material_seed", "#9A7C42")
+            .put("material_single_seed", "#9A7C42")
+            .put("material_surface_seed", "#3D75E6")
+            .put("material_style", "tonal_spot")
+        val upgraded = Preferences.fromJson(pre)
+        assertEquals(MaterialColourMode.DUAL, upgraded.materialMode)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, upgraded.materialSingleSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, upgraded.materialDualSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, upgraded.materialSurfaceSeed)
+        assertEquals(MaterialStyle.VIBRANT, upgraded.materialStyle)
+        // The reset sticks: the saved file (schema now v4) reloads to the identity.
+        val saved = Preferences.fromJson(upgraded.toJson())
+        assertEquals(upgraded, saved)
+        // And a post-identity pick is fresh and explicit: it survives from v4 onward.
+        val repicked = Preferences.fromJson(upgraded.toJson()
+            .put("material_mode", "single").put("material_single_seed", "#40C4FF"))
+        assertEquals(MaterialColourMode.SINGLE, repicked.materialMode)
+        assertEquals(Rgba(64, 196, 255), repicked.materialSingleSeed)
     }
 
     @Test fun preRedesignFileUpgradesOnceToEmeraldIdentity() {
@@ -408,33 +437,39 @@ class SettingsTest {
         assertEquals("top", repicked.homeOpensTo)
     }
 
-    @Test fun legacySingleToneMigratesOnlyItsOwnAccent() {
+    @Test fun legacySingleToneYieldsToTheIdentityOnce() {
+        // A pre-v4 file in single tone: the v4 reset takes the whole set (mode and seeds),
+        // so the chrome and the accent land on the brand identity together.
         val loaded = Preferences.fromJson(JSONObject().put("material_seed", "#2196f3"))
-        assertEquals(MaterialColourMode.SINGLE, loaded.materialMode)
-        assertEquals(Rgba(33, 150, 243), loaded.materialSingleSeed)
+        assertEquals(MaterialColourMode.DUAL, loaded.materialMode)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, loaded.materialSingleSeed)
         assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, loaded.materialDualSeed)
         assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, loaded.materialSurfaceSeed)
         assertEquals(loaded, Preferences.fromJson(loaded.toJson()))
     }
 
-    @Test fun legacyDualToneMigratesOnlyItsOwnColours() {
+    @Test fun legacyDualToneYieldsToTheIdentityOnce() {
         val loaded = Preferences.fromJson(JSONObject()
             .put("material_dual_tone", true).put("material_seed", "#800000")
             .put("material_surface_seed", "#000080"))
         assertEquals(MaterialColourMode.DUAL, loaded.materialMode)
-        assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, loaded.materialSingleSeed)
-        assertEquals(Rgba(128, 0, 0), loaded.materialDualSeed)
-        assertEquals(Rgba(0, 0, 128), loaded.materialSurfaceSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, loaded.materialSingleSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, loaded.materialDualSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, loaded.materialSurfaceSeed)
         assertEquals(loaded, Preferences.fromJson(loaded.toJson()))
     }
 
-    @Test fun legacyDualToneRetainsOldFallbackColours() {
+    @Test fun legacyDualToneYieldsItsFallbackColoursToTheIdentity() {
+        // The v4 reset is unconditional for pre-v4 files: even the old dual-tone fallback pair
+        // (a bare accent over the legacy blue surface) lands on the brand identity, and so does
+        // a legacy accent_color pick — the exact case the user's 1.7.0 install proved invisible.
         val json = JSONObject().put("material_dual_tone", true)
         val loaded = Preferences.fromJson(json)
-        assertEquals(Preferences.DEFAULT_ACCENT, loaded.materialDualSeed)
-        assertEquals(Rgba(33, 150, 243), loaded.materialSurfaceSeed)
+        assertEquals(MaterialColourMode.DUAL, loaded.materialMode)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, loaded.materialDualSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, loaded.materialSurfaceSeed)
         val classicAccent = Preferences.fromJson(json.put("accent_color", "#123456"))
-        assertEquals(Rgba(18, 52, 86), classicAccent.materialDualSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, classicAccent.materialDualSeed)
         assertEquals(classicAccent, Preferences.fromJson(classicAccent.toJson()))
     }
 
@@ -448,8 +483,10 @@ class SettingsTest {
         assertEquals(MaterialStyle.VIBRANT, defaults.materialStyle)
         assertFalse(defaults.toJson().has("material_style"))
         assertFalse(defaults.toJson().has("material_contrast"))
-        // An explicit pre-1.7 style pick survives the default's change untouched.
-        assertEquals(MaterialStyle.TONAL_SPOT, Preferences.fromJson(JSONObject().put("material_style", "tonal_spot")).materialStyle)
+        // An explicit pre-1.7 style pick yields to the v4 identity like every other pre-v4 pick;
+        // re-picked from v4 onward it is explicit and survives.
+        assertEquals(MaterialStyle.VIBRANT, Preferences.fromJson(JSONObject().put("material_style", "tonal_spot")).materialStyle)
+        assertEquals(MaterialStyle.TONAL_SPOT, Preferences.fromJson(JSONObject().put("pref_schema", 4).put("material_style", "tonal_spot")).materialStyle)
     }
 
     @Test fun materialOptionsDefaultForgivingly() {
@@ -458,7 +495,9 @@ class SettingsTest {
                 .put("material_mode", value).put("material_dual_tone", value)
                 .put("material_seed", value).put("material_single_seed", value)
                 .put("material_dual_seed", value).put("material_surface_seed", value))
-            assertEquals(MaterialColourMode.SYSTEM, loaded.materialMode)
+            // Junk reads as no pick — and a file with no v4 stamp carries no pick at all,
+            // so the identity reset lands the mode and seeds on the defaults.
+            assertEquals(MaterialColourMode.DUAL, loaded.materialMode)
             assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, loaded.materialSingleSeed)
             assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, loaded.materialDualSeed)
             assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, loaded.materialSurfaceSeed)

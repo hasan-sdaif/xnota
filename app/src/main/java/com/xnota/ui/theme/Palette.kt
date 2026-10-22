@@ -34,11 +34,11 @@ data class Palette(
     val danger: Rgba get() = materialColors.error
 
     companion object {
-        /** Stands in wherever no theme is provided yet (and in tests): the 1.7 emerald identity —
-         *  the neon-green accent seed, the vibrant scheme style and the teal surface seed together,
-         *  exactly as [com.xnota.ui.Editor.buildPalette] assembles it from the new defaults. */
+        /** Stands in wherever no theme is provided yet (and in tests): the XNota identity —
+         *  the brand tokens' dark chrome over the emerald-seeded scheme, exactly as
+         *  [com.xnota.ui.Editor.buildPalette] assembles it from the defaults. */
         val DEFAULT: Palette by lazy {
-            materialDark(MaterialColors.seeded(Preferences.DEFAULT_MATERIAL_DUAL, dark = true, style = MaterialStyle.VIBRANT, surfaceSeed = Preferences.DEFAULT_MATERIAL_SURFACE))
+            xnotaChrome("dark", XNotaBrand.ACCENT, MaterialColors.seeded(XNotaBrand.ACCENT, dark = true, style = MaterialStyle.VIBRANT, surfaceSeed = Preferences.DEFAULT_MATERIAL_SURFACE))
         }
 
         /** Build the full chrome from a Material 3 scheme's tonal surfaces. */

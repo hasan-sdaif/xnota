@@ -123,11 +123,13 @@ import com.xnota.settings.Preferences
 import com.xnota.settings.CornerStyle
 import com.xnota.settings.ToolbarLook
 import com.xnota.settings.MaterialColourMode
+import com.xnota.settings.MaterialStyle
 import com.xnota.settings.Settings
 import com.xnota.settings.SettingsRepository
 import com.xnota.ui.theme.MaterialColors
 import com.xnota.ui.theme.Palette
-import com.xnota.ui.theme.dynamicMaterialColors
+import com.xnota.ui.theme.XNotaBrand
+import com.xnota.ui.theme.xnotaChrome
 import java.io.InputStream
 import java.io.OutputStream
 import kotlin.math.roundToInt
@@ -2320,17 +2322,21 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     private fun resolvedAppearance(p: Preferences): String =
         if (p.uiAppearance == "system") (if (systemInDarkMode) "dark" else "light") else p.uiAppearance
 
-    /** The chrome palette for [p]: the system scheme (default-seeded below Android 12) or a custom seed. */
+    /** The chrome palette for [p]: the XNota identity, hand-built from the brand tokens so it
+     *  renders unconditionally — the lesson of 1.7.0, whose default-only switch stayed invisible
+     *  behind whatever the install had explicitly picked. The user's accent (the brand emerald
+     *  unless re-picked; "system" means no pick, so the brand accent, never the wallpaper's)
+     *  and the appearance mode are the only colour choices that reach the chrome. */
     private fun buildPalette(p: Preferences): Palette {
         val appearance = resolvedAppearance(p)
         val dark = appearance != "light"
-        val m = when (p.materialMode) {
-            MaterialColourMode.DUAL -> MaterialColors.seeded(p.materialDualSeed, dark, p.materialStyle, p.materialSurfaceSeed, p.materialContrast)
-            MaterialColourMode.SINGLE -> MaterialColors.seeded(p.materialSingleSeed, dark, p.materialStyle, contrast = p.materialContrast)
-            MaterialColourMode.SYSTEM -> dynamicMaterialColors(appContext, dark = dark)
-                ?: MaterialColors.seeded(Preferences.DEFAULT_ACCENT, dark = dark)
+        val accent = when (p.materialMode) {
+            MaterialColourMode.DUAL -> p.materialDualSeed
+            MaterialColourMode.SINGLE -> p.materialSingleSeed
+            MaterialColourMode.SYSTEM -> XNotaBrand.ACCENT
         }
-        return Palette.material(appearance, m)
+        val m = MaterialColors.seeded(accent, dark, MaterialStyle.VIBRANT, Preferences.DEFAULT_MATERIAL_SURFACE, p.materialContrast)
+        return xnotaChrome(appearance, accent, m)
     }
 
     /** The OS dark/light state flipped (uiMode arrives via onConfigurationChanged, no activity

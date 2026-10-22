@@ -378,8 +378,12 @@ data class Preferences(
          *  choices are final, whatever they set them to. v3 is the 1.7 emerald redesign: the old
          *  default colour seeds (written verbatim by every pre-v3 dual-mode save), the bare
          *  top-folder home and the strip toolbar upgrade once to the new identity — the same
-         *  rule, anything the user actually picked passes through untouched. */
-        const val PREF_SCHEMA = 3
+         *  rule, anything the user actually picked passes through untouched. v4 is the 1.8 lesson:
+         *  1.7.0 proved a default-only switch invisible on installs carrying any explicit pick
+         *  (a preset, a single tone, a wallpaper-following mode), so the brand identity now takes
+         *  the material fields over once, unconditionally — every pre-v4 pick yields to the
+         *  emerald identity; a pick made after this point is fresh, explicit, and sticks. */
+        const val PREF_SCHEMA = 4
 
         /** Settable range of the min/max zoom limits, in percent (within the hard zoom bounds). */
         const val ZOOM_LIMIT_MIN_PCT = 20
@@ -409,6 +413,11 @@ data class Preferences(
             // dual-mode save writes them unconditionally), so a value still equal to an old default
             // upgrades once to the new identity; anything else was a deliberate pick and passes through.
             val redesigned = schema >= 3
+            // v4: the brand identity takes the chrome over. The chrome palette itself is now built
+            // from the brand tokens regardless of these fields; this reset makes the accent and the
+            // scheme the app renders with land on the emerald identity too, whatever a pre-v4 file
+            // had picked — the one change 1.7.0 needed to be visible on every existing install.
+            val identityReset = schema < 4
             fun upgradeSeed(v: Rgba?, legacy: Rgba, new: Rgba): Rgba? = when {
                 v == null -> null
                 !redesigned && v == legacy -> new
@@ -424,15 +433,15 @@ data class Preferences(
             val legacyDualAccent = legacySeed ?: Rgba.fromHex(o.optString("accent_color")) ?: DEFAULT_ACCENT
             return Preferences(
                 uiAppearance = appearance,
-                materialMode = materialMode,
-                materialSingleSeed = upgradeSeed(Rgba.fromHex(o.optString("material_single_seed")), LEGACY_MATERIAL_SINGLE, DEFAULT_MATERIAL_SINGLE)
+                materialMode = if (identityReset) MaterialColourMode.DUAL else materialMode,
+                materialSingleSeed = if (identityReset) DEFAULT_MATERIAL_DUAL else upgradeSeed(Rgba.fromHex(o.optString("material_single_seed")), LEGACY_MATERIAL_SINGLE, DEFAULT_MATERIAL_SINGLE)
                     ?: legacySeed?.takeIf { !legacyDual }?.let { l -> if (!redesigned && l == LEGACY_MATERIAL_DUAL) DEFAULT_MATERIAL_SINGLE else l }
                     ?: DEFAULT_MATERIAL_SINGLE,
-                materialDualSeed = upgradeSeed(Rgba.fromHex(o.optString("material_dual_seed")), LEGACY_MATERIAL_DUAL, DEFAULT_MATERIAL_DUAL)
+                materialDualSeed = if (identityReset) DEFAULT_MATERIAL_DUAL else upgradeSeed(Rgba.fromHex(o.optString("material_dual_seed")), LEGACY_MATERIAL_DUAL, DEFAULT_MATERIAL_DUAL)
                     ?: if (legacyDual) legacyDualAccent.let { l -> if (!redesigned && l == LEGACY_MATERIAL_DUAL) DEFAULT_MATERIAL_DUAL else l } else DEFAULT_MATERIAL_DUAL,
-                materialStyle = MaterialStyle.fromId(o.optString("material_style")),
+                materialStyle = if (identityReset) MaterialStyle.VIBRANT else MaterialStyle.fromId(o.optString("material_style")),
                 materialContrast = o.optDouble("material_contrast", 0.0).takeIf { it in -1.0..1.0 } ?: 0.0,
-                materialSurfaceSeed = upgradeSeed(Rgba.fromHex(o.optString("material_surface_seed")), LEGACY_MATERIAL_SURFACE, DEFAULT_MATERIAL_SURFACE)
+                materialSurfaceSeed = if (identityReset) DEFAULT_MATERIAL_SURFACE else upgradeSeed(Rgba.fromHex(o.optString("material_surface_seed")), LEGACY_MATERIAL_SURFACE, DEFAULT_MATERIAL_SURFACE)
                     ?: if (legacyDual && !o.has("material_mode")) Rgba(33, 150, 243, 255) else DEFAULT_MATERIAL_SURFACE,
                 cornerStyle = CornerStyle.fromId(o.optString("corner_style")),
                 toolbarLook = ToolbarLook(
