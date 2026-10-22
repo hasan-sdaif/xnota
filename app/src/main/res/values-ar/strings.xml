@@ -1579,6 +1579,15 @@
     <string name="array_gap">التباعد</string>
     <string name="image_corners">الزوايا…</string>
     <string name="search_prefs">ابحث في الإعدادات</string>
+    <string name="settings_cat_all">الكل</string>
+    <string name="settings_cat_interface">الواجهة</string>
+    <string name="settings_cat_writing">الكتابة والأدوات</string>
+    <string name="settings_cat_reading">القراءة والصفحة</string>
+    <string name="settings_cat_data">البيانات والأمان</string>
+    <string name="settings_cat_advanced">أدوات متقدّمة</string>
+    <string name="menu_group_create">إنشاء</string>
+    <string name="menu_group_folder">المجلد</string>
+    <string name="menu_group_page">الصفحة</string>
     <string name="image_corner_radius">نصف قطر الزاوية</string>
     <string name="image_corners_hint">اختر صفرًا لإعادة الزوايا قائمة.</string>
     <plurals name="array_count_n">

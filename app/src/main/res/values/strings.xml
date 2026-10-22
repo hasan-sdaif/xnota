@@ -1448,6 +1448,15 @@
     <string name="array_gap">Gap</string>
     <string name="image_corners">Corners…</string>
     <string name="search_prefs">Search settings</string>
+    <string name="settings_cat_all">All</string>
+    <string name="settings_cat_interface">Interface</string>
+    <string name="settings_cat_writing">Writing and tools</string>
+    <string name="settings_cat_reading">Reading and page</string>
+    <string name="settings_cat_data">Data and safety</string>
+    <string name="settings_cat_advanced">Advanced tools</string>
+    <string name="menu_group_create">Create</string>
+    <string name="menu_group_folder">Folder</string>
+    <string name="menu_group_page">Page</string>
     <string name="image_corner_radius">Corner radius</string>
     <string name="image_corners_hint">0 makes the corners square again.</string>
     <plurals name="array_count_n">
