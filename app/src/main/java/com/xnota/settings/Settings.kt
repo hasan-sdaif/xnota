@@ -83,6 +83,9 @@ data class Settings(
     val pinnedUris: List<String> = emptyList(),
     /** The user's saved searches (the fork), in the order the sidebar lists them. */
     val smartFolders: List<SmartFolder> = emptyList(),
+    /** The search tab's remembered queries (the fork), newest first, capped by
+     *  [com.xnota.core.util.SearchHistory.CAP]; recorded when a search finds something. */
+    val searchHistory: List<String> = emptyList(),
     /** How the explorer shows a folder, for every folder or for those without a view of their own. */
     val explorerView: ExplorerView = ExplorerView(),
     /** Views set in one folder only, keyed by the folder's document key; used when views are per folder. */
@@ -165,6 +168,7 @@ data class Settings(
             .put("pinned_folders", JSONArray().apply { pinnedFolders.forEach { put(JSONObject().put("uri", it.uri).put("name", it.name)) } })
             .put("favorites", JSONArray(favorites))
             .put("pinned_uris", JSONArray(pinnedUris))
+            .put("search_history", JSONArray(searchHistory))
             .apply { if (smartFolders.isNotEmpty()) put("smart_folders", SmartFolders.toJson(smartFolders)) }
             .put("explorer_view", explorerView.toJson())
             .put("folder_views", JSONObject().apply { folderViews.forEach { (k, v) -> put(k, v.toJson()) } })
@@ -238,6 +242,7 @@ data class Settings(
                 pinnedFolders = pinnedFolders(o.optJSONArray("pinned_folders")),
                 favorites = stringList(o.optJSONArray("favorites")),
                 pinnedUris = stringList(o.optJSONArray("pinned_uris")),
+                searchHistory = com.xnota.core.util.SearchHistory.sanitize(stringList(o.optJSONArray("search_history"))),
                 smartFolders = SmartFolders.of(o.optJSONArray("smart_folders")),
                 explorerView = o.optJSONObject("explorer_view")?.let { ExplorerView.fromJson(it) } ?: ExplorerView(
                     sortKey = ExplorerSortKey.fromId(o.optString("explorer_sort_key", "modified")),

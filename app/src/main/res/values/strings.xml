@@ -598,6 +598,7 @@
     <string name="clear_search">Clear search</string>
     <string name="search">Search</string>
     <string name="find_in_note">Find in note</string>
+    <string name="recent_searches">Recent searches</string>
     <string name="match_case">Match case</string>
     <string name="whole_words">Whole words</string>
     <string name="previous_match">Previous match</string>

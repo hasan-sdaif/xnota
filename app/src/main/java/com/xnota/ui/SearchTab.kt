@@ -3,8 +3,11 @@ package com.xnota.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -14,14 +17,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -73,7 +79,8 @@ import com.xnota.ui.theme.toComposeColor
 /**
  * The side panel's Search tab: the query and its toggles, where the current match stands with
  * prev/next, then every match grouped by page, each in a line of its context. The search session
- * lives exactly as long as the tab is on screen.
+ * lives exactly as long as the tab is on screen. An empty field offers the remembered queries
+ * back as chips — the last eight distinct searches that found something, newest first.
  */
 @Composable
 internal fun SearchTab(editor: Editor) {
@@ -83,13 +90,24 @@ internal fun SearchTab(editor: Editor) {
     }
     val focusManager = LocalFocusManager.current
     val results = editor.searchResults
+    // The field's text, hoisted so a history chip can fill it and run the search through the
+    // tab's own path (searchFor) exactly as typing does.
+    var field by remember { mutableStateOf(TextFieldValue(editor.searchQuery, TextRange(0, editor.searchQuery.length))) }
+    fun searchAgain(query: String) {
+        field = TextFieldValue(query, TextRange(query.length))
+        editor.searchFor(query)
+    }
     Column(Modifier.fillMaxSize()) {
-        QueryField(editor)
+        QueryField(editor, field) {
+            field = it
+            editor.searchFor(it.text)
+        }
         QueryBar(editor, results)
         Progress(results)
         Box(Modifier.fillMaxWidth().weight(1f)) {
             when {
-                editor.searchQuery.isBlank() || results == null -> Unit
+                editor.searchQuery.isBlank() -> HistoryChips(editor.searchHistory) { searchAgain(it) }
+                results == null -> Unit
                 results.count == 0 -> if (results.done) EmptyHint(stringResource(R.string.no_matches))
                 else -> MatchList(editor, results) { focusManager.clearFocus() }
             }
@@ -98,14 +116,13 @@ internal fun SearchTab(editor: Editor) {
 }
 
 @Composable
-private fun QueryField(editor: Editor) {
+private fun QueryField(editor: Editor, field: TextFieldValue, onChange: (TextFieldValue) -> Unit) {
     val palette = LocalPalette.current
     val focus = remember { FocusRequester() }
     // The last query comes back selected, so typing replaces it.
-    var field by remember { mutableStateOf(TextFieldValue(editor.searchQuery, TextRange(0, editor.searchQuery.length))) }
     LaunchedEffect(editor.searchFocusTick) {
         runCatching { focus.requestFocus() }
-        field = field.copy(selection = TextRange(0, field.text.length))
+        onChange(field.copy(selection = TextRange(0, field.text.length)))
     }
     Row(
         Modifier
@@ -126,10 +143,7 @@ private fun QueryField(editor: Editor) {
             }
             BasicTextField(
                 value = field,
-                onValueChange = {
-                    field = it
-                    editor.searchFor(it.text)
-                },
+                onValueChange = onChange,
                 singleLine = true,
                 textStyle = TextStyle(color = palette.text.toComposeColor(), fontSize = 13.sp),
                 cursorBrush = SolidColor(palette.accent.toComposeColor()),
@@ -155,9 +169,44 @@ private fun QueryField(editor: Editor) {
                     NotaIcons.close, stringResource(R.string.clear_search),
                     tint = palette.textDim.toComposeColor(),
                     modifier = Modifier.size(16.dp).clip(CircleShape).clickable {
-                        field = TextFieldValue("")
+                        onChange(TextFieldValue(""))
                         editor.searchFor("")
                     },
+                )
+            }
+        }
+    }
+}
+
+/** The remembered queries as chips; tapping one fills the field and runs the search. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HistoryChips(history: List<String>, onPick: (String) -> Unit) {
+    if (history.isEmpty()) return
+    val palette = LocalPalette.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+    ) {
+        Text(stringResource(R.string.recent_searches), color = palette.textDim.toComposeColor(), fontSize = 11.sp)
+        Spacer(Modifier.height(6.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (q in history) {
+                Text(
+                    q,
+                    color = palette.text.toComposeColor(),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .widthIn(max = 170.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(palette.surface.toComposeColor())
+                        .border(1.dp, palette.border.toComposeColor(), RoundedCornerShape(9.dp))
+                        .clickable { onPick(q) }
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
                 )
             }
         }

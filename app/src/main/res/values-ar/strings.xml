@@ -615,6 +615,7 @@
     <string name="clear_search">مسح البحث</string>
     <string name="search">بحث</string>
     <string name="find_in_note">البحث داخل الملاحظة</string>
+    <string name="recent_searches">عمليات البحث الأخيرة</string>
     <string name="match_case">مطابقة حالة الأحرف</string>
     <string name="whole_words">كلمات كاملة</string>
     <string name="previous_match">النتيجة السابقة</string>

@@ -605,4 +605,14 @@ class SettingsTest {
         assertEquals(0, Settings.fromJson(junk).prefs.pageNumbers)
         assertEquals(0, Settings.fromJson(JSONObject()).prefs.pageNumbers)
     }
+
+    @Test fun searchHistoryRoundTripsAndIsSanitized() {
+        val original = Settings(searchHistory = listOf("قلم", "ink", "notes"))
+        val back = Settings.fromJson(original.toJson())
+        assertEquals(listOf("قلم", "ink", "notes"), back.searchHistory)
+        // A stored array of junk reads back trimmed and deduped, exactly what the chips then show.
+        val junk = JSONObject().put("search_history", org.json.JSONArray().put(" a ").put("").put("a").put(true))
+        assertEquals(listOf("a"), Settings.fromJson(junk).searchHistory)
+        assertEquals(emptyList<String>(), Settings.fromJson(JSONObject()).searchHistory)
+    }
 }

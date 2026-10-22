@@ -3479,6 +3479,17 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         runSearch(now = true)
     }
 
+    /** The search tab's remembered queries, newest first — the chips an empty field offers back. */
+    val searchHistory: List<String> get() = settings.searchHistory
+
+    /** Puts [query] at the front of the remembered searches (deduped, capped). Main thread. */
+    private fun rememberSearch(query: String) {
+        val next = com.xnota.core.util.SearchHistory.record(settings.searchHistory, query)
+        if (next == settings.searchHistory) return
+        settings = settings.copy(searchHistory = next)
+        saveSettingsSoon()
+    }
+
     /** Steps to the next match, or back to the one before, round the ends. */
     fun searchStep(forward: Boolean) {
         val r = searchResults ?: return
@@ -3510,6 +3521,9 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
     private fun onSearchResults(r: SearchResults?) {
         searchResults = r
+        // A search that finished with something to show joins the tab's remembered queries (the
+        // fork): the last eight distinct, newest first, offered back when the field is empty.
+        if (r != null && r.done && r.count > 0 && searchQuery.isNotBlank()) rememberSearch(searchQuery)
         val was = searchCurrent
         if (r == null) {
             searchCurrent = null
