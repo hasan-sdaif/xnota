@@ -695,4 +695,16 @@ class SettingsTest {
         assertEquals(listOf("a"), Settings.fromJson(junk).searchHistory)
         assertEquals(emptyList<String>(), Settings.fromJson(JSONObject()).searchHistory)
     }
+
+    @Test fun navigationMigratesToTheStableRightEdge() {
+        // The merged native-brand design: navigation lives on the physical right edge by default.
+        // The fork's first default ("auto", which followed the reading direction and left English
+        // users with a left-hand sidebar) migrates once at load; explicit picks survive.
+        assertEquals("right", Settings.fromJson(JSONObject()).backstageNavSide)
+        assertEquals("right", Settings.fromJson(JSONObject().put("backstage_nav_side", "auto")).backstageNavSide)
+        assertEquals("right", Settings.fromJson(JSONObject().put("backstage_nav_side", "junk")).backstageNavSide)
+        assertEquals("left", Settings.fromJson(JSONObject().put("backstage_nav_side", "left")).backstageNavSide)
+        assertEquals("bottom", Settings.fromJson(JSONObject().put("backstage_nav_side", "bottom")).backstageNavSide)
+        assertEquals(Settings(backstageNavSide = "right"), Settings.fromJson(Settings().toJson()))
+    }
 }

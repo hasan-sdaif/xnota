@@ -53,6 +53,10 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.xnota.ui.brand.XNotaBrandDivider
+import com.xnota.ui.brand.XNotaBrandEdgeMarker
+import com.xnota.ui.brand.XNotaBrandLockup
+import com.xnota.ui.brand.XNotaBrandMark
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -369,29 +373,37 @@ private fun BackstageContent(
     }
 
     if (compact) {
-        Box(Modifier.fillMaxSize().background(palette.bg.toComposeColor())) {
-            BackstageMain(
-                Modifier.fillMaxSize(), editor, view, compact, drawerOpen, { animateClose = true; drawerOpen = true }, { selectView(BackstageView.HOME) },
-                calls, createMode, { createMode = it }, onImportCodeTheme, onImportFont, link, { selectView(BackstageView.PREFERENCES) },
-                onPickBackupRoot = onPickBackupRoot,
-            )
-            AnimatedVisibility(
-                visible = drawerOpen,
-                enter = fadeIn(animationSpec = tween(SIDEBAR_ANIM_MS)),
-                exit = if (animateClose) fadeOut(animationSpec = tween(SIDEBAR_ANIM_MS)) else ExitTransition.None,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                Box(Modifier.fillMaxSize().background(palette.materialColors.scrim.withAlpha(82).toComposeColor()).clickable { dismissDrawer() })
-            }
-            // xnota: the drawer hugs the reading-direction start edge, so it slides in
-            // from that edge — from the right in RTL, from the left in LTR.
-            val drawerAtStart = LocalLayoutDirection.current == LayoutDirection.Rtl
-            AnimatedVisibility(
-                visible = drawerOpen,
-                enter = slideInHorizontally(animationSpec = tween(SIDEBAR_ANIM_MS), initialOffsetX = { if (drawerAtStart) it else -it }),
-                exit = if (animateClose) slideOutHorizontally(animationSpec = tween(SIDEBAR_ANIM_MS), targetOffsetX = { if (drawerAtStart) it else -it }) else ExitTransition.None,
-            ) {
-                BackstageSidebar(Modifier.width(DRAWER_WIDTH), nav, dismissDrawer)
+        // The mobile drawer has a fixed physical home on the right edge, regardless of the app
+        // language — a stable brand gesture (the merged native-brand design). Content inside each
+        // pane keeps its own reading direction, Arabic RTL included.
+        val contentDirection = LocalLayoutDirection.current
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(Modifier.fillMaxSize().background(palette.bg.toComposeColor())) {
+                CompositionLocalProvider(LocalLayoutDirection provides contentDirection) {
+                    BackstageMain(
+                        Modifier.fillMaxSize(), editor, view, compact, drawerOpen, { animateClose = true; drawerOpen = true }, { selectView(BackstageView.HOME) },
+                        calls, createMode, { createMode = it }, onImportCodeTheme, onImportFont, link, { selectView(BackstageView.PREFERENCES) },
+                        onPickBackupRoot = onPickBackupRoot,
+                    )
+                }
+                AnimatedVisibility(
+                    visible = drawerOpen,
+                    enter = fadeIn(animationSpec = tween(SIDEBAR_ANIM_MS)),
+                    exit = if (animateClose) fadeOut(animationSpec = tween(SIDEBAR_ANIM_MS)) else ExitTransition.None,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Box(Modifier.fillMaxSize().background(palette.materialColors.scrim.withAlpha(82).toComposeColor()).clickable { dismissDrawer() })
+                }
+                AnimatedVisibility(
+                    visible = drawerOpen,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    enter = slideInHorizontally(animationSpec = tween(SIDEBAR_ANIM_MS), initialOffsetX = { it }),
+                    exit = if (animateClose) slideOutHorizontally(animationSpec = tween(SIDEBAR_ANIM_MS), targetOffsetX = { it }) else ExitTransition.None,
+                ) {
+                    CompositionLocalProvider(LocalLayoutDirection provides contentDirection) {
+                        BackstageSidebar(Modifier.width(DRAWER_WIDTH), nav, dismissDrawer)
+                    }
+                }
             }
         }
     } else if (navSide == "bottom") {
@@ -552,27 +564,23 @@ private class SidebarNav(
 @Composable
 private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: () -> Unit) {
     val palette = LocalPalette.current
-    Column(modifier.fillMaxHeight().background(palette.panel.toComposeColor()).padding(vertical = 12.dp)) {
+    Column(modifier.fillMaxHeight().background(palette.panel.toComposeColor()).padding(vertical = 8.dp)) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 18.dp, end = 6.dp, bottom = 6.dp),
+            Modifier.fillMaxWidth().padding(start = 12.dp, end = 6.dp, top = 7.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                Modifier.size(30.dp).clip(CircleShape).background(palette.accent.toComposeColor()),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("X", color = palette.onAccent.toComposeColor(), fontWeight = FontWeight.Black, fontSize = 16.sp)
-            }
-            Spacer(Modifier.width(8.dp))
-            Text("XNota", color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Spacer(Modifier.weight(1f))
+            // The brand lockup: the launcher's own X + nib mark beside the "Nota" wordmark and
+            // the tagline — one shared composable, not a hand-drawn copy (the native-brand design).
+            XNotaBrandLockup(Modifier.weight(1f), markSize = 40.dp, showTagline = true)
             Tooltip(stringResource(R.string.collapse_sidebar)) {
-                IconButton(onClick = onCollapse) {
-                    DirectionalIcon(NotaIcons.prev, stringResource(R.string.collapse_sidebar), tint = palette.text.toComposeColor(), modifier = Modifier.size(22.dp))
+                IconButton(onClick = onCollapse, modifier = Modifier.size(38.dp)) {
+                    DirectionalIcon(NotaIcons.prev, stringResource(R.string.collapse_sidebar), tint = palette.textDim.toComposeColor(), modifier = Modifier.size(20.dp))
                 }
             }
         }
-        Spacer(Modifier.height(6.dp))
+        XNotaBrandDivider(Modifier.padding(horizontal = 14.dp))
+        Spacer(Modifier.height(8.dp))
         SidebarProfileCard(Modifier.padding(horizontal = 12.dp))
         Spacer(Modifier.height(10.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -724,6 +732,9 @@ private fun BackstageRail(modifier: Modifier, nav: SidebarNav, onExpand: () -> U
         }
         Spacer(Modifier.height(10.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            // The collapsed rail keeps a recognizable brand mark while conserving width.
+            XNotaBrandMark(size = 36.dp)
+            Spacer(Modifier.height(8.dp))
             RailItem(NotaIcons.home, stringResource(R.string.home), selected = nav.homeSelected) { nav.onHome() }
             nav.recent?.let { on -> RailItem(NotaIcons.clock, stringResource(R.string.recent), selected = on) { nav.onRecent() } }
             nav.smartFolders.forEach { f ->
@@ -910,7 +921,7 @@ private fun Command(icon: ImageVector, label: String, selected: Boolean = false,
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .height(48.dp)
+            .height(44.dp)
             .clip(shape)
             .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
             .clickable(onClick = onClick)
@@ -918,15 +929,24 @@ private fun Command(icon: ImageVector, label: String, selected: Boolean = false,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = label, tint = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(), modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
             label,
             color = if (selected) palette.selectionForeground.toComposeColor() else palette.text.toComposeColor(),
             fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (count != null) Text(count, color = palette.textDim.toComposeColor(), fontSize = 13.sp)
+        if (count != null) {
+            Spacer(Modifier.width(6.dp))
+            Text(count, color = palette.textDim.toComposeColor(), fontSize = 12.sp)
+        }
+        if (selected) {
+            Spacer(Modifier.width(8.dp))
+            XNotaBrandEdgeMarker()
+        }
     }
 }
 
@@ -984,7 +1004,7 @@ private fun ColorCommand(color: Rgba, name: String, selected: Boolean, onClick: 
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
-                .height(48.dp)
+                .height(44.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
@@ -994,7 +1014,7 @@ private fun ColorCommand(color: Rgba, name: String, selected: Boolean, onClick: 
             Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(12.dp).clip(CircleShape).background(codeOutline(color, palette.isDark).toComposeColor()))
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
             Text(
                 name,
                 color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
@@ -1053,7 +1073,7 @@ private fun SmartFolderCommand(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
-                .height(48.dp)
+                .height(44.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
@@ -1108,7 +1128,7 @@ private fun PinnedCommand(label: String, selected: Boolean, onClick: () -> Unit,
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
-                .height(48.dp)
+                .height(44.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
@@ -1116,7 +1136,7 @@ private fun PinnedCommand(label: String, selected: Boolean, onClick: () -> Unit,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(NotaIcons.folder, null, tint = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(), modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
             Text(
                 label,
                 color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
@@ -1315,7 +1335,7 @@ private fun ExplorerSection(
                         }
                     }
                     Spacer(Modifier.width(4.dp))
-                    Text("XNota", color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    XNotaBrandLockup(markSize = 30.dp, showTagline = false)
                 }
             }
             Column(Modifier.weight(1f).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {

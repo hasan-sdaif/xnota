@@ -610,7 +610,7 @@
     <string name="paste_code">粘贴为代码</string>
 
     <!-- About -->
-    <string name="app_tagline">Android 手写笔记与素描应用</string>
+    <string name="app_tagline">随时记录你的灵感</string>
     <string name="copy_version">复制版本号</string>
     <string name="help_make_better">帮助改进 XNota</string>
     <string name="report_bug">报告问题</string>

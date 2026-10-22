@@ -68,10 +68,10 @@ data class Settings(
     val sidebarVisible: Boolean = false,
     /** On wide screens, whether the home sidebar is collapsed to its icon rail. */
     val backstageRail: Boolean = false,
-    /** xnota: which physical edge the wide-screen navigation hugs —
-     *  "auto" (follow the app language's reading direction), "left", "right" or "bottom".
-     *  Unknown values fall back to "auto"; the upstream build ignores the extra JSON key. */
-    val backstageNavSide: String = "auto",
+    /** XNota navigation edge: the physical right edge by default — a stable home regardless of
+     *  the interface language; left and bottom remain available. The legacy "auto" value (which
+     *  followed the reading direction) is migrated to the right edge once at load. */
+    val backstageNavSide: String = "right",
     /** xnota: app display language — "system" (follow the OS), "ar" or "en".
      *  Applied by wrapping the activity's base context; the upstream build ignores the key. */
     val appLanguage: String = "system",
@@ -191,8 +191,8 @@ data class Settings(
     }
 
     companion object {
-        /** xnota: valid [backstageNavSide] values. */
-        val NAV_SIDES = setOf("auto", "left", "right", "bottom")
+        /** Supported navigation edges. The former "auto" default is migrated to the right edge. */
+        val NAV_SIDES = setOf("left", "right", "bottom")
 
         /** xnota: valid [appLanguage] values. */
         val APP_LANGUAGES = setOf("system", "ar", "en")
@@ -237,7 +237,12 @@ data class Settings(
                 startOnHome = o.optBoolean("start_on_home", true),
                 sidebarVisible = o.optBoolean("sidebar_visible", false),
                 backstageRail = o.optBoolean("backstage_rail", false),
-                backstageNavSide = o.optString("backstage_nav_side", "auto").let { if (it in NAV_SIDES) it else "auto" },
+                backstageNavSide = o.optString("backstage_nav_side", "right").let {
+                    // The fork's first default ("auto") followed the language's reading direction,
+                    // which put navigation on the left for English users; XNota keeps a stable
+                    // right-hand edge, so an old stored "auto" (or junk) lands there once.
+                    if (it in NAV_SIDES) it else "right"
+                },
                 appLanguage = o.optString("app_language", "system").let { if (it in APP_LANGUAGES) it else "system" },
                 pinnedFolders = pinnedFolders(o.optJSONArray("pinned_folders")),
                 favorites = stringList(o.optJSONArray("favorites")),

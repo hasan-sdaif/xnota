@@ -880,7 +880,7 @@
     <string name="paste_code">Paste as Code</string>
 
     <!-- About -->
-    <string name="app_tagline">Write your ideas — in one place</string>
+    <string name="app_tagline">Write your ideas — anytime</string>
     <string name="copy_version">Copy version</string>
     <string name="help_make_better">Help make XNota better</string>
     <string name="report_bug">Report a bug</string>
@@ -1425,7 +1425,7 @@
     <!-- XNota: navigation side and app language (see docs/fork/) -->
     <string name="pref_nav_side">Navigation side</string>
     <string name="pref_nav_side_auto">Auto</string>
-    <string name="pref_nav_side_help">Where the navigation bar sits on wide screens. Auto follows the app language: right in Arabic, left in English.</string>
+    <string name="pref_nav_side_help">Where navigation sits on wide screens. Right is the default; left and bottom are available too.</string>
     <string name="pref_app_language">App language</string>
     <string name="pref_app_language_system">System</string>
     <string name="app_language_name_ar" translatable="false">العربية</string>

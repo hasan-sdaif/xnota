@@ -961,7 +961,7 @@
     <string name="paste_code">لصق ككود</string>
 
     <!-- About -->
-    <string name="app_tagline">اكتب أفكارك… في مكان واحد</string>
+    <string name="app_tagline">اكتب أفكارك… في أي وقت</string>
     <string name="copy_version">نسخ رقم الإصدار</string>
     <string name="help_make_better">ساعد في تحسين إكس نوتا</string>
     <string name="report_bug">الإبلاغ عن مشكلة</string>
@@ -1558,7 +1558,7 @@
     <!-- XNota: navigation side and app language (see docs/fork/) -->
     <string name="pref_nav_side">موضع شريط التنقل</string>
     <string name="pref_nav_side_auto">تلقائي</string>
-    <string name="pref_nav_side_help">أين يستقر شريط التنقل على الشاشات العريضة. «تلقائي» يتبع لغة التطبيق: يمينًا في العربية ويسارًا في الإنجليزية.</string>
+    <string name="pref_nav_side_help">موضع شريط التنقل على الشاشات العريضة. اليمين هو الموضع الافتراضي، مع إمكانية اختيار اليسار أو الأسفل.</string>
     <string name="pref_app_language">لغة التطبيق</string>
     <string name="pref_app_language_system">لغة النظام</string>
     <string name="font_licenses">تراخيص الخطوط</string>

@@ -309,7 +309,6 @@ fun PreferencesPane(
                 R.string.theme_light,
                 R.string.theme_oled,
                 R.string.pref_nav_side,
-                R.string.pref_nav_side_auto,
                 R.string.edge_left,
                 R.string.edge_right,
                 R.string.edge_bottom,
@@ -338,12 +337,11 @@ fun PreferencesPane(
                     Chip(stringResource(R.string.theme_oled), prefs.uiAppearance == "oled") { update(prefs.copy(uiAppearance = "oled")) }
                 }
 
-                // xnota: the wide-screen navigation surface's physical edge, and the app language.
-                // Both live in Settings (not Preferences) and apply live / via activity recreate.
+                // XNota's navigation surface uses the right edge by default. Users can still place
+                // it on the left or in the bottom bar; these preferences apply immediately.
                 FieldLabel(stringResource(R.string.pref_nav_side))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for ((side, label) in listOf(
-                        "auto" to R.string.pref_nav_side_auto,
                         "left" to R.string.edge_left,
                         "right" to R.string.edge_right,
                         "bottom" to R.string.edge_bottom,

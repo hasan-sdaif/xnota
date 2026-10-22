@@ -7,7 +7,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -53,12 +51,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
 import com.xnota.R
 import com.xnota.platform.FontCatalog
 import com.xnota.ui.icons.NotaIcons
 import com.xnota.ui.theme.LocalPalette
 import com.xnota.ui.theme.toComposeColor
+import com.xnota.ui.brand.XNotaBrandLockup
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -79,9 +77,6 @@ fun AboutPane() {
     val palette = LocalPalette.current
     val ctx = LocalContext.current
 
-    val appIcon = remember {
-        runCatching { ctx.packageManager.getApplicationIcon(ctx.packageName).toBitmap(144, 144).asImageBitmap() }.getOrNull()
-    }
     val version = remember {
         runCatching {
             val pi = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
@@ -104,16 +99,11 @@ fun AboutPane() {
             Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(top = 16.dp, bottom = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (appIcon != null) {
-                Image(appIcon, "XNota", modifier = Modifier.size(72.dp))
-                Spacer(Modifier.height(16.dp))
-            }
-            Text("XNota", color = palette.text.toComposeColor(), fontWeight = FontWeight.W800, fontSize = 22.sp)
-            Spacer(Modifier.height(5.dp))
-            Text(
-                stringResource(R.string.app_tagline),
-                color = palette.textDim.toComposeColor(), fontSize = 12.sp, textAlign = TextAlign.Center,
-            )
+            // The shared brand lockup crowns the About hero: the launcher's own X + nib mark,
+            // the "Nota" wordmark it completes, and the tagline — the same composable the
+            // navigation uses, never a hand-drawn copy.
+            XNotaBrandLockup(markSize = 72.dp, showTagline = true)
+            Spacer(Modifier.height(12.dp))
             if (version.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 // Tap to copy, so a version string is easy to paste into a report — worn as the
