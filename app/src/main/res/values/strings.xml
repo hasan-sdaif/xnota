@@ -368,6 +368,39 @@
     <string name="pref_pdf_export">PDF export</string>
     <string name="pref_pdf_heading_bookmarks">Bookmarks from headings</string>
     <string name="pref_performance">Performance</string>
+
+    <!-- Folder backup & restore (any SAF tree, incl. Drive folders) -->
+    <string name="pref_backup">Backup &amp; restore</string>
+    <string name="pref_backup_help">Snapshots of all your notes go to a folder you choose — on the device or in Google Drive (via the system picker, with no account and nothing sent by the app itself). Every backup is a full copy; restoring only brings back what is missing.</string>
+    <string name="backup_no_folder">No backup folder chosen</string>
+    <string name="backup_folder_set">Backup folder ready</string>
+    <string name="backup_last_at">Last backup: %1$s</string>
+    <string name="backup_choose">Choose folder</string>
+    <string name="backup_change">Change</string>
+    <string name="backup_forget">Forget</string>
+    <string name="backup_every">Automatic backup</string>
+    <string name="backup_never">Never</string>
+    <string name="backup_daily">Daily</string>
+    <string name="backup_weekly">Weekly</string>
+    <string name="backup_now">Back up now</string>
+    <string name="backup_restore">Restore…</string>
+    <string name="backup_restore_help">Pick a snapshot to merge back into your notes folder. Existing notes are never overwritten.</string>
+    <string name="backup_none_yet">No backups yet.</string>
+    <string name="backup_failed">Backup failed — check the folder and try again.</string>
+    <string name="backup_nothing_to_restore">Nothing to restore — everything is already there.</string>
+    <plurals name="backup_done">
+        <item quantity="one">%d file backed up</item>
+        <item quantity="other">%d files backed up</item>
+    </plurals>
+    <plurals name="backup_files">
+        <item quantity="one">%d file</item>
+        <item quantity="other">%d files</item>
+    </plurals>
+    <plurals name="backup_restored">
+        <item quantity="one">%d note restored</item>
+        <item quantity="other">%d notes restored</item>
+    </plurals>
+
     <string name="pref_cache_help">Higher feels smoother when you pan and zoom but uses more memory. Your ink and PDFs look just as crisp either way.</string>
     <string name="pref_disable_front_buffering">Disable front buffering</string>
     <string name="pref_front_buffering_help">Front buffering paints the pen\'s ink straight into the frame the screen is showing, which is what makes it feel instant. A few panels do not hand that over cleanly, and there the ink can flicker or fall behind the nib. Turn it off on those and every stroke goes through the ordinary canvas.</string>

@@ -127,6 +127,10 @@ data class Preferences(
      *  render time — "full" (greys flip, chromatic tones held in a readable band), "achromatic"
      *  (greys only) or "off". The stored colours never change; only what the reader sees. */
     val adaptiveInk: String = "full",
+    /** Folder-backup cadence: "never" (default) | "daily" | "weekly". The folder itself is
+     *  [com.xnota.settings.Settings.backupRoot], any SAF tree the user granted — a Drive folder
+     *  works with no network code in the app at all. */
+    val backupEvery: String = "never",
     /** Version of the preferences payload, so one-off migrations can tell a stale file from a
      *  fresh one; see [PREF_SCHEMA]. */
     val prefSchema: Int = PREF_SCHEMA,
@@ -218,6 +222,7 @@ data class Preferences(
         .put("pdf_heading_bookmarks", pdfHeadingBookmarks)
         .put("pen_button_2_tool", penButton2Tool)
         .put("adaptive_ink", adaptiveInk)
+        .put("backup_every", backupEvery)
         .put("pref_schema", prefSchema)
 
     companion object {
@@ -339,6 +344,8 @@ data class Preferences(
                 pdfHeadingBookmarks = o.optBoolean("pdf_heading_bookmarks", true),
                 adaptiveInk = o.optString("adaptive_ink", "full")
                     .let { if (it == "off" || it == "achromatic") it else "full" },
+                backupEvery = o.optString("backup_every", "never")
+                    .let { if (it == "daily" || it == "weekly") it else "never" },
                 prefSchema = schema.coerceAtLeast(PREF_SCHEMA),
             )
         }

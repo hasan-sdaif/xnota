@@ -213,6 +213,8 @@ fun Backstage(
     onImportTemplate: () -> Unit = {},
     /** The New note screen asked to make a cover or page template from a picture. */
     onTemplateFromImage: (com.xnota.core.template.TemplateKind) -> Unit = {},
+    /** Preferences asked to pick the backup folder. */
+    onPickBackupRoot: () -> Unit = {},
 ) {
     // Below this width the sidebar becomes a slide-over drawer instead of a persistent pane.
     val compact = LocalConfiguration.current.screenWidthDp < COMPACT_WIDTH_DP
@@ -233,7 +235,7 @@ fun Backstage(
     )
     // The backstage is the root of the stack — ordinary base content, not a dialog. The activity
     // window already runs edge-to-edge with the system bars hidden (MainActivity.applyFullscreen).
-    BackstageContent(editor, compact, view, onSelectView, calls, onExitApp, onImportCodeTheme, onImportFont)
+    BackstageContent(editor, compact, view, onSelectView, calls, onExitApp, onImportCodeTheme, onImportFont, onPickBackupRoot)
 }
 
 /** Width at or above which the sidebar is a persistent pane rather than a drawer. */
@@ -261,6 +263,7 @@ private fun BackstageContent(
     onExitApp: () -> Unit,
     onImportCodeTheme: () -> Unit,
     onImportFont: () -> Unit,
+    onPickBackupRoot: () -> Unit = {},
 ) {
     val palette = LocalPalette.current
     var createMode by remember { mutableStateOf(CreateMode.NONE) }
@@ -348,6 +351,7 @@ private fun BackstageContent(
             BackstageMain(
                 Modifier.fillMaxSize(), editor, view, compact, drawerOpen, { animateClose = true; drawerOpen = true }, { selectView(BackstageView.HOME) },
                 calls, createMode, { createMode = it }, onImportCodeTheme, onImportFont, link, { selectView(BackstageView.PREFERENCES) },
+                onPickBackupRoot = onPickBackupRoot,
             )
             AnimatedVisibility(
                 visible = drawerOpen,
@@ -381,6 +385,7 @@ private fun BackstageContent(
                 },
                 editor, view, compact, true, { animateClose = true; drawerOpen = true }, { selectView(BackstageView.HOME) },
                 calls, createMode, { createMode = it }, onImportCodeTheme, onImportFont, link, { selectView(BackstageView.PREFERENCES) },
+                onPickBackupRoot = onPickBackupRoot,
             )
             AnimatedVisibility(
                 visible = drawerOpen,
@@ -436,6 +441,7 @@ private fun BackstageContent(
                         },
                         editor, view, compact, true, { setRailed(false) }, { selectView(BackstageView.HOME) },
                         calls, createMode, { createMode = it }, onImportCodeTheme, onImportFont, link, { selectView(BackstageView.PREFERENCES) },
+                        onPickBackupRoot = onPickBackupRoot,
                     )
                 }
                 // Both stay composed so a fold never pays to build one; only the current one is measured and placed.
@@ -644,6 +650,7 @@ private fun BackstageMain(
     onImportFont: () -> Unit,
     link: ExplorerLink,
     onOpenPreferences: () -> Unit,
+    onPickBackupRoot: () -> Unit = {},
 ) {
     val palette = LocalPalette.current
     Column(modifier) {
@@ -672,7 +679,7 @@ private fun BackstageMain(
         Box(Modifier.weight(1f).fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)) {
             when (view) {
                 BackstageView.HOME -> HomePane(editor, calls, createMode, onCreateMode, sidebarOpen, onShowSidebar, link)
-                BackstageView.PREFERENCES -> PreferencesPane(editor, compact, sidebarOpen, onShowSidebar, onBackToHome, onImportCodeTheme, onImportFont)
+                BackstageView.PREFERENCES -> PreferencesPane(editor, compact, sidebarOpen, onShowSidebar, onBackToHome, onImportCodeTheme, onImportFont, onPickBackupRoot)
                 BackstageView.TRASH -> TrashPane(editor, sidebarOpen, onShowSidebar, onOpenPreferences)
                 BackstageView.ABOUT -> AboutPane()
             }

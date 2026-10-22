@@ -369,6 +369,51 @@
     <string name="pref_pdf_export">تصدير PDF</string>
     <string name="pref_pdf_heading_bookmarks">علامات مرجعية من العناوين</string>
     <string name="pref_performance">الأداء</string>
+
+    <!-- النسخ الاحتياطي والاستعادة (أي مجلد SAF، بما فيه مجلدات الدراي) -->
+    <string name="pref_backup">النسخ الاحتياطي والاستعادة</string>
+    <string name="pref_backup_help">تُحفظ لقطات كاملة من كل ملاحظاتك في مجلد تختاره — على الجهاز أو في Google Drive (عبر منتقي النظام، دون حساب ولا أي إرسال من التطبيق نفسه). كل نسخة احتياطية نسخة كاملة؛ والاستعادة لا تُرجع إلا ما ينقصك.</string>
+    <string name="backup_no_folder">لم يُختَر مجلد للنسخ الاحتياطي بعد</string>
+    <string name="backup_folder_set">مجلد النسخ الاحتياطي جاهز</string>
+    <string name="backup_last_at">آخر نسخة احتياطية: %1$s</string>
+    <string name="backup_choose">اختيار مجلد</string>
+    <string name="backup_change">تغيير</string>
+    <string name="backup_forget">إلغاء</string>
+    <string name="backup_every">النسخ الاحتياطي التلقائي</string>
+    <string name="backup_never">أبدًا</string>
+    <string name="backup_daily">يوميًا</string>
+    <string name="backup_weekly">أسبوعيًا</string>
+    <string name="backup_now">نسخ احتياطي الآن</string>
+    <string name="backup_restore">استعادة…</string>
+    <string name="backup_restore_help">اختر لقطة لدمجها في مجلد ملاحظاتك. لا تُستبدل أي ملاحظة موجودة أبدًا.</string>
+    <string name="backup_none_yet">لا نسخ احتياطية بعد.</string>
+    <string name="backup_failed">فشل النسخ الاحتياطي — تحقّق من المجلد وحاول مجددًا.</string>
+    <string name="backup_nothing_to_restore">لا شيء للاستعادة — كل شيء موجود بالفعل.</string>
+    <plurals name="backup_done">
+        <item quantity="zero">لم يُنسخ أي ملف</item>
+        <item quantity="one">تم نسخ ملف واحد</item>
+        <item quantity="two">تم نسخ ملفين</item>
+        <item quantity="few">تم نسخ %d ملفات</item>
+        <item quantity="many">تم نسخ %d ملفًا</item>
+        <item quantity="other">تم نسخ %d ملف</item>
+    </plurals>
+    <plurals name="backup_files">
+        <item quantity="zero">لا ملفات</item>
+        <item quantity="one">ملف واحد</item>
+        <item quantity="two">ملفان</item>
+        <item quantity="few">%d ملفات</item>
+        <item quantity="many">%d ملفًا</item>
+        <item quantity="other">%d ملف</item>
+    </plurals>
+    <plurals name="backup_restored">
+        <item quantity="zero">لم تُستعد أي ملاحظة</item>
+        <item quantity="one">تمت استعادة ملاحظة واحدة</item>
+        <item quantity="two">تمت استعادة ملاحظتين</item>
+        <item quantity="few">تمت استعادة %d ملاحظات</item>
+        <item quantity="many">تمت استعادة %d ملاحظة</item>
+        <item quantity="other">تمت استعادة %d ملاحظة</item>
+    </plurals>
+
     <string name="pref_cache_help">تمنحك القيمة الأعلى إحساسًا أكثر سلاسة عند التحريك والتكبير، لكنها تستهلك ذاكرة أكبر. سيبدو حبرك وملفات PDF بالوضوح نفسه في الحالتين.</string>
     <string name="pref_disable_front_buffering">تعطيل التخزين المؤقت الأمامي</string>
     <string name="pref_front_buffering_help">يرسم التخزين المؤقت الأمامي حبر القلم مباشرةً في الإطار الذي تعرضه الشاشة، وهو ما يمنح الرسم إحساس الفورية. بعض الشاشات لا تتعامل مع ذلك بسلاسة، وقد يومض الحبر عليها أو يتأخر عن رأس القلم. أوقف الميزة على تلك الشاشات لتمرّ كل ضربة قلم عبر اللوحة العادية.</string>

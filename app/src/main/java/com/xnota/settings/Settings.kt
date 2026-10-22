@@ -60,6 +60,10 @@ data class Settings(
     val swatches: Map<SwatchRole, List<Rgba>> = emptyMap(),
     /** Persisted SAF tree URI for the in-app file explorer's root folder, or null. */
     val browseRoot: String? = null,
+    /** Persisted SAF tree URI for the backup folder (any Drive/device folder the user granted), or null. */
+    val backupRoot: String? = null,
+    /** When the last folder backup landed (epoch ms), or null if never. State, not a preference. */
+    val lastBackupAt: Long? = null,
     /** Whether the next launch opens the home screen (true) or the last-open note (false). */
     val startOnHome: Boolean = true,
     val sidebarVisible: Boolean = false,
@@ -130,6 +134,8 @@ data class Settings(
                 })
             }
             .apply { browseRoot?.let { put("browse_root", it) } }
+            .apply { backupRoot?.let { put("backup_root", it) } }
+            .apply { lastBackupAt?.let { put("last_backup_at", it) } }
             .put("start_on_home", startOnHome)
             .put("sidebar_visible", sidebarVisible)
             .put("backstage_rail", backstageRail)
@@ -192,6 +198,8 @@ data class Settings(
                 recentColors = rgbaList(o.optJSONArray("recent_colors")).take(24),
                 swatches = swatches(o.optJSONObject("swatches")),
                 browseRoot = o.optString("browse_root", "").ifEmpty { null },
+                backupRoot = o.optString("backup_root", "").ifEmpty { null },
+                lastBackupAt = if (o.has("last_backup_at")) o.optLong("last_backup_at") else null,
                 startOnHome = o.optBoolean("start_on_home", true),
                 sidebarVisible = o.optBoolean("sidebar_visible", false),
                 backstageRail = o.optBoolean("backstage_rail", false),

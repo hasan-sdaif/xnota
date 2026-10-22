@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -34,6 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -127,6 +130,7 @@ fun PreferencesPane(
     onBackToHome: () -> Unit,
     onImportCodeTheme: () -> Unit = {},
     onImportFont: () -> Unit = {},
+    onPickBackupRoot: () -> Unit = {},
 ) {
     val palette = LocalPalette.current
     val focusManager = LocalFocusManager.current
@@ -530,6 +534,15 @@ fun PreferencesPane(
             CheckRow(stringResource(R.string.pref_per_folder_views), prefs.perFolderViews) { updateHome(prefs.copy(perFolderViews = it)) }
             CheckRow(stringResource(R.string.pref_show_folder_counts), prefs.showFolderCounts) { updateHome(prefs.copy(showFolderCounts = it)) }
             CheckRow(stringResource(R.string.pref_show_extensions), prefs.showExtensions) { updateHome(prefs.copy(showExtensions = it)) }
+
+            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.pref_backup))
+            Text(
+                stringResource(R.string.pref_backup_help),
+                color = palette.textDim.toComposeColor(),
+                fontSize = 12.sp,
+            )
+            BackupSection(editor, onPickBackupRoot, prefs) { updateHome(prefs.copy(backupEvery = it)) }
 
             HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_pdf_export))
@@ -1007,6 +1020,130 @@ private fun MillimetreField(label: String, value: Double, onChange: (Double) -> 
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
         modifier = Modifier.width(136.dp),
     )
+}
+
+/**
+ * Folder backup & restore: pick a folder (any SAF tree — a device folder, or a Drive folder the
+ * system provider syncs), choose a cadence, snapshot now, or merge-restore a snapshot. The
+ * section is entirely driven by [Editor.backupRoot]/[Editor.backupVersion] and reports progress
+ * through the editor's message line, matching how the rest of the pane gives feedback.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BackupSection(
+    editor: Editor,
+    onPickBackupRoot: () -> Unit,
+    prefs: Preferences,
+    setBackupEvery: (String) -> Unit,
+) {
+    val palette = LocalPalette.current
+    val ctx = LocalContext.current
+    // Refresh the folder/last-backup lines whenever a backup lands or the folder changes.
+    val version = editor.backupVersion
+    val backupRoot = editor.backupRoot
+    val lastBackupAt = remember(version) { editor.lastBackupAt }
+    var working by remember { mutableStateOf(false) }
+    var backups by remember { mutableStateOf<List<com.xnota.platform.BackupManager.Entry>>(emptyList()) }
+    var showRestores by remember { mutableStateOf(false) }
+
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (backupRoot == null) stringResource(R.string.backup_no_folder)
+                else stringResource(R.string.backup_folder_set),
+                color = palette.textDim.toComposeColor(),
+                fontSize = 12.sp,
+            )
+            if (backupRoot != null && lastBackupAt != null) {
+                Text(
+                    stringResource(
+                        R.string.backup_last_at,
+                        java.text.SimpleDateFormat("yyyy/MM/dd HH:mm", java.util.Locale.getDefault())
+                            .format(java.util.Date(lastBackupAt)),
+                    ),
+                    color = palette.textDim.toComposeColor(),
+                    fontSize = 12.sp,
+                )
+            }
+        }
+        Chip(stringResource(if (backupRoot == null) R.string.backup_choose else R.string.backup_change), true) { onPickBackupRoot() }
+        if (backupRoot != null) {
+            Chip(stringResource(R.string.backup_forget), false) { editor.clearBackupRoot() }
+        }
+    }
+    FieldLabel(stringResource(R.string.backup_every))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Chip(stringResource(R.string.backup_never), prefs.backupEvery == "never") { setBackupEvery("never") }
+        Chip(stringResource(R.string.backup_daily), prefs.backupEvery == "daily") { setBackupEvery("daily") }
+        Chip(stringResource(R.string.backup_weekly), prefs.backupEvery == "weekly") { setBackupEvery("weekly") }
+    }
+    if (backupRoot != null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip(stringResource(R.string.backup_now), working.not()) {
+                working = true
+                editor.backupNow { n ->
+                    working = false
+                    editor.message = when (n) {
+                        null -> ctx.getString(R.string.backup_failed)
+                        else -> ctx.resources.getQuantityString(R.plurals.backup_done, n, n)
+                    }
+                }
+            }
+            Chip(stringResource(R.string.backup_restore), working.not()) {
+                working = true
+                editor.listBackups { list ->
+                    working = false
+                    backups = list
+                    showRestores = true
+                }
+            }
+        }
+    }
+    if (showRestores) {
+        Dialog(onDismissRequest = { showRestores = false }) {
+            Surface(shape = RoundedCornerShape(16.dp), color = palette.surface.toComposeColor()) {
+                Column(Modifier.widthIn(max = 360.dp).padding(16.dp)) {
+                    Text(stringResource(R.string.backup_restore), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.backup_restore_help), fontSize = 12.sp, color = palette.textDim.toComposeColor())
+                    Spacer(Modifier.height(12.dp))
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(max = 320.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        if (backups.isEmpty()) {
+                            Text(stringResource(R.string.backup_none_yet), fontSize = 12.sp, color = palette.textDim.toComposeColor())
+                        }
+                        for (b in backups) {
+                            val label = java.text.SimpleDateFormat("yyyy/MM/dd HH:mm", java.util.Locale.getDefault())
+                                .format(java.util.Date(b.timestampMs))
+                            Chip(
+                                "$label  (${ctx.resources.getQuantityString(R.plurals.backup_files, b.fileCount, b.fileCount)})",
+                                false,
+                            ) {
+                                showRestores = false
+                                working = true
+                                editor.restoreBackup(b) { n ->
+                                    working = false
+                                    editor.message = when (n) {
+                                        null -> ctx.getString(R.string.backup_failed)
+                                        0 -> ctx.getString(R.string.backup_nothing_to_restore)
+                                        else -> ctx.resources.getQuantityString(R.plurals.backup_restored, n, n)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Chip(stringResource(R.string.cancel), true) { showRestores = false }
+                }
+            }
+        }
+    }
 }
 
 @Composable

@@ -2470,8 +2470,9 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         settingsRepo.save(settings)
         // The note + session writes are heavy for a big note; run them off the main thread so pressing
         // Home never freezes the UI. The process survives to finish them; the debounced autosave during
-        // editing bounds any loss on an immediate hard kill.
-        flushThen(showOverlay = false) {}
+        // editing bounds any loss on an immediate hard kill. The folder backup waits for the flush, so
+        // it snapshots files that are actually on disk.
+        flushThen(showOverlay = false) { maybeAutoBackup() }
         flushCanvasAutosave()
         saveSession()
         saveCanvasSession()
@@ -3591,6 +3592,90 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     /** Browse the app's own private storage instead of a granted folder; no SAF grant needed. */
     fun useInternalStorage() {
         updateBrowseRoot(com.xnota.platform.AppStorageDocumentsProvider.treeUri(appContext).toString())
+    }
+
+    // --- folder backup (any SAF tree: a device folder or a Drive folder the provider syncs) ---
+
+    /** The granted backup folder, or null. Backups are full snapshots of the notes tree. */
+    val backupRoot: String? get() = settings.backupRoot
+
+    /** Point the backup folder at a granted tree and persist the grant. */
+    fun updateBackupRoot(treeUri: String) {
+        settings = settings.copy(backupRoot = treeUri)
+        settingsRepo.save(settings)
+        backupVersion++
+    }
+
+    /** Clears the backup folder grant; automatic backups stop until a folder is chosen again. */
+    fun clearBackupRoot() {
+        settings = settings.copy(backupRoot = null)
+        settingsRepo.save(settings)
+        backupVersion++
+    }
+
+    /** Bumped whenever the backup folder or the last-backup stamp changes, so the pane refreshes. */
+    var backupVersion by mutableStateOf(0)
+        private set
+
+    /** When the last folder backup landed (epoch ms), or null if never. Read-only view of settings. */
+    val lastBackupAt: Long? get() = settings.lastBackupAt
+
+    /** Fires a backup when the cadence says one is due; call after settings persist. Cheap when
+     *  no folder is granted or the interval has not elapsed. */
+    private fun maybeAutoBackup() {
+        val root = settings.backupRoot ?: return
+        if (settings.prefs.backupEvery == "never") return
+        val interval = if (settings.prefs.backupEvery == "daily") 24L * 60 * 60 * 1000 else 7L * 24 * 60 * 60 * 1000
+        val last = settings.lastBackupAt ?: 0L
+        if (System.currentTimeMillis() - last < interval) return
+        backupNow {}
+    }
+
+    /** Takes a full snapshot into the backup folder; [onDone] gets the file count or null on
+     *  failure. Runs entirely off the main thread. */
+    fun backupNow(onDone: (Int?) -> Unit) {
+        val notesTree = browseRoot ?: return onDone(null)
+        val backupTree = settings.backupRoot ?: return onDone(null)
+        autosaveScope.launch {
+            val entry = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.xnota.platform.BackupManager.backupNow(appContext, notesTree, backupTree) }.getOrNull()
+            }
+            if (entry != null) {
+                settings = settings.copy(lastBackupAt = entry.timestampMs)
+                settingsRepo.save(settings)
+                backupVersion++
+            }
+            onDone(entry?.fileCount)
+        }
+    }
+
+    /** Lists the snapshots in the backup folder, newest first; [onDone] on the main thread. */
+    fun listBackups(onDone: (List<com.xnota.platform.BackupManager.Entry>) -> Unit) {
+        val backupTree = settings.backupRoot ?: return onDone(emptyList())
+        autosaveScope.launch {
+            val list = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.xnota.platform.BackupManager.listBackups(appContext, backupTree) }.getOrDefault(emptyList())
+            }
+            onDone(list)
+        }
+    }
+
+    /** Merge-restores a snapshot into the notes folder (missing files come back; existing files
+     *  are never overwritten). [onDone] gets the restored count or null on failure. */
+    fun restoreBackup(entry: com.xnota.platform.BackupManager.Entry, onDone: (Int?) -> Unit) {
+        val notesTree = browseRoot ?: return onDone(null)
+        val backupTree = settings.backupRoot ?: return onDone(null)
+        autosaveScope.launch {
+            val n = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.xnota.platform.BackupManager.restore(appContext, backupTree, entry, notesTree) }.getOrNull()
+            }
+            if (n != null && n > 0) {
+                browseCache.clear() // the explorer has to re-list the folder to see the files
+                rootNameCache.clear()
+                prefsVersion++
+            }
+            onDone(n)
+        }
     }
 
     /** The pins under the current explorer root; the rest wait for their folder to be the root again. */
