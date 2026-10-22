@@ -229,6 +229,11 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         // strokes byte-identical to what upstream writes.
         if (s.config.tiltStrength != 0.0) j.name("tilt_strength").value(s.config.tiltStrength)
         if (s.config.pressureCurveK != 8.0) j.name("pressure_curve_k").value(s.config.pressureCurveK)
+        // The fork's brush-studio knobs ride along, likewise only when set away from the default,
+        // so a plain pen stroke's config stays byte-identical to what upstream writes.
+        if (s.config.roughness != 0.0) j.name("roughness").value(s.config.roughness)
+        if (s.config.scatter != 0.0) j.name("scatter").value(s.config.scatter)
+        if (s.config.opacity != 1.0) j.name("opacity").value(s.config.opacity)
         j.endObject()
         // Samples are almost all of a dense manifest's bytes, so they go out through [JsonWrite.samplePoint], which rounds them: 0.01
         // content px and 0.001 pressure are far below anything visible. Rounding is idempotent,
@@ -682,6 +687,9 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         var highlighterInverse: Boolean? = null
         var tiltStrength: Double? = null
         var pressureCurveK: Double? = null
+        var roughness: Double? = null
+        var scatter: Double? = null
+        var opacity: Double? = null
     }
 
     private fun parseItem(p: JsonPull, items: MutableList<CanvasItem>, pending: MutableList<PendingImage>, glue: GlueRead) {
@@ -777,6 +785,9 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
             highlighterInverse = c?.highlighterInverse ?: def.highlighterInverse,
             tiltStrength = (c?.tiltStrength ?: def.tiltStrength).coerceIn(0.0, 1.0),
             pressureCurveK = (c?.pressureCurveK ?: def.pressureCurveK).coerceIn(0.0, 24.0),
+            roughness = (c?.roughness ?: def.roughness).coerceIn(0.0, 100.0),
+            scatter = (c?.scatter ?: def.scatter).coerceIn(0.0, 100.0),
+            opacity = (c?.opacity ?: def.opacity).coerceIn(ToolConfig.OPACITY_MIN, 1.0),
         )
         val stroke = Stroke(tool, config, emptyList(), s.speedScale, s.straight, s.smoothScale)
         s.samples?.let { stroke.setSamples(it.xs, it.ys, it.ps, it.ts, it.n) }
@@ -976,6 +987,9 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
                 "highlighter_inverse" -> c.highlighterInverse = boolOrNull(p)
                 "tilt_strength" -> c.tiltStrength = doubleOrNull(p)
                 "pressure_curve_k" -> c.pressureCurveK = doubleOrNull(p)
+                "roughness" -> c.roughness = doubleOrNull(p)
+                "scatter" -> c.scatter = doubleOrNull(p)
+                "opacity" -> c.opacity = doubleOrNull(p)
                 else -> p.skipValue()
             }
         }

@@ -5,10 +5,16 @@ import com.xnota.core.model.Rgba
 /**
  * Eraser behaviour (spec 04 §2): STROKE removes a whole stroke on contact; AREA removes only the
  * portion of a stroke the eraser passes over, splitting it into fragments. Persisted as [id].
+ *
+ * The fork adds OBJECT: a tap (or sweep) takes the **topmost object** under the eraser — a whole
+ * stroke, shape, image or text box — rather than everything the circle overlaps, so deliberately
+ * placed content can be removed precisely. Off by default, like every fork default that changes
+ * what the tool does to existing ink.
  */
 enum class EraseMode(val id: String) {
     STROKE("stroke"),
-    AREA("area");
+    AREA("area"),
+    OBJECT("object");
 
     companion object {
         fun fromId(id: String?): EraseMode = entries.firstOrNull { it.id == id } ?: STROKE
@@ -109,10 +115,18 @@ data class ToolConfig(
      *  smoothing, so one stroke reads as many light passes. 0 is a single clean line. Persisted
      *  per stroke. */
     val scatter: Double = 0.0,
+    /** Custom brush opacity (the fork): a render-time alpha multiplier in [0.05, 1]; 1 is fully
+     *  opaque (the historical ink). Composable onto any stroke tool, applied exactly where the
+     *  highlighter's translucency is — [com.xnota.core.model.Stroke.renderColor] — so the paged
+     *  painter, the GL mesher and PDF export all honour it without a format change. */
+    val opacity: Double = 1.0,
 ) {
     companion object {
         const val DEFAULT_MARKUP_INTENSITY = 0.5
         const val MARKUP_INTENSITY_MIN = 0.1
+
+        /** [opacity]'s floor: ink stays at least a ghost, never fully invisible. */
+        const val OPACITY_MIN = 0.05
     }
 }
 

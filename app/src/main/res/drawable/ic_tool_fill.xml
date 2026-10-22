@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- XNota — fill (bucket) tool. A paint bucket with its handle, and the drop it pours. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Handle: a thin crescent arched over the rim. -->
+    <path android:fillColor="#FF000000" android:pathData="M30,32 A25,25 0 0 1 70,32 L63,32 A18,18 0 0 0 37,32 Z"/>
+    <!-- Rim: the bucket's mouth, a hair wider than its body. -->
+    <path android:fillColor="#FF000000" android:pathData="M25,32 L75,32 A3,3 0 0 1 75,39 L25,39 A3,3 0 0 1 25,32 Z"/>
+    <!-- Body: an open pail tapering to its base, walls as the fill. -->
+    <path android:fillColor="#FF000000" android:pathData="M28,39 L39,83 A5,5 0 0 0 44,88 L58,88 A5,5 0 0 0 63,83 L74,39 L66,39 L56,80 A2,2 0 0 1 54,82 L48,82 A2,2 0 0 1 46,80 L36,39 Z"/>
+    <!-- The drop it pours. -->
+    <path android:fillColor="#FF000000" android:pathData="M87,50 C90,56 96,64 96,73 A9,9 0 1 1 78,73 C78,64 84,56 87,50 Z"/>
+</vector>

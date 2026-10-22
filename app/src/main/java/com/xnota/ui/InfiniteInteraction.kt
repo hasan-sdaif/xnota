@@ -43,7 +43,7 @@ import com.xnota.core.tools.ToolConfig
 import kotlin.math.exp
 
 /** What the current gesture is doing. */
-enum class CanvasPointerMode { IDLE, PAN, PINCH, DRAW, ERASE, SHAPE, BAND, LASSO, MOVE, RESIZE, ROTATE, VERTEX, POLYGON, CONNECT, JOINT, SLIDE }
+enum class CanvasPointerMode { IDLE, PAN, PINCH, DRAW, ERASE, SHAPE, BAND, LASSO, MOVE, RESIZE, ROTATE, VERTEX, POLYGON, CONNECT, JOINT, SLIDE, FILL }
 
 /**
  * Gestures on the infinite canvas.
@@ -78,6 +78,8 @@ class InfiniteInteraction(
     private val onEraseEnd: (EraseSession) -> Unit = {},
     /** An eraser drag lifted, rather than being cut short by a pinch or a cancel. */
     private val onEraseLifted: () -> Unit = {},
+    /** A tap of the fill tool at this content point: the host owns the document and undo stack. */
+    private val onFillTap: (Pt) -> Unit = {},
     /** Where the eraser cursor sits in viewport pixels, and how wide, or null to hide it. */
     private val onEraserCursor: (Pt?, Double) -> Unit = { _, _ -> },
     /** The shape or connector being drawn, re-tessellated as it grows, or null to clear the preview. */
@@ -488,6 +490,7 @@ class InfiniteInteraction(
         when {
             effective.isStroke -> beginDraw(vx, vy, effective, e)
             effective == Tool.ERASER -> beginErase(vx, vy)
+            effective == Tool.FILL -> beginFill(at)
             placing -> beginPolygonTap(vx, vy)
             effective == Tool.SHAPE && shapeConfig().connector != null -> beginConnector(vx, vy)
             effective == Tool.SHAPE -> beginShape(vx, vy)
@@ -509,6 +512,8 @@ class InfiniteInteraction(
     private fun armLongPress(at: Pt, onSelection: Boolean, isFinger: Boolean) {
         cancelLongPress()
         if (!isFinger || onSelection) return
+        // The fill tool's press is a tap waiting to happen; a held finger is not a grab.
+        if (tool == Tool.FILL) return
         val hit = itemAt(viewport.viewportToContent(at))
         // The eraser is the one tool a grab would fight with, so it is the one that leaves an item
         // alone. Everything else hands it over, which is what makes a held finger pick something up
@@ -612,6 +617,7 @@ class InfiniteInteraction(
             CanvasPointerMode.ROTATE -> extendRotate(e.getX(0).toDouble(), e.getY(0).toDouble())
             CanvasPointerMode.VERTEX -> extendVertex(e.getX(0).toDouble(), e.getY(0).toDouble())
             CanvasPointerMode.POLYGON -> showPolygonDraft(viewport.viewportToContent(Pt(e.getX(0).toDouble(), e.getY(0).toDouble())))
+            CanvasPointerMode.FILL -> Unit // a fill commits on the tap; there is no drag to extend
             CanvasPointerMode.IDLE -> Unit
         }
     }
@@ -647,6 +653,7 @@ class InfiniteInteraction(
             endErase()
             onEraseLifted()
         }
+        if (mode == CanvasPointerMode.FILL) endFill(e)
         if (mode == CanvasPointerMode.SHAPE) endShape()
         if (mode == CanvasPointerMode.CONNECT) endConnector()
         when (mode) {
@@ -1561,7 +1568,31 @@ class InfiniteInteraction(
             connectHot = hot
             onSelectionChanged()
         }
+        // The fork's eraser preview: a hovering pen or mouse with the eraser armed — or a hardware
+        // eraser tip whatever is armed — shows the circle it would erase, as the paged canvas does.
+        // Any other hover hides it, so the circle cannot linger after the tool changes.
+        val exit = e.actionMasked == MotionEvent.ACTION_HOVER_EXIT
+        val eraserPointer = e.getToolType(0) == MotionEvent.TOOL_TYPE_ERASER
+        when {
+            exit -> hideHoverCursor()
+            tool == Tool.ERASER || eraserPointer -> showHoverCursor(Pt(e.x.toDouble(), e.y.toDouble()))
+            else -> hideHoverCursor()
+        }
         return hovering
+    }
+
+    /** Whether the hover stream is currently showing an eraser cursor, so hide calls stay cheap. */
+    private var hoverCursorShown = false
+
+    private fun showHoverCursor(at: Pt) {
+        hoverCursorShown = true
+        onEraserCursor(at, eraserRadius() * viewport.zoom)
+    }
+
+    private fun hideHoverCursor() {
+        if (!hoverCursorShown) return
+        hoverCursorShown = false
+        onEraserCursor(null, 0.0)
     }
 
     /** A press with a connector chip: the connector sets off, glued to the point under the pen if there is one. */
@@ -1659,6 +1690,24 @@ class InfiniteInteraction(
         requestRender()
     }
 
+    // --- fill (the fork's bucket tool) ---
+
+    /** Where the fill tool's press landed, content px, so its lift can tell a tap from a drag. */
+    private var fillPressAt = Pt.ZERO
+
+    /** The fill tool's press: nothing happens until the lift proves it was a tap. */
+    private fun beginFill(at: Pt) {
+        fillPressAt = at
+        mode = CanvasPointerMode.FILL
+    }
+
+    /** The fill tool's lift: a tap (within the slop) asks the host to fill what is under it. */
+    private fun endFill(e: MotionEvent) {
+        val at = viewport.viewportToContent(Pt(e.getX(0).toDouble(), e.getY(0).toDouble()))
+        mode = CanvasPointerMode.IDLE
+        if (at.distanceTo(fillPressAt) <= TAP_SLOP_PX / viewport.zoom) onFillTap(at)
+    }
+
     // --- erasing ---
 
     /** Eraser radius in content pixels: the tool's width, or a constant on-screen size when off. */
@@ -1668,6 +1717,9 @@ class InfiniteInteraction(
     }
 
     private fun areaErase(): Boolean = configFor(Tool.ERASER).eraseMode == EraseMode.AREA
+
+    /** The fork's object-erase mode: the topmost object the circle touches, images and text included. */
+    private fun objectErase(): Boolean = configFor(Tool.ERASER).eraseMode == EraseMode.OBJECT
 
     private fun beginErase(vx: Double, vy: Double) {
         eraseSession = onEraseBegin() ?: return
@@ -1690,7 +1742,7 @@ class InfiniteInteraction(
         val session = eraseSession ?: return
         onEraserCursor(Pt(vx, vy), eraserRadius() * viewport.zoom)
         val content = viewport.viewportToContent(Pt(vx, vy))
-        session.erase(content.x, content.y, eraserRadius(), areaErase())
+        session.erase(content.x, content.y, eraserRadius(), areaErase(), objectErase())
         requestRender()
     }
 

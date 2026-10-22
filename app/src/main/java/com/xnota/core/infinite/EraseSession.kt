@@ -48,8 +48,13 @@ class EraseSession(private val doc: InfiniteDocument) {
      * Images and text are left alone in both modes, matching the paged canvas: they are placed
      * deliberately and are deleted through a selection instead. So is anything locked, which is
      * what a lock is for.
+     *
+     * The fork's third mode (`[objects]`) takes the single topmost object the circle touches —
+     * images and text boxes included, since "precisely that one" is the mode's whole point —
+     * leaving whatever else the circle overlaps alone.
      */
-    fun erase(cx: Double, cy: Double, radius: Double, area: Boolean): Rect? {
+    fun erase(cx: Double, cy: Double, radius: Double, area: Boolean, objects: Boolean = false): Rect? {
+        if (objects) return eraseTopmostObject(cx, cy, radius)
         val box = Rect(cx - radius, cy - radius, radius * 2, radius * 2)
         var dirty: Rect? = null
         for (item in doc.itemsIn(box)) {
@@ -82,6 +87,32 @@ class EraseSession(private val doc: InfiniteDocument) {
         } else {
             SplitCanvasItems(doc, entries.map { SplitCanvasItems.Split(it.at, it.original, it.fragments.toList()) })
         }
+
+    /**
+     * OBJECT mode (the fork): remove the topmost object the circle touches — any object at all,
+     * images and text boxes included — and nothing else. Each call takes at most one, so a tap
+     * deletes a single item and a drag walks the stack one object at a time; the whole gesture is
+     * still one undo command, exactly like the other modes.
+     */
+    private fun eraseTopmostObject(cx: Double, cy: Double, radius: Double): Rect? {
+        val box = Rect(cx - radius, cy - radius, radius * 2, radius * 2)
+        var chosen: CanvasItem? = null
+        var chosenZ = -1
+        for (item in doc.itemsIn(box)) {
+            if (item.locked || !item.intersectsCircle(cx, cy, radius)) continue
+            val z = doc.indexOfRef(item)
+            if (z > chosenZ) {
+                chosenZ = z
+                chosen = item
+            }
+        }
+        val item = chosen ?: return null
+        val touched = item.paintBounds()
+        val at = doc.replaceItem(item, emptyList())
+        if (at < 0) return null
+        record(item, at, emptyList())
+        return touched
+    }
 
     /** Fold this cut into the entry for whichever item it ultimately came from. */
     private fun record(item: CanvasItem, at: Int, fragments: List<CanvasItem>) {

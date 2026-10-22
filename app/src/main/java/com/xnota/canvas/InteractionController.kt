@@ -22,6 +22,7 @@ import com.xnota.core.history.EditLabel
 import com.xnota.core.history.EditText
 import com.xnota.core.history.MoveItems
 import com.xnota.core.history.ReorderItems
+import com.xnota.core.history.RefillShapes
 import com.xnota.core.history.RemoveMarkup
 import com.xnota.core.history.ReplacePageItems
 import com.xnota.core.history.ResizeItem
@@ -66,6 +67,8 @@ import com.xnota.core.stroke.ShapeRecognizer
 import com.xnota.core.stroke.StrokeJoin
 import com.xnota.core.stroke.StrokeSimplify
 import com.xnota.core.stroke.StrokeUndoCoalescer
+import com.xnota.core.stroke.Symmetry
+import com.xnota.core.stroke.SymmetryMode
 import com.xnota.core.tools.EraseMode
 import com.xnota.core.tools.InkPalette
 import com.xnota.core.tools.ShapeConfig
@@ -87,6 +90,7 @@ import kotlin.math.sin
 enum class PointerMode {
     IDLE, DRAW, ERASE, BAND, LASSO_DRAW, SHOT, SHAPE, MOVE, RESIZE, TRANSFORM, PAN, PINCH, FLOW_TEXT,
     TEXT_DRAG, RULER_MOVE, RULER_TRANSFORM, RULER_ROTATE, PDF_TEXT, VERTEX, POLYGON, CONNECT, JOINT, SLIDE,
+    FILL,
 }
 
 /**
@@ -219,6 +223,14 @@ class InteractionController(
     /** The fork's join-strokes: a new stroke whose start lands on the previous stroke's end
      *  (same tool, colour, width) continues that stroke instead of starting a new item. */
     var joinStrokes: Boolean = false
+
+    /** The fork's draw symmetry: a finished stroke is echoed through a mirror or rotation about
+     *  the page centre and the copies commit with it as one undo unit. Threaded from
+     *  `Preferences.symmetryMode` ("none" | "vertical" | "horizontal" | "quad" | "radial"). */
+    var symmetryMode: String = "none"
+
+    /** Radial symmetry's segment count, 2..8; read only when [symmetryMode] is "radial". */
+    var symmetrySegments: Int = 6
 
     /** Window state for [undoCoalesce]; clocked by elapsed-realtime at pen-down/pen-up. */
     private val strokeCoalescer = StrokeUndoCoalescer()
@@ -863,6 +875,7 @@ class InteractionController(
             effectiveTool == Tool.SELECT -> beginSelect(content)
             effectiveTool == Tool.LASSO -> beginLasso(content)
             effectiveTool == Tool.SCREENSHOT -> beginScreenshot(content)
+            effectiveTool == Tool.FILL -> beginFill(content)
             effectiveTool == Tool.SHAPE && shapeConfig.placesCorners -> beginPolygonTap(content)
             effectiveTool == Tool.SHAPE && shapeConfig.connector != null -> beginConnector(content)
             effectiveTool == Tool.SHAPE -> beginShape(content)
@@ -874,7 +887,7 @@ class InteractionController(
         // The flow caret owns its own long press (word selection), mid text-drag it is suppressed so
         // a hold-then-drag still sizes a box, and a markup drag held still is just a slow drag.
         if (mode != PointerMode.FLOW_TEXT && mode != PointerMode.TEXT_DRAG && mode != PointerMode.PDF_TEXT &&
-            mode != PointerMode.POLYGON
+            mode != PointerMode.POLYGON && mode != PointerMode.FILL
         ) {
             armLongPress(Pt(vx, vy), content, isFinger, free)
         }
@@ -888,6 +901,66 @@ class InteractionController(
         mode = PointerMode.PDF_TEXT
         markupPressAt = state.contentToViewport(content)
         text.beginToolDrag(page, local, mark = configFor(Tool.MARKUP).markupMode != MarkupMode.SELECT)
+    }
+
+    // --- FILL (the fork's bucket tool) ---
+
+    /** Where the fill tool's press landed, in content px, so its lift can tell a tap from a drag. */
+    private var fillPressAt = Pt.ZERO
+
+    /** The fill tool's press: nothing happens until the lift proves it was a tap. */
+    private fun beginFill(content: Pt) {
+        fillPressAt = content
+        mode = PointerMode.FILL
+    }
+
+    /**
+     * The fill tool's lift: a tap fills with the armed ink colour — every closed shape in the
+     * active selection when the tap lands inside the selection's box, else the topmost closed
+     * shape whose interior the tap hit. A shape that already carries a fill keeps its opacity
+     * (only the hue changes, exactly like the selection style popup's refill); an unfilled shape
+     * takes the shape tool's default fill alpha. One undo step for the whole tap.
+     */
+    private fun endFill(content: Pt) {
+        mode = PointerMode.IDLE
+        if (content.distanceTo(fillPressAt) > TAP_SLOP) return
+        val (pageIndex, local) = state.pagePointAt(content) ?: return
+        val page = state.document.pages.getOrNull(pageIndex) ?: return
+        val targets = fillTargets(page, content, local)
+        val entries = targets.mapNotNull { shape ->
+            val before = shape.fillRgba
+            val after = inkColor.copy(a = before?.a ?: (ShapeConfig.FILL_ALPHA * 255).toInt())
+            if (after == before) null else RefillShapes.Entry(shape, before, after)
+        }
+        if (entries.isEmpty()) return
+        RefillShapes(entries).also { it.redo(); history.push(it) }
+        state.document.dirty = true
+        // Repair just the filled bounds in place, like the eraser does, so a zoomed cache band
+        // does not have to be rebuilt whole to show the new fill.
+        var dirty: Rect? = null
+        for (e in entries) dirty = dirty?.union(e.shape.paintBounds()) ?: e.shape.paintBounds()
+        dirty?.let {
+            if (!state.repairRegion(page, it.outset(REPAIR_PAD))) state.invalidatePage(page)
+        }
+        onContentChanged()
+        requestRender()
+    }
+
+    /** What a fill-tap should fill: the selected closed shapes when the tap (at [content], content
+     *  px) lands inside the selection's chrome box, else the topmost closed shape whose interior
+     *  the tap hit (hit-tested in page space at [local]). */
+    private fun fillTargets(page: Page, content: Pt, local: Pt): List<ShapeItem> {
+        if (hasSelection && selectionChromeBox()?.contains(content) == true) {
+            val selected = selection.mapNotNull { (it.item as? ShapeItem)?.takeIf { s -> !s.locked && s.shape.isClosed } }
+            if (selected.isNotEmpty()) return selected
+        }
+        for (i in page.items.indices.reversed()) {
+            val item = page.items[i]
+            if (item is ShapeItem && !item.locked && item.shape.isClosed && (item.encloses(local) || item.contains(local))) {
+                return listOf(item)
+            }
+        }
+        return emptyList()
     }
 
     private fun handlePointerDown(e: MotionEvent) {
@@ -1007,6 +1080,7 @@ class InteractionController(
             }
             PointerMode.PINCH -> endPinch()
             PointerMode.ERASE -> { endErase(); maybeSwitchBackAfterErase() }
+            PointerMode.FILL -> endFill(content)
             PointerMode.BAND -> endBand()
             PointerMode.LASSO_DRAW -> endLasso()
             PointerMode.SHOT -> endScreenshot()
@@ -1318,6 +1392,50 @@ class InteractionController(
         return TransformItems(listOf(prev), listOf(before), listOf(after))
     }
 
+    /**
+     * The fork's draw symmetry: commit the finished stroke, and when symmetry is on, its mirrored
+     * or rotated echoes beside it — all as one undo unit, exactly like a stroke that crossed pages
+     * (the echoes ride the same [pushStrokeEdit] path, so undo coalescing applies to the whole
+     * symmetric set). The echoes skip the join-strokes preference: they are new geometry by
+     * construction, never a continuation of the original.
+     */
+    private fun commitStrokeWithSymmetry(stroke: Stroke, pageIndex: Int) {
+        val mode = SymmetryMode.fromId(symmetryMode)
+        val echoes: List<Stroke>
+        val page: Page?
+        if (mode != SymmetryMode.NONE) {
+            page = state.document.pages.getOrNull(pageIndex)
+            echoes = if (page == null) emptyList() else Symmetry.mirrorStrokes(
+                stroke, mode, symmetrySegments, page.width / 2.0, page.height / 2.0,
+            )
+        } else {
+            page = null
+            echoes = emptyList()
+        }
+        if (echoes.isEmpty()) {
+            pushStrokeEdit(fileStroke(stroke, pageIndex))
+            return
+        }
+        val commands = ArrayList<Command>(echoes.size + 1)
+        commands.add(fileStroke(stroke, pageIndex))
+        for (echo in echoes) commands.add(fileMirrorStroke(echo, pageIndex))
+        pushStrokeEdit(CompositeCommand(commands))
+    }
+
+    /**
+     * File one of a symmetric stroke's echoes: the document, undo stack and ink cache take it the
+     * way [fileStroke] takes the original, minus the two live-ink concerns — the front buffer never
+     * drew it, so it has no pixels to hold, and it never joins the stroke it mirrors.
+     */
+    private fun fileMirrorStroke(stroke: Stroke, pageIndex: Int): Command {
+        simplifyForCommit(stroke)
+        val page = state.document.pages[pageIndex]
+        page.items.add(stroke)
+        state.appendToCache(page, stroke)
+        state.document.dirty = true
+        return AddItem(page, stroke)
+    }
+
     private fun endDraw(e: MotionEvent) {
         // Drop the dwell timer before the final sample so the lift can't re-arm or fire a snap.
         cancelDwell()
@@ -1348,7 +1466,7 @@ class InteractionController(
                     scheduleFade()
                 }
                 scribbleErase(stroke, pi) -> Unit
-                else -> pushStrokeEdit(fileStroke(stroke, pi))
+                else -> commitStrokeWithSymmetry(stroke, pi)
             }
         }
         // Nothing was committed here (a dismissing tap, or ephemeral ink), but a crossing may
@@ -1506,6 +1624,9 @@ class InteractionController(
 
     private fun areaErase(): Boolean = configFor(Tool.ERASER).eraseMode == EraseMode.AREA
 
+    /** The fork's object-erase mode: the eraser takes the topmost object it touches, not everything. */
+    private fun objectErase(): Boolean = configFor(Tool.ERASER).eraseMode == EraseMode.OBJECT
+
     private fun beginErase(vx: Double, vy: Double) {
         eraseRemovals.clear()
         eraseSnapshots.clear()
@@ -1530,8 +1651,11 @@ class InteractionController(
             val local = state.toPageSpace(pi, content)
             val cx = local.x
             val cy = local.y
-            val dirty = if (area) eraseAreaFromPage(page, cx, cy, radius)
-            else eraseStrokesFromPage(page, cx, cy, radius)
+            val dirty = when {
+                area -> eraseAreaFromPage(page, cx, cy, radius)
+                objectErase() -> eraseObjectFromPage(page, cx, cy, radius)
+                else -> eraseStrokesFromPage(page, cx, cy, radius)
+            }
             if (dirty != null) {
                 // Repaint only the erased area in place; fall back to a full
                 // rebuild only when the page has no live cache yet.
@@ -1572,6 +1696,24 @@ class InteractionController(
             dirty = dirty?.union(b) ?: b
         }
         return dirty
+    }
+
+    /**
+     * OBJECT mode (the fork): remove the **topmost** object the eraser circle touches — a stroke,
+     * a shape, an image or a text box, so deliberately placed content can be taken off precisely
+     * instead of everything the brush sweeps. Each contact position takes at most one object, so
+     * a tap is a single delete and a drag walks one object at a time; the whole gesture is one
+     * undo step (the same [EraseItems] the STROKE mode files). Locked items are spared.
+     */
+    private fun eraseObjectFromPage(page: Page, cx: Double, cy: Double, radius: Double): Rect? {
+        for (i in page.items.indices.reversed()) {
+            val item = page.items[i]
+            if (item.locked || !item.intersectsCircle(cx, cy, radius)) continue
+            page.items.removeAt(i)
+            eraseRemovals.add(page to item)
+            return item.paintBounds()
+        }
+        return null
     }
 
     /** AREA mode: replace each touched stroke or shape with the fragments that survive the eraser

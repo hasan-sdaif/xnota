@@ -96,6 +96,9 @@ data class Settings(
     /** Size and look the insert-table dialog starts from ("Default for new tables"). */
     val newTable: TableDefaults = TableDefaults(),
     val prefs: Preferences = Preferences(),
+    /** The fork's named brush presets: a tool's whole style snapshot saved under a name, applied
+     *  back onto the tool (or another tool of the same kind) from the brush studio. */
+    val brushPresets: List<BrushPreset> = emptyList(),
     /** One-shot flag: the first-run stylus check (which may auto-enable finger-draw) has run. */
     val fingerDrawAutoChecked: Boolean = false,
 ) {
@@ -152,6 +155,7 @@ data class Settings(
             .apply { newCanvasBackground?.let { put("new_canvas_background", canvasBackgroundJson(it)) } }
             .apply { if (!newTable.isFactory) put("new_table", tableDefaultsJson(newTable)) }
             .put("prefs", prefs.toJson())
+            .apply { if (brushPresets.isNotEmpty()) put("brush_presets", BrushPresets.toJson(brushPresets)) }
             .put("view_defaults", com.xnota.platform.ViewSettingsJson.write(JSONObject(), viewDefaults))
             .put("finger_draw_auto_checked", fingerDrawAutoChecked)
     }
@@ -219,6 +223,7 @@ data class Settings(
                 newCanvasBackground = canvasBackground(o.optJSONObject("new_canvas_background")),
                 newTable = tableDefaults(o.optJSONObject("new_table")),
                 prefs = Preferences.fromJson(o.optJSONObject("prefs")),
+                brushPresets = BrushPresets.of(o.optJSONArray("brush_presets")),
                 fingerDrawAutoChecked = o.optBoolean("finger_draw_auto_checked", false),
             )
         }
@@ -376,7 +381,7 @@ data class Settings(
             }
         }
 
-        private fun toolConfigJson(c: ToolConfig) = JSONObject()
+        internal fun toolConfigJson(c: ToolConfig) = JSONObject()
             .put("base_width", c.baseWidth)
             .put("pressure_enabled", c.pressureEnabled)
             .put("pressure_min_factor", c.pressureMinFactor)
@@ -401,8 +406,12 @@ data class Settings(
             .put("markup_intensity", c.markupIntensity)
             .put("rgba", rgbaArr(c.rgba))
             .apply { c.colorOverride?.let { put("color_override", rgbaArr(it)) } }
+            // The fork's brush-studio knobs, so a tuned brush survives a restart.
+            .put("roughness", c.roughness)
+            .put("scatter", c.scatter)
+            .put("opacity", c.opacity)
 
-        private fun toolConfig(o: JSONObject, tool: Tool): ToolConfig {
+        internal fun toolConfig(o: JSONObject, tool: Tool): ToolConfig {
             val d = ToolDefaults.configFor(tool)
             return ToolConfig(
                 baseWidth = o.optDouble("base_width", d.baseWidth),
@@ -432,6 +441,10 @@ data class Settings(
                 colorOverride = o.optJSONArray("color_override")
                     ?.let { a -> Rgba.fromList((0 until a.length()).map { i -> a.optInt(i, 0) }) }
                     ?: d.colorOverride,
+                // The fork's brush-studio knobs; coerced so a corrupt file cannot wedge a tool.
+                roughness = o.optDouble("roughness", d.roughness).coerceIn(0.0, 100.0),
+                scatter = o.optDouble("scatter", d.scatter).coerceIn(0.0, 100.0),
+                opacity = o.optDouble("opacity", d.opacity).coerceIn(ToolConfig.OPACITY_MIN, 1.0),
             )
         }
 

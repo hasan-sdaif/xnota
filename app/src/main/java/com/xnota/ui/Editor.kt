@@ -109,6 +109,7 @@ import com.xnota.format.XNoteFormatException
 import com.xnota.platform.AndroidImageCodec
 import com.xnota.platform.AndroidSurfaceFactory
 import com.xnota.platform.AndroidTextMeasurer
+import com.xnota.settings.BrushPreset
 import com.xnota.settings.ExplorerView
 import com.xnota.settings.LiveSettings
 import com.xnota.settings.SwatchRole
@@ -678,6 +679,11 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             it.toolbarLayout = canvasToolbarLayout
             it.pad.frontBuffering = !settings.prefs.disableFrontBuffering
             it.pickColor(activeColorIndex)
+            // The fork's brush studio: the presets and symmetry live in this editor's settings;
+            // the canvas reports changes back so both surfaces stay the same list.
+            it.brushPresets = settings.brushPresets
+            it.onBrushPresetsChanged = { presets -> hostUpdateBrushPresets(presets) }
+            it.onSymmetryChanged = { mode, segments -> setSymmetryPref(mode, segments) }
             // A style tuned on the canvas is the same style, so it persists through this editor.
             it.onToolStyleChanged = { settingsDirty = true }
             it.onSwatchColorChanged = { index, color -> adoptSwatchColor(index, color) }
@@ -2330,6 +2336,14 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         )
         controller.undoCoalesce = p.undoCoalesce
         controller.joinStrokes = p.joinStrokes
+        // The fork's draw symmetry: reader of nothing — it shapes the next commit, so a change
+        // needs no cache or repaint, only the controller fields.
+        controller.symmetryMode = p.symmetryMode
+        controller.symmetrySegments = p.symmetrySegments
+        infiniteOrNull?.let {
+            it.symmetryMode = p.symmetryMode
+            it.symmetrySegments = p.symmetrySegments
+        }
         val theme = "$palette|${state.pageColorOverride}|ink${EngineTuning.generation}"
         if (thumbnailTheme != theme) {
             thumbnailTheme = theme
@@ -2391,6 +2405,21 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         fullscreen = v
         settings = settings.copy(prefs = settings.prefs.copy(startFullscreen = v))
         settingsRepo.save(settings)
+    }
+
+    /** Set the draw-symmetry preference (the brush studio's chips) and persist it; lightweight —
+     *  symmetry only shapes the next stroke's commit, so no cache or repaint is due. */
+    fun setSymmetryPref(mode: String, segments: Int) {
+        settings = settings.copy(prefs = settings.prefs.copy(symmetryMode = mode, symmetrySegments = segments))
+        settingsRepo.save(settings)
+        for (editor in listOfNotNull(this, sibling)) {
+            editor.controller.symmetryMode = mode
+            editor.controller.symmetrySegments = segments
+        }
+        infiniteOrNull?.let {
+            it.symmetryMode = mode
+            it.symmetrySegments = segments
+        }
     }
 
     fun toggleFullscreen() = setFullscreenPref(!fullscreen)
@@ -5806,6 +5835,22 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     override fun updateToolConfig(tool: Tool, config: com.xnota.core.tools.ToolConfig) {
         controller.setToolConfig(tool, config.copy(rgba = controller.inkColor))
     }
+
+    // The fork's brush studio: named presets and draw symmetry, shared by both surfaces.
+    override val hostBrushPresets: List<BrushPreset>
+        get() = settings.brushPresets
+
+    override fun hostUpdateBrushPresets(presets: List<BrushPreset>) {
+        settings = settings.copy(brushPresets = presets)
+        settingsRepo.save(settings)
+        infiniteOrNull?.brushPresets = presets
+    }
+
+    override val hostSymmetryMode: String get() = settings.prefs.symmetryMode
+
+    override val hostSymmetrySegments: Int get() = settings.prefs.symmetrySegments
+
+    override fun hostSetSymmetry(mode: String, segments: Int) = setSymmetryPref(mode, segments)
 
     val recentColors: List<Rgba> get() = settings.recentColors
 

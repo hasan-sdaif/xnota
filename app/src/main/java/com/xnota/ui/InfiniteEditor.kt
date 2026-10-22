@@ -44,6 +44,7 @@ import com.xnota.core.model.Stroke
 import com.xnota.core.model.TextItem
 import com.xnota.core.model.TextStyle
 import com.xnota.core.pal.FontFace
+import com.xnota.core.stroke.Symmetry
 import com.xnota.core.tools.InkPalette
 import com.xnota.core.tools.ShapeConfig
 import com.xnota.core.tools.Tool
@@ -52,6 +53,7 @@ import com.xnota.core.tools.ToolDefaults
 import com.xnota.core.vector.VectorMesher
 import com.xnota.gl.CanvasScene
 import com.xnota.gl.InfiniteCanvasView
+import com.xnota.settings.BrushPreset
 import com.xnota.ui.theme.Palette
 
 /**
@@ -119,6 +121,7 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         hasPasteContent = { hasClipboardItems || clipboardHasImage },
         onToolChanged = { adoptTool(it) },
         onDoubleTap = { vp, toolType, selectedBefore -> onDoubleTap(vp, toolType, selectedBefore) },
+        onFillTap = { fillAt(it) },
         isEditingText = { editingLabel != null },
         onCommitText = { commitText() },
     )
@@ -143,6 +146,10 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
 
     /** Whether a held freehand stroke may snap to the shape it looks like. */
     private var detectShapes = false
+
+    /** The fork's draw symmetry, threaded from the host's preferences; see [commitStrokeWithSymmetry]. */
+    var symmetryMode: String = "none"
+    var symmetrySegments: Int = 6
 
     /** Live zoom, mirrored into Compose so a readout can follow a pinch frame by frame. */
     var zoomPercent by mutableStateOf(100)
@@ -910,6 +917,35 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         onToolStyleChanged?.invoke()
     }
 
+    // The fork's brush studio: the presets and the symmetry preference live in the host's
+    // settings; this surface keeps a fed-in copy and reports changes back, exactly like the
+    // toolbar's colours, so the studio popup is the same controls on either canvas.
+    override val hostBrushPresets: List<BrushPreset> get() = brushPresets
+
+    override fun hostUpdateBrushPresets(presets: List<BrushPreset>) {
+        brushPresets = presets
+        onBrushPresetsChanged?.invoke(presets)
+    }
+
+    override val hostSymmetryMode: String get() = symmetryMode
+
+    override val hostSymmetrySegments: Int get() = symmetrySegments
+
+    override fun hostSetSymmetry(mode: String, segments: Int) {
+        symmetryMode = mode
+        symmetrySegments = Symmetry.segments(segments)
+        onSymmetryChanged?.invoke(mode, symmetrySegments)
+    }
+
+    /** The saved brush presets, handed over by the host so both surfaces share them. */
+    var brushPresets by mutableStateOf<List<BrushPreset>>(emptyList())
+
+    /** Fired when the studio changed the presets here, so the host can persist them. */
+    var onBrushPresetsChanged: ((List<BrushPreset>) -> Unit)? = null
+
+    /** Fired when the studio set the symmetry here, so the host can persist it for both surfaces. */
+    var onSymmetryChanged: ((String, Int) -> Unit)? = null
+
     override val hostShapeConfig: ShapeConfig get() = shapeConfig
 
     override fun updateShapeConfig(config: ShapeConfig) {
@@ -1471,7 +1507,7 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         val front = frontInk
         frontInk = false
         if (!front) {
-            if (wandEnabled && stroke.tool.isStroke) holdEphemeral(stroke) else commitItem(stroke)
+            if (wandEnabled && stroke.tool.isStroke) holdEphemeral(stroke) else commitStrokeWithSymmetry(stroke)
             return
         }
         pad.freeze()
@@ -1492,8 +1528,61 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         // while the pad is also showing it. Everything else about the commit happens now.
         heldItems = heldItems + stroke
         lastStrokeStats = com.xnota.core.stroke.StrokeStats.of(stroke.rawSamples)
-        commitItem(stroke)
+        commitStrokeWithSymmetry(stroke)
         captureBehindStroke()
+    }
+
+    /**
+     * The fork's draw symmetry on the unbounded canvas: the stroke commits, then its mirrored or
+     * rotated echoes about the **centre of the current view** join as one undo unit — the canvas's
+     * answer to the paged surface's page centre, since there is no page to centre on. The echoes
+     * were never on the wet pad, so they go straight to the document and the undo stack.
+     */
+    private fun commitStrokeWithSymmetry(stroke: Stroke) {
+        val mode = com.xnota.core.stroke.SymmetryMode.fromId(symmetryMode)
+        commitItem(stroke)
+        if (mode == com.xnota.core.stroke.SymmetryMode.NONE) return
+        val centre = viewport.centerContent
+        val echoes = com.xnota.core.stroke.Symmetry.mirrorStrokes(
+            stroke, mode, symmetrySegments, centre.x, centre.y,
+        )
+        if (echoes.isEmpty()) return
+        for (echo in echoes) document.add(echo)
+        history.push(AddCanvasItems(document, echoes))
+        markDirty()
+        refresh()
+    }
+
+    /**
+     * The fill tool's tap at [content] (the fork): the topmost closed shape under the point takes
+     * the armed ink colour as its fill — a shape that already has one keeps its opacity, exactly
+     * like the note surface's refill — as one undo step.
+     */
+    private fun fillAt(content: com.xnota.core.geometry.Pt) {
+        val reach = 8.0 / viewport.zoom
+        val box = Rect(content.x - reach, content.y - reach, reach * 2, reach * 2)
+        var chosen: ShapeItem? = null
+        var chosenZ = -1
+        for (item in document.itemsIn(box)) {
+            if (item !is ShapeItem || item.locked || !item.shape.isClosed) continue
+            if (!(item.encloses(content) || item.contains(content))) continue
+            val z = document.indexOfRef(item)
+            if (z > chosenZ) {
+                chosenZ = z
+                chosen = item
+            }
+        }
+        val shape = chosen ?: return
+        val before = shape.fillRgba
+        val after = inkColor.copy(a = before?.a ?: (ShapeConfig.FILL_ALPHA * 255).toInt())
+        if (after == before) return
+        val entry = com.xnota.core.history.RefillShapes.Entry(shape, before, after)
+        val command = OnCanvas(document, com.xnota.core.history.RefillShapes(listOf(entry)), listOf(shape))
+        command.redo()
+        history.push(command)
+        markDirty()
+        refresh()
+        view.publish()
     }
 
     /**

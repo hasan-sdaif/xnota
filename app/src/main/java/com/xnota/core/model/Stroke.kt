@@ -206,9 +206,11 @@ class Stroke(
     /** Ink colour with the tool's alpha scale applied (the highlighter uses its configurable
      *  [ToolConfig.highlighterAlpha]; every other tool is opaque, scale 1.0), re-toned for the
      *  current paper by the fork's adaptive-ink transform ([InkRendering]) before the alpha
-     *  scales on, so translucent ink keeps its authored translucency. */
+     *  scales on, so translucent ink keeps its authored translucency. The fork's custom-brush
+     *  opacity multiplies in here too, exactly where the highlighter's translucency lives, so
+     *  every render path — the paged painter, the GL mesher, PDF raster — honours it. */
     val renderColor get() = InkRendering.adapt(config.rgba).scaleAlpha(
-        if (tool == Tool.HIGHLIGHTER) config.highlighterAlpha else tool.alphaScale,
+        (if (tool == Tool.HIGHLIGHTER) config.highlighterAlpha else tool.alphaScale) * config.opacity,
     )
 
     /** How this stroke's translucent ink composites: the highlighter darkens with MULTIPLY, or

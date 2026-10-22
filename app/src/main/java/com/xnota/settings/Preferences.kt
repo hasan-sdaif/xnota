@@ -8,6 +8,8 @@ import com.xnota.core.util.NameTemplate
 import com.xnota.core.stroke.NibAngle
 import com.xnota.core.stroke.Pressure
 import com.xnota.core.stroke.StrokeFilter
+import com.xnota.core.stroke.Symmetry
+import com.xnota.core.stroke.SymmetryMode
 import org.json.JSONObject
 
 /**
@@ -159,6 +161,13 @@ data class Preferences(
     val joinStrokes: Boolean = false,
     /** Rapid back-to-back strokes merge into one undo unit (within ~350 ms). On by default. */
     val undoCoalesce: Boolean = true,
+    // ── Brush studio (the fork) ────────────────────────────────────────────────
+    /** Draw symmetry: "none" (default) | "vertical" | "horizontal" | "quad" | "radial".
+     *  Every committed stroke is echoed through the transform about the page centre and the
+     *  copies commit with it as one undo unit; the live stroke under the pen stays single. */
+    val symmetryMode: String = "none",
+    /** Segment count of the radial symmetry, 2..8; only read when [symmetryMode] is "radial". */
+    val symmetrySegments: Int = 6,
 
     /** Version of the preferences payload, so one-off migrations can tell a stale file from a
      *  fresh one; see [PREF_SCHEMA]. */
@@ -261,6 +270,8 @@ data class Preferences(
         .put("highlighter_blend", highlighterBlend)
         .put("join_strokes", joinStrokes)
         .put("undo_coalesce", undoCoalesce)
+        .put("symmetry_mode", symmetryMode)
+        .put("symmetry_segments", symmetrySegments)
         .put("pref_schema", prefSchema)
 
     companion object {
@@ -398,6 +409,10 @@ data class Preferences(
                     .let { if (it == "normal") it else "multiply" },
                 joinStrokes = o.optBoolean("join_strokes", false),
                 undoCoalesce = o.optBoolean("undo_coalesce", true),
+                symmetryMode = o.optString("symmetry_mode", "none")
+                    .let { if (it in SymmetryMode.ids) it else "none" },
+                symmetrySegments = o.optInt("symmetry_segments", 6)
+                    .coerceIn(Symmetry.MIN_SEGMENTS, Symmetry.MAX_SEGMENTS),
                 prefSchema = schema.coerceAtLeast(PREF_SCHEMA),
             )
         }

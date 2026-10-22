@@ -29,7 +29,7 @@ class ToolbarLayoutTest {
             d.sections[3].entries.map { it.item },
         )
         assertEquals(
-            listOf(ToolbarItem.WAND, ToolbarItem.SHAPE, ToolbarItem.RULER, ToolbarItem.TEXT, ToolbarItem.TEXT_BOX, ToolbarItem.MARKUP),
+            listOf(ToolbarItem.WAND, ToolbarItem.SHAPE, ToolbarItem.FILL, ToolbarItem.RULER, ToolbarItem.TEXT, ToolbarItem.TEXT_BOX, ToolbarItem.MARKUP),
             d.sections[4].entries.map { it.item },
         )
         assertEquals(listOf(ToolbarItem.FULLSCREEN), d.sections[10].entries.map { it.item })

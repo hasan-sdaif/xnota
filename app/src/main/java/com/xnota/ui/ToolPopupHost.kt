@@ -54,4 +54,23 @@ interface ToolPopupHost : SwatchHost {
 
     /** Whether the open note has a PDF, whose text markups the eraser can take. */
     val hostHasPdf: Boolean get() = false
+
+    // ── The fork's brush studio ────────────────────────────────────────────────
+    // Defaults keep the interface cheap to implement; the two editors override with the
+    // settings-backed truth so the studio popup is the same controls on either surface.
+
+    /** The saved named brush presets, as the studio's preset section shows them. */
+    val hostBrushPresets: List<com.xnota.settings.BrushPreset> get() = emptyList()
+
+    /** Replace the whole preset list (a save or a delete from the studio); the host persists it. */
+    fun hostUpdateBrushPresets(presets: List<com.xnota.settings.BrushPreset>) {}
+
+    /** Draw symmetry as the studio's chips show it: "none" | "vertical" | "horizontal" | "quad" | "radial". */
+    val hostSymmetryMode: String get() = "none"
+
+    /** Radial symmetry's segment count (2..8). */
+    val hostSymmetrySegments: Int get() = 6
+
+    /** Set the draw-symmetry preference; the host applies it to both canvases and persists it. */
+    fun hostSetSymmetry(mode: String, segments: Int) {}
 }

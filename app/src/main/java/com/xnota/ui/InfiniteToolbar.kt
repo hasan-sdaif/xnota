@@ -64,6 +64,7 @@ fun InfiniteToolbar(
         Tool.NEON to ImageVector.vectorResource(R.drawable.ic_stroke_neon),
         Tool.RAINBOW to ImageVector.vectorResource(R.drawable.ic_stroke_rainbow),
         Tool.PENCIL to ImageVector.vectorResource(R.drawable.ic_stroke_pencil),
+        Tool.FILL to ImageVector.vectorResource(R.drawable.ic_tool_fill),
         Tool.HIGHLIGHTER to ImageVector.vectorResource(R.drawable.ic_stroke_highlighter),
         Tool.PAN to NotaIcons.pan,
         Tool.ERASER to NotaIcons.eraser,
