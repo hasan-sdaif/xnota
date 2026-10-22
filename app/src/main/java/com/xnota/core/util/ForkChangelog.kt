@@ -17,6 +17,15 @@ object ForkChangelog {
     /** The releases the About pane lists, newest first. */
     val releases: List<Release> = listOf(
         Release(
+            "1.8.0",
+            listOf(
+                Entry("brand_relaunch"),
+                Entry("reference_home"),
+                Entry("room_chrome"),
+                Entry("secondary_cards"),
+            ),
+        ),
+        Release(
             "1.7.0",
             listOf(
                 Entry("emerald_identity"),

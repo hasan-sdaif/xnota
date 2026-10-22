@@ -1,0 +1,164 @@
+name: screenshots
+
+# Visual verification of the XNota redesign: boots an Android emulator in Arabic (RTL),
+# walks the app's key screens, and uploads screenshots as an artifact.
+# Manual dispatch any time; also runs on main pushes so the orchestrator can
+# download the artifact and verify the design against the reference before tagging.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    name: Emulator screenshots (Arabic RTL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle caches and wrapper
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties', '**/*.gradle.kts') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Install pinned NDK and CMake
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "ndk;27.0.12077973" "cmake;3.22.1" > /dev/null
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Grant KVM permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger
+
+      - name: Boot emulator, walk the app, capture screens
+        uses: reactivecircus/android-emulator-runner@v3
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          heap-size: 512M
+          ram-size: 4096M
+          disk-size: 8G
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none -camera-front none -prop persist.sys.locale=ar -prop persist.sys.country=SA
+          script: |
+            set -x
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+            cat > /tmp/tap.py <<'PY'
+            import re, subprocess, sys
+            want = sys.argv[1]
+            try:
+                xml = open('/tmp/ui.xml', encoding='utf-8').read()
+            except OSError:
+                sys.exit(1)
+            for m in re.finditer(r'<node[^>]*?(?:text|content-desc)="([^"]+)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
+                if want in m.group(1):
+                    x = (int(m.group(2)) + int(m.group(4))) // 2
+                    y = (int(m.group(3)) + int(m.group(5))) // 2
+                    subprocess.run(['adb', 'shell', 'input', 'tap', str(x), str(y)], check=False)
+                    sys.exit(0)
+            sys.exit(1)
+            PY
+
+            # Arabic, RTL: stamp the locale both ways, then reboot so the system server picks it up.
+            adb root
+            adb shell "setprop persist.sys.locale ar && setprop persist.sys.country SA"
+            adb shell "settings put system system_locales ar"
+            adb reboot
+            adb wait-for-device
+            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 2; done'
+            sleep 5
+
+            mkdir -p shots
+            shot() { adb exec-out screencap -p > "shots/$1.png"; sleep 1; }
+
+            # Tap by visible label: Compose semantics surface as text/content-desc in the dump.
+            tap_text() {
+              adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
+              adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1 || true
+              python3 /tmp/tap.py "$1"
+            }
+
+            # 1. First run: the folder picker wears the identity chrome.
+            adb shell am start -n com.xnota/.MainActivity
+            sleep 10
+            shot 01-first-run
+
+            # 2. Internal storage: the home presentation (hero, stats, quick cards, shelf).
+            tap_text "تخزين التطبيق" || tap_text "app storage" || true
+            sleep 6
+            shot 02-home
+            adb shell input swipe 540 1700 540 700 400
+            sleep 2
+            shot 03-home-scrolled
+
+            # 3. The new-note screen (template cards, format chips).
+            tap_text "ابدأ دفترا" || tap_text "ابدأ" || true
+            sleep 5
+            shot 04-new-note
+
+            # 4. Create the note: the writing room (toolbar pill, paper, side panel).
+            tap_text "إنشاء" || true
+            sleep 8
+            shot 05-editor
+
+            # 5. Back to home; open the phone's navigation drawer.
+            adb shell input keyevent 4
+            sleep 3
+            shot 06-back-home
+            tap_text "إظهار الشريط" || true
+            sleep 3
+            shot 07-drawer
+
+            # 6. Preferences (the hub cards), scrolled too.
+            tap_text "التفضيلات" || true
+            sleep 5
+            shot 08-preferences
+            adb shell input swipe 540 1500 540 700 400
+            sleep 2
+            shot 09-preferences-scrolled
+
+            # 7. About: the brand hero, version pill, changelog cards.
+            adb shell input keyevent 4
+            sleep 3
+            tap_text "إظهار الشريط" || true
+            sleep 2
+            tap_text "حول التطبيق" || tap_text "عن XNota" || true
+            sleep 5
+            shot 10-about
+
+            ls -la shots/
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: xnota-screenshots
+          path: shots/
+          if-no-files-found: warn

@@ -1622,6 +1622,11 @@
     <!-- The fork's release ledger (About → What's new) -->
         <string name="changelog_version">الإصدار %1$s</string>
     <string name="whats_new">ما الجديد</string>
+    <!-- إعادة إطلاق ١.٨.٠: الهوية تُطبَّق دائماً، الرئيسية المرجعية، كروم الكتابة، البطاقات. -->
+    <string name="changelog_brand_relaunch">إعادة إطلاق الهوية: هوية XNota تُعرض بلا شروط — كل تثبيت يُرقَّى إليها مهما كان اختياره السابق</string>
+    <string name="changelog_reference_home">الرئيسية كما في التصميم المرجعي: بطاقة البطل، وأرقام ملفاتك الحقيقية، ورفّ أحدث الملفات كبطاقات مستندات حقيقية</string>
+    <string name="changelog_room_chrome">مساحة الكتابة وقارئ PDF بكروم التصميم المرجعي: حبوب شريط الأدوات وبطاقات اللوحات ومسرح القارئ</string>
+    <string name="changelog_secondary_cards">الإعدادات وعن التطبيق والمحذوفات وشاشة الملاحظة الجديدة بطاقات حقيقية الآن مع صف الفئات ذي الحبوب الخضراء</string>
     <string name="changelog_emerald_identity">هوية الزمرد: ألوان الواجهة كلها مبنية من التصميم المرجعي — أخضر نيوني فوق تركوازي عميق</string>
     <string name="changelog_home_dashboard">الشاشة الرئيسية لوحة معلومات الآن: ترويسة ترحيب وبطاقات إجراءات سريعة ورفّ أحدث الملاحظات</string>
     <string name="changelog_floating_toolbar">شريط أدوات المحرر يطفو كحبة مستديرة فوق الصفحة افتراضيًا</string>

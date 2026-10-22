@@ -87,13 +87,22 @@ jobs:
             echo "abis=arm64-v8a" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build release APK
+      - name: Unit tests, then release APK
         env:
           ABI_SET: ${{ steps.abis.outputs.abis }}
         run: |
           GRADLE_ARGS=()
           if [[ "$ABI_SET" != "all" ]]; then GRADLE_ARGS+=("-ParAbis=$ABI_SET"); fi
-          ./gradlew assembleRelease --stacktrace --no-daemon "${GRADLE_ARGS[@]}"
+          # The suite first: a red test fails the build before any release is cut.
+          ./gradlew :app:testDebugUnitTest assembleRelease --stacktrace --no-daemon "${GRADLE_ARGS[@]}"
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ github.run_number }}
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
 
       - name: Collect APK and checksums
         run: |

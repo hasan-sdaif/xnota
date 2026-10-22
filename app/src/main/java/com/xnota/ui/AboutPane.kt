@@ -200,6 +200,10 @@ fun AboutPane() {
 
 /** The changelog entry ids the ledger holds, onto the string resources that word them. */
 private val CHANGELOG_TEXT = mapOf(
+    "brand_relaunch" to R.string.changelog_brand_relaunch,
+    "reference_home" to R.string.changelog_reference_home,
+    "room_chrome" to R.string.changelog_room_chrome,
+    "secondary_cards" to R.string.changelog_secondary_cards,
     "emerald_identity" to R.string.changelog_emerald_identity,
     "home_dashboard" to R.string.changelog_home_dashboard,
     "floating_toolbar" to R.string.changelog_floating_toolbar,
