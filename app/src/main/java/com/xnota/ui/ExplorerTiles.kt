@@ -755,7 +755,7 @@ internal fun HomeShelves(
     }
 }
 
-/** One card on the Recent shelf: the page, its name, when it was opened and the folder it's in. */
+/** One card on the Recent shelf: the page, its name, when it was opened and the folder it's in, on the surface-backed rounded card of the reference design. */
 @Composable
 private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) -> Unit) {
     val palette = LocalPalette.current
@@ -763,10 +763,16 @@ private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) ->
     val shape = MaterialTheme.shapes.medium
     val code = b.colorOf(e)?.let { codeTint(it, palette) }
     Column(
-        Modifier.width(168.dp).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onOpen(e) },
+        Modifier
+            .width(168.dp)
+            .clip(shape)
+            .background(palette.menuBg.toComposeColor())
+            .border(1.dp, code ?: palette.border.toComposeColor(), shape)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onOpen(e) }
+            .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Box(Modifier.size(168.dp).clip(shape).border(1.dp, code ?: palette.border.toComposeColor(), shape)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(shape)) {
             EntryThumb(b.editor, e, ThumbShape.TOP, Modifier.fillMaxSize())
             ThumbBadges(b, e, 6.dp)
         }

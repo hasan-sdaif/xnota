@@ -533,6 +533,8 @@
     <!-- Home screen and explorer -->
     <string name="collapse_sidebar">طي الشريط الجانبي</string>
     <string name="home">الرئيسية</string>
+    <string name="home_welcome_title">مرحباً بك مجدداً</string>
+    <string name="home_welcome_subtitle">كل شيء في مكان واحد</string>
     <string name="new_note">ملاحظة جديدة</string>
     <string name="new_note_in">ملاحظة جديدة في %1$s</string>
     <string name="close_new_note">إغلاق دون إنشاء</string>
@@ -1603,6 +1605,9 @@
     <!-- The fork's release ledger (About → What's new) -->
         <string name="changelog_version">الإصدار %1$s</string>
     <string name="whats_new">ما الجديد</string>
+    <string name="changelog_emerald_identity">هوية الزمرد: ألوان الواجهة كلها مبنية من التصميم المرجعي — أخضر نيوني فوق تركوازي عميق</string>
+    <string name="changelog_home_dashboard">الشاشة الرئيسية لوحة معلومات الآن: ترويسة ترحيب وبطاقات إجراءات سريعة ورفّ أحدث الملاحظات</string>
+    <string name="changelog_floating_toolbar">شريط أدوات المحرر يطفو كحبة مستديرة فوق الصفحة افتراضيًا</string>
     <string name="changelog_joined_stroke_fix">إصلاح انهيار وصل الخطوط المتلاصقة (خطأ الطول ١٤٢)</string>
     <string name="changelog_settings_hub">مركز الإعدادات — خمس فئات مصوّرة للتصفّح</string>
     <string name="changelog_menu_icons">أيقونات خطّية في كل القوائم وعناوين الأقسام</string>

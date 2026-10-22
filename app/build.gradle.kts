@@ -25,8 +25,8 @@ android {
         applicationId = "com.xnota"
         minSdk = 26
         targetSdk = 36
-        versionCode = 161
-        versionName = "1.6.1"
+        versionCode = 162
+        versionName = "1.7.0"
         ndk {
             // CI quick builds restrict ABIs via -PxnotaAbis=arm64-v8a (comma-separated).
             val xnotaAbis = (findProperty("xnotaAbis") as String?)

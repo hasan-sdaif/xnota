@@ -21,9 +21,9 @@ class ForkChangelogTest {
     }
 
     @Test fun versionsListNewestFirstAndLookupMissesAreNull() {
-        // The ledger's own order is the listing order: 1.6.1 leads and 1.0 closes.
+        // The ledger's own order is the listing order: 1.7.0 leads and 1.0 closes.
         assertEquals(ForkChangelog.releases.map { it.version }, ForkChangelog.versions())
-        assertEquals("1.6.1", ForkChangelog.versions().first())
+        assertEquals("1.7.0", ForkChangelog.versions().first())
         assertEquals("1.0", ForkChangelog.versions().last())
         // A version the ledger never held resolves to nothing, never to a wrong release's list.
         assertNull(ForkChangelog.entriesFor("0.9"))

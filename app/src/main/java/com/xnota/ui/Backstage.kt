@@ -171,7 +171,7 @@ import kotlin.math.roundToInt
 enum class BackstageView { HOME, PREFERENCES, ABOUT, TRASH }
 
 /** Whether the Home explorer is awaiting a new file/folder name. */
-private enum class CreateMode { NONE, FILE, CANVAS, FOLDER }
+internal enum class CreateMode { NONE, FILE, CANVAS, FOLDER }
 
 /** Entries copied or cut in the explorer; each remembers the folder it was listed in. */
 private data class ClipItem(val entries: List<BrowseEntry>, val isCut: Boolean)
@@ -543,6 +543,13 @@ private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: ()
             Modifier.fillMaxWidth().padding(start = 18.dp, end = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                Modifier.size(30.dp).clip(CircleShape).background(palette.accent.toComposeColor()),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("X", color = palette.onAccent.toComposeColor(), fontWeight = FontWeight.Black, fontSize = 16.sp)
+            }
+            Spacer(Modifier.width(8.dp))
             Text("XNota", color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Spacer(Modifier.weight(1f))
             Tooltip(stringResource(R.string.collapse_sidebar)) {
@@ -1901,6 +1908,8 @@ private fun ExplorerSection(
                 ),
         ) {
             val shelfBlock: (@Composable () -> Unit)? = if (!shelves) null else ({
+                DashboardHeader(onCreateMode, calls.importPdf)
+                Spacer(Modifier.height(8.dp))
                 HomeShelves(
                     body, recents.orEmpty(), editor.sidebarPins, rootName ?: stringResource(R.string.folder),
                     counts = countsLabel(words, arranged.orEmpty().count { it.isDir }, arranged.orEmpty().count { !it.isDir }),
