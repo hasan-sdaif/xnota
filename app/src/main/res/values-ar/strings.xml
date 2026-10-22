@@ -1570,6 +1570,9 @@
     <string name="array_rows">الصفوف</string>
     <string name="array_cols">الأعمدة</string>
     <string name="array_gap">التباعد</string>
+    <string name="image_corners">الزوايا…</string>
+    <string name="image_corner_radius">نصف قطر الزاوية</string>
+    <string name="image_corners_hint">اختر صفرًا لإعادة الزوايا قائمة.</string>
     <plurals name="array_count_n">
         <item quantity="zero">%d نسخة</item>
         <item quantity="one">%d نسخة</item>

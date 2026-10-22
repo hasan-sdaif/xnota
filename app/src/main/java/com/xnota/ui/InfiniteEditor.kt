@@ -20,6 +20,7 @@ import com.xnota.core.history.LockItems
 import com.xnota.core.history.RestyleItems
 import com.xnota.core.infinite.AddCanvasItem
 import com.xnota.core.infinite.AddCanvasItems
+import com.xnota.core.history.RoundImageCorners
 import com.xnota.core.infinite.CanvasBackground
 import com.xnota.core.infinite.CanvasSelection
 import com.xnota.core.infinite.CanvasViewport
@@ -785,6 +786,35 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         refresh()
         publishOverlay()
         maybeSwitchBackAfterSelect()
+    }
+
+    override fun selectionImages(): List<ImageItem> = selection.items.filterIsInstance<ImageItem>()
+
+    /** Radii held from the first [setSelectionCornerRadius] preview, so a slider drag undoes in one step. */
+    private var cornerBaseline: MutableMap<ImageItem, Double>? = null
+
+    override fun setSelectionCornerRadius(radius: Double?, preview: Boolean) {
+        val images = selectionImages()
+        if (images.isEmpty()) return
+        val baseline = cornerBaseline ?: HashMap<ImageItem, Double>().also { map ->
+            for (img in images) map[img] = img.cornerRadius
+        }
+        cornerBaseline = if (preview) baseline else null
+        if (radius != null) {
+            for (img in images) img.cornerRadius = radius.coerceAtLeast(0.0)
+            document.itemsChanged(images)
+        }
+        if (!preview) {
+            val entries = baseline.mapNotNull { (img, before) ->
+                if (img.cornerRadius != before) RoundImageCorners.Entry(img, before, img.cornerRadius) else null
+            }
+            if (entries.isNotEmpty()) {
+                history.push(OnCanvas(document, RoundImageCorners(entries), entries.map { it.image }))
+            }
+        }
+        markDirty()
+        refresh()
+        publishOverlay()
     }
 
     // ── LayersHost (the fork's layers panel) ─────────────────────────────────────

@@ -523,6 +523,21 @@ class DocumentCodecTest {
         assertEquals(0.5, back.angle, 1e-12)
     }
 
+    @Test fun roundedImageCornersRoundTripInANote() {
+        val doc = Document(dpi = 150)
+        val page = Page(200.0, 200.0)
+        page.items.add(ImageItem(ImageData(imageFile(), 8, 8), Rect(0.0, 0.0, 8.0, 8.0), angle = 0.25, cornerRadius = 12.0))
+        page.items.add(ImageItem(ImageData(imageFile(), 8, 8), Rect(20.0, 0.0, 8.0, 8.0)))
+        doc.pages.add(page)
+        val items = roundTrip(doc).pages[0].items
+        val rounded = items[0] as ImageItem
+        val plain = items[1] as ImageItem
+        assertEquals(12.0, rounded.cornerRadius, 1e-12)
+        assertEquals(0.0, plain.cornerRadius, 1e-12)
+        // The turning is untouched beside the rounding: one field never smears into the other.
+        assertEquals(0.25, rounded.angle, 1e-12)
+    }
+
     @Test fun imageKeepsItsZOrderSlot() {
         // Image files stream out of the zip after the manifest, so image items are
         // inserted late; they must still land between the items they were drawn between.

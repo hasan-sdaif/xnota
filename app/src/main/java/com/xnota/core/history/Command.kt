@@ -5,6 +5,7 @@ import com.xnota.core.model.Document
 import com.xnota.core.model.DrawStyle
 import com.xnota.core.model.GeoHandle
 import com.xnota.core.model.GeometrySnapshot
+import com.xnota.core.model.ImageItem
 import com.xnota.core.model.Labelled
 import com.xnota.core.model.Page
 import com.xnota.core.model.Resizable
@@ -274,6 +275,24 @@ class RefillShapes(private val entries: List<Entry>) : Command {
             if (next == f) null else Entry(s, f, next)
         }
     }
+}
+
+/**
+ * Round or un-round the corners of placed images, in place: one step for the whole selection, each
+ * image keeping its own before/after pair so a mixed selection undoes to the radii it truly had.
+ */
+class RoundImageCorners(private val entries: List<Entry>) : Command {
+    class Entry(val image: ImageItem, val before: Double, val after: Double)
+
+    override fun redo() {
+        for (e in entries) e.image.cornerRadius = e.after
+    }
+
+    override fun undo() {
+        for (e in entries) e.image.cornerRadius = e.before
+    }
+
+    override fun touched(locate: (CanvasItem) -> Page?) = pagedItems(entries.map { it.image }, locate)
 }
 
 /**

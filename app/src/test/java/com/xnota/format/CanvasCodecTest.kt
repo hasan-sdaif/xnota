@@ -400,6 +400,16 @@ class CanvasCodecTest {
         assertEquals(Flip.NONE, back[1].flip)
     }
 
+    @Test fun roundedImageCornersRoundTrip() {
+        val doc = InfiniteDocument()
+        doc.add(ImageItem(ImageData(imageFile(), 8, 8), Rect(0.0, 0.0, 8.0, 8.0), cornerRadius = 24.0))
+        doc.add(ImageItem(ImageData(imageFile(), 8, 8), Rect(9.0, 0.0, 8.0, 8.0)))
+        assertEquals("only the rounded one says so", 1, Regex("\"corner_radius\"").findAll(manifestText(doc)).count())
+        val back = roundTrip(doc).items.map { it as ImageItem }
+        assertEquals(24.0, back[0].cornerRadius, 1e-9)
+        assertEquals(0.0, back[1].cornerRadius, 1e-9)
+    }
+
     @Test fun animageWhoseAssetIsMissingIsDroppedWithoutShiftingTheRest() {
         val doc = InfiniteDocument()
         doc.add(ImageItem(ImageData(imageFile(), 8, 8), Rect(0.0, 0.0, 8.0, 8.0)))

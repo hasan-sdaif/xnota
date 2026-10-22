@@ -160,6 +160,17 @@ interface SelectionMenuHost : SwatchHost {
      * as one undo step, leaving the copies selected.
      */
     fun duplicateGridArray(rows: Int, cols: Int, gapPx: Double)
+
+    /** The selected placed images, whose corners the "Corners…" popup rounds; empty hides it. */
+    fun selectionImages(): List<com.xnota.core.model.ImageItem>
+
+    /**
+     * Round the selected images' corners to [radius] content px (0 = square again; null leaves
+     * every radius alone). A [preview] call applies without history; the next call with [preview]
+     * off records everything since as one undo step — the restyle contract, so a drag through the
+     * slider is a single edit and a dismissed popup settles with a null radius.
+     */
+    fun setSelectionCornerRadius(radius: Double?, preview: Boolean = false)
 }
 
 /**
@@ -177,6 +188,7 @@ fun SelectionMenu(host: SelectionMenuHost) {
     var styleOpen by remember { mutableStateOf(false) }
     var alignOpen by remember { mutableStateOf(false) }
     var arrayOpen by remember { mutableStateOf(false) }
+    var cornersOpen by remember { mutableStateOf(false) }
 
     val barHeightPx = with(density) { 48.dp.toPx() }
     val barWidthPx = with(density) { (6 * 46).dp.toPx() }
@@ -252,6 +264,13 @@ fun SelectionMenu(host: SelectionMenuHost) {
                         text = { Text(stringResource(R.string.duplicate_array)) },
                         onClick = { overflowOpen = false; arrayOpen = true },
                     )
+                    // The fork's corner rounding: shown while the selection holds a picture.
+                    if (host.selectionImages().isNotEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.image_corners)) },
+                            onClick = { overflowOpen = false; cornersOpen = true },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.lock)) },
                         onClick = { overflowOpen = false; host.lockSelection() },
@@ -274,6 +293,10 @@ fun SelectionMenu(host: SelectionMenuHost) {
                 }
                 if (arrayOpen) {
                     DuplicateArrayPopup(host) { arrayOpen = false }
+                }
+                if (cornersOpen) {
+                    // Closing settles any preview the slider left open.
+                    ImageCornersPopup(host) { host.setSelectionCornerRadius(null); cornersOpen = false }
                 }
             }
         }
@@ -411,6 +434,43 @@ class ShapeCount(val n: Int, val range: IntRange, val kind: com.xnota.core.shape
         }
     }
 }
+
+/**
+ * "Corners…" on a settled selection of images: a radius slider (0–48 content px) that previews
+ * live on every selected picture and settles as one undo step, exactly the restyle popup's
+ * contract. The slider opens on the first image's radius — a shared one when every picture
+ * agrees, the first's otherwise, like the style popup's colour.
+ */
+@Composable
+private fun ImageCornersPopup(host: SelectionMenuHost, onDismiss: () -> Unit) {
+    val palette = LocalPalette.current
+    val opened = remember { host.selectionImages() }
+    if (opened.isEmpty()) return
+    var radius by remember { mutableStateOf(opened.first().cornerRadius.toFloat()) }
+    DropdownMenu(expanded = true, onDismissRequest = onDismiss, properties = PopupProperties(focusable = false)) {
+        Column(Modifier.width(250.dp).padding(horizontal = 14.dp, vertical = 8.dp)) {
+            PopupTitle(stringResource(R.string.image_corners))
+            // The drag previews live and commits on release, so it is one undo step, not fifty.
+            SliderRow(
+                stringResource(R.string.image_corner_radius),
+                radius,
+                0f..MAX_IMAGE_CORNER_RADIUS,
+                onChangeFinished = { host.setSelectionCornerRadius(null) },
+            ) { r ->
+                radius = r
+                host.setSelectionCornerRadius(r.toDouble(), preview = true)
+            }
+            Text(
+                stringResource(R.string.image_corners_hint),
+                color = palette.textDim.toComposeColor(),
+                fontSize = 11.sp,
+            )
+        }
+    }
+}
+
+/** The corner slider's reach, content px: enough to pill a photo, never past half a small picture (the draw clamps). */
+private const val MAX_IMAGE_CORNER_RADIUS = 48f
 
 /** "Match outline" for a fill: the outline's colour with a link over it. */
 @Composable

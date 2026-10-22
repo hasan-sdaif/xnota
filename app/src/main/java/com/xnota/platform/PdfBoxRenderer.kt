@@ -142,6 +142,18 @@ internal class PdfBoxRenderer(
         // Export draws unclipped: the PDF page already bounds its content and no vectorized item clips.
     }
 
+    override fun clipPolygon(points: List<Pt>) {
+        // The one thing that clips an export: a rounded-corner image, which always pairs this with
+        // save()/restore() so the clip dies with the picture. The path maps through the same
+        // ux/uy + scale bookkeeping every primitive uses; like clipRect it is a no-op on an empty
+        // polygon (a degenerate clip would swallow the image whole).
+        if (points.size < 3) return
+        cs.moveTo(ux(points[0].x), uy(points[0].y))
+        for (i in 1 until points.size) cs.lineTo(ux(points[i].x), uy(points[i].y))
+        cs.closePath()
+        cs.clip()
+    }
+
     override fun clear() {
         // No meaningful "clear to transparent" on an append stream; unused by export.
     }

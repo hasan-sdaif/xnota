@@ -16,6 +16,11 @@ import kotlin.math.sin
  * cannot be moved without resampling them, so the rotate handle only advances [angle] and the
  * renderer places the bitmap turned. [rect] therefore stays the image's own upright box, and
  * [bounds] is the box that box sweeps out once turned. A mirror is stored the same way, as [flip].
+ *
+ * [cornerRadius] rounds the picture's own four corners (content px, clamped to half the shorter
+ * side by [CropMath.roundedRect]): stored like the turn rather than baked into pixels, because
+ * pixels cannot be re-cut without resampling. A radius of 0 draws the plain rectangle, exactly
+ * what every canvas before the fork holds.
  */
 class ImageItem(
     var image: ImageData,
@@ -25,6 +30,8 @@ class ImageItem(
     var angle: Double = 0.0,
     /** How the picture is mirrored in [rect], after [orientation] turns it and before [angle] does. */
     var flip: Flip = Flip.NONE,
+    /** Corner rounding in the picture's own frame, content px; 0 = square corners. */
+    var cornerRadius: Double = 0.0,
 ) : CanvasItem, Resizable {
 
     override val kind = KIND
@@ -32,7 +39,33 @@ class ImageItem(
     override var locked = false
     override var hidden = false
 
-    override fun paint(r: Renderer) = r.drawImage(image, rect, orientation, angle, flip)
+    override fun paint(r: Renderer) {
+        if (cornerRadius <= 0.0) {
+            r.drawImage(image, rect, orientation, angle, flip)
+            return
+        }
+        // The rounding lives in the picture's own upright frame, so the clip turns with the bitmap
+        // the same free [angle] does — a rounded corner stays the picture's corner, never the
+        // swept box's. Backends without a polygon clip draw unrounded, what they always drew.
+        r.save()
+        r.clipPolygon(roundedOutline())
+        r.drawImage(image, rect, orientation, angle, flip)
+        r.restore()
+    }
+
+    /** The rounded-corner clip polygon: [CropMath.roundedRect] over [rect], turned by [angle]. */
+    fun roundedOutline(): List<Pt> {
+        val outline = CropMath.roundedRect(rect, cornerRadius)
+        if (angle == 0.0) return outline
+        val cs = cos(angle)
+        val sn = sin(angle)
+        val c = rect.center
+        return outline.map {
+            val dx = it.x - c.x
+            val dy = it.y - c.y
+            Pt(c.x + dx * cs - dy * sn, c.y + dx * sn + dy * cs)
+        }
+    }
 
     override fun bounds(): Rect = if (angle == 0.0) rect else Rect.bounding(corners())
 

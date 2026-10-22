@@ -125,6 +125,19 @@ class AndroidRenderer(private val canvas: Canvas) : Renderer {
         canvas.clipRect(rect.left.toFloat(), rect.top.toFloat(), rect.right.toFloat(), rect.bottom.toFloat())
     }
 
+    override fun clipPolygon(points: List<Pt>) {
+        if (points.size < 3) return
+        // A closed polygon under the winding rule, matching the fill paths this canvas already
+        // draws; the current transform (translate/scale/quarter turn) carries it like any primitive.
+        val path = Path().apply {
+            fillType = android.graphics.Path.FillType.WINDING
+            moveTo(points[0].x.toFloat(), points[0].y.toFloat())
+            for (i in 1 until points.size) lineTo(points[i].x.toFloat(), points[i].y.toFloat())
+            close()
+        }
+        canvas.clipPath(path)
+    }
+
     override fun clear() {
         canvas.drawColor(0, PorterDuff.Mode.CLEAR)
     }

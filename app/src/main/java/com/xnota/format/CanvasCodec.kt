@@ -264,6 +264,8 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         if (item.orientation != 0) j.name("orientation").value(item.orientation)
         if (item.angle != 0.0) j.name("angle").value(item.angle)
         if (item.flip != Flip.NONE) j.name("flip").value(item.flip.id)
+        // The fork's corner rounding: absent keeps the square corners every older reader drew.
+        if (item.cornerRadius != 0.0) j.name("corner_radius").value(item.cornerRadius)
         if (item.locked) j.name("locked").value(true)
         if (item.hidden) j.name("hidden").value(true)
         j.endObject()
@@ -547,6 +549,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         val locked: Boolean,
         val id: Int?,
         val hidden: Boolean = false,
+        val cornerRadius: Double = 0.0,
     )
 
     private fun parseManifest(p: JsonPull): ParsedManifest {
@@ -654,6 +657,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         var srcH = 0
         var orientation = 0
         var angle = 0.0
+        var cornerRadius = 0.0
         var shape: String? = null
         var geom: String? = null
         var flipGeom: String? = null
@@ -722,6 +726,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
                 "src_h" -> s.srcH = intOr(p, 0)
                 "orientation" -> s.orientation = intOr(p, 0)
                 "angle" -> s.angle = doubleOr(p, 0.0)
+                "corner_radius" -> s.cornerRadius = doubleOr(p, 0.0).coerceAtLeast(0.0)
                 "shape" -> s.shape = stringOr(p, "")
                 "geom" -> s.geom = stringOrNull(p)
                 "flip_geom" -> s.flipGeom = stringOrNull(p)
@@ -760,6 +765,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
                         PendingImage(
                             items.size + pending.size, asset, s.rect, s.srcW, s.srcH,
                             s.orientation, s.angle, Flip.fromId(s.flip), s.locked, s.id, s.hidden,
+                            s.cornerRadius,
                         ),
                     )
                 }
@@ -1049,7 +1055,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
             h = probed.height
         }
         val rect = spec.rect ?: Rect(0.0, 0.0, w.toDouble(), h.toDouble())
-        return ImageItem(ImageData(file, w, h), rect, spec.orientation, spec.angle, spec.flip)
+        return ImageItem(ImageData(file, w, h), rect, spec.orientation, spec.angle, spec.flip, spec.cornerRadius)
             .also { it.locked = spec.locked; it.hidden = spec.hidden }
     }
 

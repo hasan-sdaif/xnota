@@ -24,6 +24,7 @@ import com.xnota.core.history.History
 import com.xnota.core.history.TransformItems
 import com.xnota.core.history.HideItems
 import com.xnota.core.history.LockItems
+import com.xnota.core.history.RoundImageCorners
 import com.xnota.core.history.EditLabel
 import com.xnota.core.history.EditText
 import com.xnota.core.history.MoveItems
@@ -3928,6 +3929,40 @@ class InteractionController(
 
     /** Styles held from the first [restyleSelection] preview, so a slider drag undoes in one step. */
     private var restyleBaseline: MutableMap<CanvasItem, DrawStyle>? = null
+
+    /** The selected placed images, whose corners the corner popup rounds. */
+    fun selectionImages(): List<ImageItem> = selection.mapNotNull { it.item as? ImageItem }
+
+    /** Radii held from the first [setSelectionCornerRadius] preview, so a slider drag undoes in one step. */
+    private var cornerBaseline: MutableMap<ImageItem, Double>? = null
+
+    /**
+     * Round the selected images' corners to [radius] content px (0 = square again; null leaves
+     * every radius alone, closing a pending preview). A [preview] call applies without touching
+     * history; the next call with [preview] off records everything since as a single undo step,
+     * exactly the restyle contract. No cache repair is needed: a selected item is lifted, so it
+     * is drawn live rather than baked.
+     */
+    fun setSelectionCornerRadius(radius: Double?, preview: Boolean = false) {
+        val images = selectionImages()
+        if (images.isEmpty()) return
+        val baseline = cornerBaseline ?: HashMap<ImageItem, Double>().also { map ->
+            for (img in images) map[img] = img.cornerRadius
+        }
+        cornerBaseline = if (preview) baseline else null
+        if (radius != null) {
+            for (img in images) img.cornerRadius = radius.coerceAtLeast(0.0)
+        }
+        if (!preview) {
+            val entries = baseline.mapNotNull { (img, before) ->
+                if (img.cornerRadius != before) RoundImageCorners.Entry(img, before, img.cornerRadius) else null
+            }
+            if (entries.isNotEmpty()) history.push(RoundImageCorners(entries))
+        }
+        state.document.dirty = true
+        onContentChanged()
+        requestRender()
+    }
 
     /**
      * Recolour and/or re-thicken the selection's strokes and shapes. A null [color] or [width]

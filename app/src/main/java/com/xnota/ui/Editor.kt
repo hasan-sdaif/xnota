@@ -7181,6 +7181,11 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     override fun duplicateGridArray(rows: Int, cols: Int, gapPx: Double) =
         controller.duplicateGridArray(rows, cols, gapPx)
 
+    override fun selectionImages(): List<ImageItem> = controller.selectionImages()
+
+    override fun setSelectionCornerRadius(radius: Double?, preview: Boolean) =
+        controller.setSelectionCornerRadius(radius, preview)
+
     // ── LayersHost (the fork's layers panel) ─────────────────────────────────────
 
     override fun openLayersPanel() {

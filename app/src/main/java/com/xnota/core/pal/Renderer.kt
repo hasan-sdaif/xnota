@@ -113,6 +113,15 @@ interface Renderer {
     fun clipRect(rect: Rect)
 
     /**
+     * Intersect the clip region with the closed polygon [points] (content space, winding as
+     * drawn). The one consumer is a rounded-corner image, which pairs this with [save]/[restore];
+     * a backend that cannot clip to a path may leave the clip alone — the image then draws with
+     * square corners, exactly what it drew before the radius existed. Points outside the current
+     * transform's domain still map through it, like any other primitive.
+     */
+    fun clipPolygon(points: List<Pt>) {}
+
+    /**
      * Clear the current clip region to fully transparent (replace, not composite).
      * Lets a cached surface be repaired in place: clip to a dirty rect, [clear] it,
      * then repaint only the items there — instead of rebuilding the whole page

@@ -23,8 +23,10 @@ class ImageShader(contextGen: Int) {
      * Draw [texture] over the clip-space quad given by its four corners, in the order top-left,
      * top-right, bottom-left, bottom-right. [rotationSteps] turns the texture a quarter turn at a
      * time, so an image's orientation costs nothing but a different set of texture coordinates.
+     * [corner] is the corner rounding in texture-space fractions of the quad's own width/height
+     * (each axis its own, both ≤ 0.5 and already clamped CPU-side); (0, 0) draws square corners.
      */
-    fun draw(corners: FloatArray, texture: Int, rotationSteps: Int, alpha: Double = 1.0) {
+    fun draw(corners: FloatArray, texture: Int, rotationSteps: Int, alpha: Double = 1.0, corner: FloatArray = NO_CORNERS) {
         if (texture == 0) return
         program.use()
         program.set("uP0", corners[0], corners[1])
@@ -33,6 +35,7 @@ class ImageShader(contextGen: Int) {
         program.set("uP3", corners[6], corners[7])
         program.set("uRotation", ((rotationSteps % 4) + 4) % 4)
         program.set("uAlpha", alpha.coerceIn(0.0, 1.0).toFloat())
+        program.set("uCorner", corner[0], corner[1])
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texture)
         program.set("uTexture", 0)
@@ -42,6 +45,9 @@ class ImageShader(contextGen: Int) {
     }
 
     companion object {
+        /** Square corners: the shader's zero-radius fast path, and the shape callers pass to skip it. */
+        val NO_CORNERS = floatArrayOf(0f, 0f)
+
         private val VERTEX_SRC = """#version 300 es
             uniform vec2 uP0;
             uniform vec2 uP1;
@@ -70,11 +76,24 @@ class ImageShader(contextGen: Int) {
             precision mediump float;
             uniform sampler2D uTexture;
             uniform float uAlpha;
+            uniform vec2 uCorner;
             in vec2 vUv;
             out vec4 fragColor;
             void main() {
                 vec4 c = texture(uTexture, vUv);
-                fragColor = vec4(c.rgb, c.a * uAlpha);
+                // Corner rounding in the quad's own texture space, so the corners turn with the
+                // quad the CPU already rotated: an elliptical quarter per corner (each axis its
+                // own radius fraction), feathered one pixel so the cut never shows a stair.
+                float keep = 1.0;
+                if (uCorner.x > 0.0 && uCorner.y > 0.0) {
+                    vec2 d = abs(vUv - vec2(0.5)) - (vec2(0.5) - uCorner);
+                    if (min(d.x, d.y) > 0.0) {
+                        float e = length(d / uCorner);
+                        float w = fwidth(e) * 1.5 + 1e-5;
+                        keep = 1.0 - smoothstep(1.0 - w, 1.0 + w, e);
+                    }
+                }
+                fragColor = vec4(c.rgb, c.a * uAlpha * keep);
             }
         """.trimIndent()
     }

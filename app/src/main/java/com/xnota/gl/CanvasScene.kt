@@ -681,8 +681,17 @@ class CanvasScene(private val store: GeometryStore = GeometryStore()) : GlScene 
             corners[2 * i] = (dx / frame.widthPx * 2.0 - 1.0).toFloat()
             corners[2 * i + 1] = (1.0 - dy / frame.heightPx * 2.0).toFloat()
         }
-        shader.draw(corners, texture, image.orientation / 90)
+        shader.draw(corners, texture, image.orientation / 90, corner = cornerUv(rect, image.cornerRadius))
         lastDrawCalls++
+    }
+
+    /** The corner rounding as texture-space radius fractions of [rect]'s own sides, shared by
+     *  every drawn image: clamped to half the shorter side, so the mask degenerates to the plain
+     *  quad exactly where [CropMath.roundedRect]'s own clamp would fold it. */
+    private fun cornerUv(rect: Rect, radius: Double): FloatArray {
+        if (radius <= 0.0 || rect.w <= 0.0 || rect.h <= 0.0) return ImageShader.NO_CORNERS
+        val r = radius.coerceAtMost(kotlin.math.min(rect.w, rect.h) / 2.0)
+        return floatArrayOf((r / rect.w).toFloat(), (r / rect.h).toFloat())
     }
 
     /**

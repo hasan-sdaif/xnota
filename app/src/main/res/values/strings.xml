@@ -1439,6 +1439,9 @@
     <string name="array_rows">Rows</string>
     <string name="array_cols">Columns</string>
     <string name="array_gap">Gap</string>
+    <string name="image_corners">Corners…</string>
+    <string name="image_corner_radius">Corner radius</string>
+    <string name="image_corners_hint">0 makes the corners square again.</string>
     <plurals name="array_count_n">
         <item quantity="one">%d copy</item>
         <item quantity="other">%d copies</item>
