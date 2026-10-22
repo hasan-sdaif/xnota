@@ -519,6 +519,7 @@
     <string name="new_note">New note</string>
     <string name="new_note_in">New note in %1$s</string>
     <string name="close_new_note">Close without creating</string>
+    <string name="new_sticky">Sticky</string>
     <string name="cover">Cover</string>
     <string name="no_cover">No cover</string>
     <string name="add_cover">Add cover</string>

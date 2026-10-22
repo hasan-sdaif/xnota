@@ -536,6 +536,7 @@
     <string name="new_note">ملاحظة جديدة</string>
     <string name="new_note_in">ملاحظة جديدة في %1$s</string>
     <string name="close_new_note">إغلاق دون إنشاء</string>
+    <string name="new_sticky">ملاحظة لاصقة</string>
     <string name="cover">الغلاف</string>
     <string name="no_cover">بدون غلاف</string>
     <string name="add_cover">إضافة غلاف</string>

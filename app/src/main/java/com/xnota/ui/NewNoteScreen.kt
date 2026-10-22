@@ -176,6 +176,12 @@ private const val DPI = PageSize.DEFAULT_DPI
 private fun mmText(v: Double): String =
     if (v == Math.floor(v)) v.toInt().toString() else String.format(java.util.Locale.ROOT, "%.1f", v)
 
+/** The sticky preset's paper: the warm yellow a desk sticky comes on. */
+private val STICKY_PAPER = Rgba(255, 243, 196, 255)
+
+/** The sticky preset's side, in mm: the smallest standard page's own short side (A5's 148), squared. */
+private val STICKY_MM = PageSize.A5.shortMm
+
 /** [s]'s parameter values for [t], its spacing turned back from content px into mm. */
 private fun valuesOf(s: PageStyle, t: Template?): TemplateValues {
     val numbers = HashMap<String, Double>()
@@ -486,6 +492,22 @@ internal fun NewNoteScreen(
                     OrientationButton(Orientation.PORTRAIT, stringResource(R.string.orientation_portrait))
                     Box(Modifier.width(1.dp).height(38.dp).background(border))
                     OrientationButton(Orientation.LANDSCAPE, stringResource(R.string.orientation_landscape))
+                }
+            }
+            // Quick formats (the fork): one chip settles the whole page. The sticky note — a square
+            // of the smallest standard side on warm yellow paper, no ruling, a single page and no
+            // cover — is the quick-note paper the ledger promises.
+            val sticky = custom && cw == STICKY_MM && ch == STICKY_MM &&
+                style.pageColor == STICKY_PAPER && style.template == PageTemplates.NONE && !coverOn
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ModeChip(stringResource(R.string.new_sticky), sticky) {
+                    size = PageSize.CUSTOM
+                    customW = mmText(STICKY_MM)
+                    customH = mmText(STICKY_MM)
+                    style = style.withTemplate(PageTemplates.NONE, PageTemplates.NONE).copy(pageColor = STICKY_PAPER)
+                    coverOn = false
+                    face = Face.PAGES
+                    aiOpen = false
                 }
             }
             // Create waits for a size that fits; this says why.
