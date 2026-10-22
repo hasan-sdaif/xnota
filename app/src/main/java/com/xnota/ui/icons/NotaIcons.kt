@@ -324,4 +324,100 @@ object NotaIcons {
     )
     /** The statistics panel: three bars of a bar chart. */
     val chart = icon("M3 3v18h18", "M18 17V9", "M13 17V5", "M8 17v-3")
+
+    // --- The settings hub and menu icons (the fork's 1.6.1 redesign) -------------------------
+    // Same language as the rest of the set — 24×24, 2px round-capped strokes, no fill — so the
+    // settings hub's category cards, every section title and every menu row that lacked a glyph
+    // read as one designed family.
+
+    // The theme chips: the sun and the moon carry the light and dark schemes, the monitor the
+    // system-following one.
+    val sun = icon(
+        circle(12.0, 12.0, 4.0),
+        "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41",
+        "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41",
+    )
+    val moon = icon("M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z")
+    val monitor = icon(roundRect(2.0, 3.0, 20.0, 14.0, 2.0), "M8 21h8", "M12 17v4")
+
+    // The app-language row: the globe, direction-neutral in both locales.
+    val globe = icon(
+        circle(12.0, 12.0, 10.0),
+        "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z",
+        "M2 12h20",
+    )
+
+    // The UI-corner preference: the rounded square the setting itself turns the chrome into.
+    val corners = icon(roundRect(3.0, 3.0, 18.0, 18.0, 6.0))
+
+    // The input & gestures section: the open hand of a touch.
+    val hand = icon(
+        "M18 11V6a2 2 0 0 0-4 0v5",
+        "M14 10V4a2 2 0 0 0-4 0v2",
+        "M10 10.5V6a2 2 0 0 0-4 0v8",
+        "M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15",
+    )
+
+    // The text & typing section: the keyboard.
+    val keyboard = icon(
+        roundRect(2.0, 4.0, 20.0, 16.0, 2.0),
+        "M6 8h.01", "M10 8h.01", "M14 8h.01", "M18 8h.01",
+        "M8 12h.01", "M12 12h.01", "M16 12h.01",
+        "M7 16h10",
+    )
+
+    // The ink engine section: the bolt of the engine's power.
+    val zap = icon("M13 2 3 14h9l-1 8 10-12h-9l1-10z")
+
+    // The new-notes section: the file glyph with a plus over its body.
+    val filePlus = icon(
+        "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z",
+        "M14 2v6h6",
+        "M12 18v-6", "M9 15h6",
+    )
+
+    // The reading section: the open book.
+    val bookOpen = icon(
+        "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z",
+        "M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
+    )
+
+    // The focus section: the target.
+    val target = icon(circle(12.0, 12.0, 10.0), circle(12.0, 12.0, 6.0), circle(12.0, 12.0, 2.0))
+
+    // The Qibla pane: the compass, needle and all.
+    val compass = icon(
+        circle(12.0, 12.0, 10.0),
+        "M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36z",
+    )
+
+    // The performance section: the gauge.
+    val gauge = icon("M12 14l4-4", "M3.34 19a10 10 0 1 1 17.32 0")
+
+    // The code-highlighting section: the angle brackets.
+    val code = icon("M16 18l6-6-6-6", "M8 6l-6 6 6 6")
+
+    // The backup section: the archive box.
+    val archive = icon(
+        roundRect(2.0, 3.0, 20.0, 5.0, 2.0),
+        "M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8",
+        "M10 12h4",
+    )
+
+    // The writing & tools category: the crow-quill pen tool.
+    val penTool = icon(
+        "M12 19l7-7 3 3-7 7-3-3z",
+        "M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z",
+        "M2 2l7.586 7.586",
+        circle(11.0, 11.0, 2.0),
+    )
+
+    // The app-lock section: the shield.
+    val shield = icon("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z")
+
+    // The general section and the hub itself: the gear.
+    val gear = icon(
+        circle(12.0, 12.0, 3.0),
+        "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z",
+    )
 }
