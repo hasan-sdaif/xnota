@@ -54,8 +54,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -243,9 +245,7 @@ private fun ToolbarItemView(
                     PageCounter(
                         editor.pageIndex + 1,
                         editor.pageCount,
-                        Modifier
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .clickable { jumpOpen = true },
+                        Modifier.clickable { jumpOpen = true },
                         digits,
                     )
                 }
@@ -264,9 +264,8 @@ private fun ToolbarItemView(
                 Tooltip(stringResource(R.string.title_zoom)) {
                     Label(
                         digits("${editor.zoomPercent}%"),
-                        modifier = Modifier
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .clickable { zoomMenuOpen = true },
+                        modifier = Modifier.clickable { zoomMenuOpen = true },
+                        chip = true,
                     )
                 }
                 if (zoomMenuOpen) ZoomMenuPopup(editor) { zoomMenuOpen = false }
@@ -465,7 +464,11 @@ internal fun Modifier.toolGlide(glide: ToolGlide, armed: Any?): Modifier {
         progress.snapTo(0f)
         progress.animateTo(1f, tween((GLIDE_BASE_MS + hopDp * GLIDE_MS_PER_DP).toInt().coerceAtMost(GLIDE_MAX_MS), easing = LinearEasing))
     }
-    val fill = LocalPalette.current.selectionBackground.toComposeColor()
+    // The gliding indicator carries the brand's selected recipe — emerald at 14% under a 1dp
+    // hairline at 22% — so the armed tool reads exactly like a toggle held down (the reference's
+    // .tool-btn.active), only on the move.
+    val fill = LocalPalette.current.accentAlpha(36).toComposeColor()
+    val ring = LocalPalette.current.accentAlpha(56).toComposeColor()
     return onPlaced { glide.row = it }.drawBehind {
         if (shown.value == 0f) return@drawBehind
         val t = progress.value
@@ -474,11 +477,21 @@ internal fun Modifier.toolGlide(glide: ToolGlide, armed: Any?): Modifier {
         // The leading side takes most of the stretch, so the tail seems to trail behind.
         val ahead = if (trip.to >= trip.from) GLIDE_LEAD else 1 - GLIDE_LEAD
         val start = x - r - s * (1 - ahead)
+        val at = if (bar.vertical) Offset(trip.across - r, start) else Offset(start, trip.across - r)
+        val size = if (bar.vertical) Size(2 * r, 2 * r + s) else Size(2 * r + s, 2 * r)
+        val fade = shown.value
         drawRoundRect(
-            fill.copy(alpha = fill.alpha * shown.value),
-            topLeft = if (bar.vertical) Offset(trip.across - r, start) else Offset(start, trip.across - r),
-            size = if (bar.vertical) Size(2 * r, 2 * r + s) else Size(2 * r + s, 2 * r),
+            fill.copy(alpha = fill.alpha * fade),
+            topLeft = at,
+            size = size,
             cornerRadius = CornerRadius(r),
+        )
+        drawRoundRect(
+            ring.copy(alpha = ring.alpha * fade),
+            topLeft = at,
+            size = size,
+            cornerRadius = CornerRadius(r),
+            style = Stroke(1.dp.toPx()),
         )
     }
 }
@@ -523,9 +536,19 @@ internal fun ToolbarIcon(
         // A gliding circle takes a moment to arrive, so the icon turns with it rather than ahead of it.
         tween(if (glide != null) 2 * SELECT_FADE_MS else SELECT_FADE_MS), label = "toolTint",
     )
-    val fill by animateFloatAsState(if (active && glide == null) 1f else 0f, tween(SELECT_FADE_MS), label = "toolFill")
+    // The brand recipe for a selected control: emerald at 14% under a hairline at 22% (the
+    // reference's .tool-btn.active). A gliding tool paints its own indicator behind the row, so
+    // its button stays clear and the chip arrives with the circle instead of ahead of it.
+    val chipOn = active && glide == null
+    val chipBg by animateColorAsState(
+        if (chipOn) palette.accentAlpha(36).toComposeColor() else Color.Transparent,
+        tween(SELECT_FADE_MS), label = "toolChipBg",
+    )
+    val chipBorder by animateColorAsState(
+        if (chipOn) palette.accentAlpha(56).toComposeColor() else Color.Transparent,
+        tween(SELECT_FADE_MS), label = "toolChipBorder",
+    )
     if (glide != null) DisposableEffect(glide, glideKey) { onDispose { glide.centers.remove(glideKey) } }
-    val circle = palette.selectionBackground.toComposeColor()
     // No ripple: the circle is the feedback, and a white flash over it reads as a glitch.
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -538,13 +561,15 @@ internal fun ToolbarIcon(
             Box(
                 Modifier
                     .size(bar.circle)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(chipBg)
+                    .border(1.dp, chipBorder, MaterialTheme.shapes.small)
                     .then(
                         if (glide == null || glideKey == null) Modifier
                         else Modifier.onGloballyPositioned { c ->
                             glide.row?.let { glide.centers[glideKey] = it.localPositionOf(c, Offset(c.size.width / 2f, c.size.height / 2f)) }
                         },
-                    )
-                    .drawBehind { if (fill > 0f) drawCircle(circle.copy(alpha = circle.alpha * fill)) },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(bar.icon).graphicsLayer { scaleX = if (mirrorGlyph) -press else press; scaleY = press })
@@ -575,15 +600,28 @@ internal fun Swatch(color: androidx.compose.ui.graphics.Color, active: Boolean, 
     )
 }
 
+/** Bar text. With [chip] it takes the reference's small-chip look — a surface fill under a
+ *  hairline, rounded with the corner preference — for the value readouts that act as controls
+ *  (the zoom percent, the page counter); otherwise it is plain dim text. */
 @Composable
-internal fun Label(text: String, modifier: Modifier = Modifier) {
+internal fun Label(text: String, modifier: Modifier = Modifier, chip: Boolean = false) {
+    val palette = LocalPalette.current
+    val chrome = if (chip) {
+        Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(palette.surface.toComposeColor())
+            .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.small)
+    } else {
+        Modifier
+    }
+    val inner = if (chip) Modifier.padding(horizontal = 7.dp, vertical = 3.dp) else Modifier.padding(horizontal = 4.dp)
     Text(
         text = text,
-        color = LocalPalette.current.textDim.toComposeColor(),
+        color = palette.textDim.toComposeColor(),
         fontSize = LocalBar.current.label,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = modifier.padding(horizontal = 4.dp),
+        modifier = chrome.then(modifier).then(inner),
     )
 }
 
@@ -592,14 +630,15 @@ internal fun Separator() {
     Box(Modifier.padding(if (LocalBar.current.vertical) PaddingValues(vertical = 4.dp) else PaddingValues(horizontal = 4.dp))) { Rule() }
 }
 
-/** A hairline across the bar. */
+/** A hairline across the bar — the reference's .tool-separator, softened to half strength so the
+ *  pill groups it divides stay the louder mark. */
 @Composable
 private fun Rule() {
     val bar = LocalBar.current
     Box(
         Modifier
             .then(if (bar.vertical) Modifier.height(1.dp).width(bar.rule) else Modifier.width(1.dp).height(bar.rule))
-            .background(LocalPalette.current.border.toComposeColor()),
+            .background(LocalPalette.current.border.toComposeColor().copy(alpha = 0.5f)),
     )
 }
 
@@ -607,7 +646,7 @@ private fun Rule() {
 @Composable
 private fun PageCounter(current: Int, count: Int, modifier: Modifier, digits: (String) -> String = { it }) {
     if (!LocalBar.current.vertical) {
-        Label(digits("$current / $count"), modifier)
+        Label(digits("$current / $count"), modifier, chip = true)
         return
     }
     Column(modifier.padding(vertical = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {

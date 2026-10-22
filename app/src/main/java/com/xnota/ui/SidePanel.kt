@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -112,7 +114,9 @@ fun SidePanel(
         Modifier
             .width(224.dp)
             .fillMaxHeight()
-            .background(palette.panel.toComposeColor()),
+            // The reference's side panel is the app background with cards floating on it
+            // (.editor-side-panel over the ink shell), not another raised surface.
+            .background(palette.bg.toComposeColor()),
     ) {
         Row(Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             SegIcon(NotaIcons.thumbnails, stringResource(R.string.pages), tab == SidePanelTab.PAGES) { editor.sidePanelTab = SidePanelTab.PAGES }
@@ -120,12 +124,23 @@ fun SidePanel(
             SegIcon(NotaIcons.bookmark, stringResource(R.string.bookmarks), tab == SidePanelTab.BOOKMARKS) { editor.sidePanelTab = SidePanelTab.BOOKMARKS }
             SegIcon(NotaIcons.search, stringResource(R.string.search), tab == SidePanelTab.SEARCH, shortcut = Keys.SEARCH) { editor.sidePanelTab = SidePanelTab.SEARCH }
         }
-        Box(Modifier.fillMaxWidth().weight(1f)) {
-            when (tab) {
-                SidePanelTab.PAGES -> PagesTab(editor, onSharePages, onSavePagesAsPdf, onSavePagesAsImages, onInsertPdf) { pickingCover = true }
-                SidePanelTab.CONTENTS -> ContentsTab(editor)
-                SidePanelTab.BOOKMARKS -> BookmarksTab(editor)
-                SidePanelTab.SEARCH -> SearchTab(editor)
+        // The tab's body sits in one panel-card (the reference's .panel-card): the menu surface
+        // under a hairline, rounded with the corner preference, holding whatever the tab shows.
+        Box(Modifier.fillMaxWidth().weight(1f).padding(8.dp)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.large)
+                    .background(palette.menuBg.toComposeColor())
+                    .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.large)
+                    .padding(6.dp),
+            ) {
+                when (tab) {
+                    SidePanelTab.PAGES -> PagesTab(editor, onSharePages, onSavePagesAsPdf, onSavePagesAsImages, onInsertPdf) { pickingCover = true }
+                    SidePanelTab.CONTENTS -> ContentsTab(editor)
+                    SidePanelTab.BOOKMARKS -> BookmarksTab(editor)
+                    SidePanelTab.SEARCH -> SearchTab(editor)
+                }
             }
         }
         if (tab == SidePanelTab.PAGES && editor.inPageSelectionMode) {
@@ -137,8 +152,23 @@ fun SidePanel(
 @Composable
 private fun SegIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, selected: Boolean, shortcut: String? = null, onClick: () -> Unit) {
     val palette = LocalPalette.current
+    // The selected tab takes the brand's selected-control recipe — emerald at 14% under a hairline
+    // at 22% (the reference's .tool-btn.active) — on the icon button itself, so the tab strip
+    // reads as one row of chips.
+    val shape = MaterialTheme.shapes.small
     Tooltip(desc, shortcut = shortcut) {
-        IconButton(onClick = onClick) {
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(34.dp)
+                .clip(shape)
+                .background(if (selected) palette.accentAlpha(36).toComposeColor() else Color.Transparent)
+                .border(
+                    1.dp,
+                    if (selected) palette.accentAlpha(56).toComposeColor() else Color.Transparent,
+                    shape,
+                ),
+        ) {
             Icon(
                 icon,
                 contentDescription = desc,
@@ -230,45 +260,60 @@ private fun PageThumb(
     }
     // Reserve the row's height from the aspect ratio so it stays put before the bitmap loads.
     val aspect = editor.pageAspectRatio(page)
-    val borderColor = if (selected || current) palette.accent else palette.border
+    val active = selected || current
+    val borderColor = if (active) palette.accent else palette.border
     Column(rowModifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        // The reference's .mini-page: a paper thumb under a rounded corner, the active page
+        // carrying the accent border and a soft outer ring (accentAlpha(26) — its "0 0 0 3px"
+        // glow). The ring carrier pads every thumb by the ring's 3dp so nothing shifts when the
+        // active page moves.
         Box(
             Modifier
-                .width(150.dp)
-                .height(150.dp * aspect)
-                .border(if (selected || current) 2.dp else 1.dp, borderColor.toComposeColor())
-                // Tap navigates (or toggles selection in select mode); long-press enters/extends
-                // selection. No drag handling here, so the list scrolls normally.
-                .combinedClickable(
-                    onClick = { if (selecting) editor.togglePageSelection(index) else editor.goToPage(index) },
-                    onLongClick = { editor.togglePageSelection(index) },
-                ),
+                .padding(3.dp)
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(if (active) palette.accentAlpha(26).toComposeColor() else Color.Transparent),
         ) {
-            bitmap?.let { Image(it, contentDescription = stringResource(R.string.page_n, index + 1), modifier = Modifier.fillMaxSize()) }
+            Box(
+                Modifier
+                    .width(150.dp)
+                    .height(150.dp * aspect)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    // The paper fill reads as a page while the rendered thumbnail loads.
+                    .background(palette.paper.toComposeColor())
+                    .border(if (active) 2.dp else 1.dp, borderColor.toComposeColor(), MaterialTheme.shapes.extraSmall)
+                    // Tap navigates (or toggles selection in select mode); long-press enters/extends
+                    // selection. No drag handling here, so the list scrolls normally.
+                    .combinedClickable(
+                        onClick = { if (selecting) editor.togglePageSelection(index) else editor.goToPage(index) },
+                        onLongClick = { editor.togglePageSelection(index) },
+                    ),
+            ) {
+                bitmap?.let { Image(it, contentDescription = stringResource(R.string.page_n, index + 1), modifier = Modifier.fillMaxSize()) }
 
-            if (selected) {
-                Box(Modifier.matchParentSize().background(palette.selectionBackground.withAlpha(77).toComposeColor()))
-                Box(
-                    Modifier.align(Alignment.TopStart).padding(4.dp).size(20.dp)
-                        .clip(CircleShape).background(palette.accent.toComposeColor()),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(NotaIcons.check, stringResource(R.string.selected), tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(13.dp))
-                }
-            } else if (!selecting) {
-                // Three-dot menu, on a faint scrim so it reads over any thumbnail.
-                Box(Modifier.align(Alignment.TopEnd).padding(2.dp)) {
-                    Tooltip(stringResource(R.string.page_options)) {
-                        Box(
-                            Modifier.size(26.dp).clip(CircleShape)
-                                .background(palette.panel.toComposeColor().copy(alpha = 0.7f))
-                                .clickable { menuOpen = true },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(NotaIcons.more, stringResource(R.string.page_options), tint = palette.text.toComposeColor(), modifier = Modifier.size(16.dp))
-                        }
+                if (selected) {
+                    Box(Modifier.matchParentSize().background(palette.selectionBackground.withAlpha(77).toComposeColor()))
+                    Box(
+                        Modifier.align(Alignment.TopStart).padding(4.dp).size(20.dp)
+                            .clip(CircleShape).background(palette.accent.toComposeColor()),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(NotaIcons.check, stringResource(R.string.selected), tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(13.dp))
                     }
-                    PageContextMenu(editor, index, page.cover, menuOpen, { menuOpen = false }, onSharePages, onSavePagesAsPdf, onSavePagesAsImages, onInsertPdf, onPickCover)
+                } else if (!selecting) {
+                    // Three-dot menu, on a faint scrim so it reads over any thumbnail.
+                    Box(Modifier.align(Alignment.TopEnd).padding(2.dp)) {
+                        Tooltip(stringResource(R.string.page_options)) {
+                            Box(
+                                Modifier.size(26.dp).clip(CircleShape)
+                                    .background(palette.panel.toComposeColor().copy(alpha = 0.7f))
+                                    .clickable { menuOpen = true },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(NotaIcons.more, stringResource(R.string.page_options), tint = palette.text.toComposeColor(), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        PageContextMenu(editor, index, page.cover, menuOpen, { menuOpen = false }, onSharePages, onSavePagesAsPdf, onSavePagesAsImages, onInsertPdf, onPickCover)
+                    }
                 }
             }
         }
@@ -355,6 +400,8 @@ private fun PageSelectionBar(
     val palette = LocalPalette.current
     // The bar sits at the panel's foot, so its tips open upward.
     CompositionLocalProvider(LocalTipSide provides TipSide.ABOVE) {
+        // The reference's .room-footer: a surface strip carrying a hairline above it.
+        Hairline()
         Row(
             Modifier.fillMaxWidth().height(52.dp).background(palette.surface.toComposeColor()).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,

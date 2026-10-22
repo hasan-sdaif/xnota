@@ -140,13 +140,15 @@ internal fun ToolbarFrame(
     val palette = LocalPalette.current
     val shape = MaterialTheme.shapes.extraLarge
     // Docked, the strip fills its edge; floating, a pill only as long as its tools, up to that edge.
+    // The pill takes the menu surface (menuBg) so it floats above the canvas like every dropdown —
+    // the reference design's room-toolbar — and keeps its hairline and shadow exactly as they were.
     val surface = if (!look.floating) {
         Modifier.background(palette.panel.toComposeColor())
     } else {
         Modifier
             .shadow(6.dp, shape)
             .clip(shape)
-            .background(palette.panel.toComposeColor())
+            .background(palette.menuBg.toComposeColor())
             .border(1.dp, palette.border.toComposeColor(), shape)
     }
     val stretch = when {

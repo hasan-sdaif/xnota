@@ -170,7 +170,7 @@ fun InfiniteToolbar(
                         ToolbarIcon(NotaIcons.zoomOut, stringResource(R.string.zoom_out), enabled = !editor.zoomLocked, shortcut = Keys.ZOOM_OUT) {
                             editor.zoomBy(1.0 / InfiniteEditor.ZOOM_STEP)
                         }
-                        Label("${editor.zoomPercent}%")
+                        Label("${editor.zoomPercent}%", chip = true)
                         ToolbarIcon(NotaIcons.zoomIn, stringResource(R.string.zoom_in), enabled = !editor.zoomLocked, shortcut = Keys.ZOOM_IN) {
                             editor.zoomBy(InfiniteEditor.ZOOM_STEP)
                         }

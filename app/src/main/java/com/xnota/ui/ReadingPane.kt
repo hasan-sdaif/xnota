@@ -1,6 +1,7 @@
 package com.xnota.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +61,22 @@ private val AUTOSCROLL_DP_PER_S = 40.dp
 
 /** The sepia the reader's tint leans its paper toward. */
 private val SEPIA = Color(0xFFF1E3C4)
+
+/**
+ * The reader's chip chrome, paper-adapted: the reference's .icon-button / .small-btn look — a
+ * hairline and a faint fill — drawn in the ink the paper can actually show, so the controls read
+ * on warm white and night paper alike. A selected chip takes the brand's emerald recipe
+ * (accent border over accentAlpha(26)) instead.
+ */
+@Composable
+private fun readerChip(ink: Color, selected: Boolean): Modifier {
+    val palette = LocalPalette.current
+    val shape = MaterialTheme.shapes.small
+    return Modifier
+        .clip(shape)
+        .background(if (selected) palette.accentAlpha(26).toComposeColor() else ink.copy(alpha = 0.06f))
+        .border(1.dp, if (selected) palette.accent.toComposeColor() else ink.copy(alpha = 0.28f), shape)
+}
 
 /** The reader's paper palette (the custom reading paper colours). */
 private val READER_PAPERS = listOf(
@@ -127,7 +143,7 @@ fun ReadingPane(editor: Editor) {
             Tooltip(stringResource(R.string.exit_reading)) {
                 Icon(
                     NotaIcons.close, stringResource(R.string.exit_reading),
-                    tint = ink, modifier = Modifier.size(22.dp).clip(MaterialTheme.shapes.small)
+                    tint = ink, modifier = Modifier.size(22.dp).then(readerChip(ink, false))
                         .clickable { editor.exitReadingMode() }.padding(5.dp),
                 )
             }
@@ -138,16 +154,24 @@ fun ReadingPane(editor: Editor) {
                 fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = { editor.setReaderPref { it.copy(readerFontScale = (it.readerFontScale - 0.1).coerceAtLeast(0.8)) } }) {
-                Text("A-", color = ink, fontSize = 13.sp)
-            }
-            TextButton(onClick = { editor.setReaderPref { it.copy(readerFontScale = (it.readerFontScale + 0.1).coerceAtMost(2.0)) } }) {
-                Text("A+", color = ink, fontSize = 13.sp)
-            }
+            Text("A-", color = ink, fontSize = 13.sp, modifier = Modifier
+                .then(readerChip(ink, false))
+                .clickable { editor.setReaderPref { it.copy(readerFontScale = (it.readerFontScale - 0.1).coerceAtLeast(0.8)) } }
+                .padding(horizontal = 10.dp, vertical = 6.dp))
+            Text("A+", color = ink, fontSize = 13.sp, modifier = Modifier
+                .then(readerChip(ink, false))
+                .clickable { editor.setReaderPref { it.copy(readerFontScale = (it.readerFontScale + 0.1).coerceAtMost(2.0)) } }
+                .padding(horizontal = 10.dp, vertical = 6.dp))
             Box {
-                TextButton(onClick = { lineOpen = true }) {
-                    Text("×${LINE_HEIGHTS.minBy { kotlin.math.abs(it - prefs.readerLineHeight) }}", color = ink, fontSize = 13.sp)
-                }
+                Text(
+                    "×${LINE_HEIGHTS.minBy { kotlin.math.abs(it - prefs.readerLineHeight) }}",
+                    color = ink,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .then(readerChip(ink, false))
+                        .clickable { lineOpen = true }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
                 DropdownMenu(expanded = lineOpen, onDismissRequest = { lineOpen = false }) {
                     for (h in LINE_HEIGHTS) {
                         DropdownMenuItem(
@@ -158,19 +182,21 @@ fun ReadingPane(editor: Editor) {
                 }
             }
             Tooltip(stringResource(R.string.reader_brightness)) {
-                TextButton(onClick = { brightOpen = !brightOpen }) {
-                    Text(
-                        "%" + if (prefs.readerBrightness < 1.0) "${(prefs.readerBrightness * 100).roundToInt()}" else "",
-                        color = if (brightOpen || prefs.readerBrightness < 1.0) ink else ink.copy(alpha = 0.45f),
-                        fontSize = 13.sp,
-                    )
-                }
+                Text(
+                    "%" + if (prefs.readerBrightness < 1.0) "${(prefs.readerBrightness * 100).roundToInt()}" else "",
+                    color = if (brightOpen || prefs.readerBrightness < 1.0) ink else ink.copy(alpha = 0.45f),
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .then(readerChip(ink, brightOpen || prefs.readerBrightness < 1.0))
+                        .clickable { brightOpen = !brightOpen }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
             }
             Tooltip(stringResource(R.string.reader_sepia)) {
                 Icon(
                     NotaIcons.palette, stringResource(R.string.reader_sepia),
                     tint = if (prefs.readerSepia) ink else ink.copy(alpha = 0.45f),
-                    modifier = Modifier.size(22.dp).clip(MaterialTheme.shapes.small)
+                    modifier = Modifier.size(22.dp).then(readerChip(ink, prefs.readerSepia))
                         .clickable { editor.setReaderPref { it.copy(readerSepia = !it.readerSepia) } }.padding(5.dp),
                 )
             }
@@ -178,7 +204,7 @@ fun ReadingPane(editor: Editor) {
                 Tooltip(stringResource(R.string.reader_paper)) {
                     Icon(
                         NotaIcons.palette, stringResource(R.string.reader_paper),
-                        tint = ink, modifier = Modifier.size(22.dp).clip(MaterialTheme.shapes.small)
+                        tint = ink, modifier = Modifier.size(22.dp).then(readerChip(ink, false))
                             .clickable { paperOpen = true }.padding(5.dp),
                     )
                 }
@@ -211,7 +237,7 @@ fun ReadingPane(editor: Editor) {
                 Icon(
                     NotaIcons.arrowDown, stringResource(R.string.reader_autoscroll),
                     tint = if (autoscroll) palette.accent.toComposeColor() else ink.copy(alpha = 0.45f),
-                    modifier = Modifier.size(22.dp).clip(MaterialTheme.shapes.small)
+                    modifier = Modifier.size(22.dp).then(readerChip(ink, autoscroll))
                         .clickable { autoscroll = !autoscroll }.padding(5.dp),
                 )
             }

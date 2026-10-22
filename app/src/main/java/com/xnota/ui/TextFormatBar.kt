@@ -332,7 +332,9 @@ private fun BarDivider() {
             .width(1.dp)
             .fillMaxHeight()
             .padding(vertical = 12.dp)
-            .background(LocalPalette.current.border.toComposeColor()),
+            // Half-strength hairline, as the toolbar separators now read, so the two bars divide
+            // their groups the same way.
+            .background(LocalPalette.current.border.toComposeColor().copy(alpha = 0.5f)),
     )
 }
 
@@ -508,7 +510,8 @@ private fun WordCountChip(editor: Editor) {
             Column(
                 Modifier
                     .clip(MaterialTheme.shapes.medium)
-                    .background(palette.panel.toComposeColor())
+                    .background(palette.menuBg.toComposeColor())
+                    .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.medium)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
