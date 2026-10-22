@@ -75,6 +75,17 @@ fun CanvasStylesPopup(editor: InfiniteEditor, onDismiss: () -> Unit) {
                 ModeChip(stringResource(R.string.pattern_grid), background.pattern == PagePattern.GRID) {
                     apply(background.copy(pattern = PagePattern.GRID))
                 }
+                // The fork's Arabic rulings (see the PagePattern doc): the same spacing control,
+                // read as the family's cell.
+                ModeChip(stringResource(R.string.pattern_khatt), background.pattern == PagePattern.KHATT) {
+                    apply(background.copy(pattern = PagePattern.KHATT))
+                }
+                ModeChip(stringResource(R.string.pattern_ruqaa), background.pattern == PagePattern.RUQAA) {
+                    apply(background.copy(pattern = PagePattern.RUQAA))
+                }
+                ModeChip(stringResource(R.string.pattern_naskh), background.pattern == PagePattern.NASKH) {
+                    apply(background.copy(pattern = PagePattern.NASKH))
+                }
             }
 
             Spacer(Modifier.size(12.dp))

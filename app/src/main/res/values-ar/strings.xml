@@ -135,6 +135,9 @@
     <string name="pattern_lines">خطوط</string>
     <string name="pattern_dots">نقاط</string>
     <string name="pattern_grid">شبكة</string>
+    <string name="pattern_khatt">شبكة الخطّاط</string>
+    <string name="pattern_ruqaa">سطور الرقعة</string>
+    <string name="pattern_naskh">ميزان النسخ</string>
     <string name="caption_pattern_colour">لون التسطير</string>
     <string name="caption_template">القالب</string>
     <string name="caption_accent_colour">اللون المميّز</string>

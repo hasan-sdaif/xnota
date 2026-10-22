@@ -1,0 +1,24 @@
+{
+  "xtemplate": 1,
+  "id": "com.xnota.khatt",
+  "name": "Khatt grid · شبكة الخط",
+  "description": "Calligraphy practice (خط): a square grid with the writing baseline emphasized every fourth line, the classic khatt measure for tracing letters to their proportions.",
+  "license": "MIT",
+  "tags": ["grid", "arabic", "calligraphy"],
+  "params": {
+    "spacing": { "type": "length", "default": "8mm", "min": "4mm", "max": "16mm",
+                 "label": "Cell size · حجم المربع", "role": "spacing" }
+  },
+  "strokeWidth": "0.254mm",
+  "items": [
+    { "type": "repeat", "axis": "y", "period": "spacing", "extend": true, "children": [
+      { "type": "hline", "y": 0, "strokeWidth": "0.18mm" }
+    ]},
+    { "type": "repeat", "axis": "x", "period": "spacing", "extend": true, "children": [
+      { "type": "vline", "x": 0, "strokeWidth": "0.18mm" }
+    ]},
+    { "type": "repeat", "axis": "y", "period": "4 * spacing", "extend": true, "children": [
+      { "type": "hline", "y": 0, "strokeWidth": "0.55mm" }
+    ]}
+  ]
+}

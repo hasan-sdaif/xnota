@@ -1,0 +1,21 @@
+{
+  "xtemplate": 1,
+  "id": "com.xnota.naskh",
+  "name": "Naskh measure · مقاس النسخ",
+  "description": "The classic نسخ two-line measure: a baseline for the letters with a lighter alif-height line above it, one pair per cell — the proportion grid traditional naskh is taught on.",
+  "license": "MIT",
+  "tags": ["lines", "arabic", "calligraphy"],
+  "params": {
+    "spacing": { "type": "length", "default": "8mm", "min": "4mm", "max": "14mm",
+                 "label": "Line measure · مقاس السطر", "role": "spacing" }
+  },
+  "strokeWidth": "0.254mm",
+  "items": [
+    { "type": "repeat", "axis": "y", "period": "spacing", "extend": true, "children": [
+      { "type": "hline", "y": 0 }
+    ]},
+    { "type": "repeat", "axis": "y", "period": "spacing", "extend": true, "children": [
+      { "type": "hline", "y": "-0.35 * spacing", "strokeWidth": "0.15mm" }
+    ]}
+  ]
+}

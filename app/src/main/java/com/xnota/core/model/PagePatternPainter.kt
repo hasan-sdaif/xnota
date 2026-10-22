@@ -58,6 +58,21 @@ fun paintPagePattern(
                 y += spacing
             }
         }
+        // The fork's Arabic rulings — see the [PagePattern] doc for the family measure. The
+        // emphasized khatt baseline overdraws the light grid line under it (as the bundled
+        // khatt template does), so the two never drift apart.
+        PagePattern.KHATT -> {
+            hLines(r, pen, spacing, bounds, clip)
+            vLines(r, pen, spacing, bounds, clip)
+            val baseline = Pen(ink, width = PageStyle.LINE_THICKNESS * PageStyle.KHATT_BASELINE_WIDTH, cosmetic = false)
+            hLines(r, baseline, spacing * PageStyle.KHATT_BASELINE_EVERY, bounds, clip)
+        }
+        PagePattern.RUQAA -> hLines(r, pen, spacing * PageStyle.RUQAA_CELLS, bounds, clip)
+        PagePattern.NASKH -> {
+            hLines(r, pen, spacing, bounds, clip)
+            val alif = Pen(ink, width = PageStyle.LINE_THICKNESS, cosmetic = false)
+            hLines(r, alif, spacing, bounds, clip, offset = -spacing * PageStyle.NASKH_ALIF_FRACTION)
+        }
         PagePattern.NONE -> {}
     }
     if (translucent) r.restore()
@@ -109,8 +124,8 @@ private fun intersect(a: Rect, b: Rect): Rect? {
 /** The first ruling coordinate at or after [start]; the paper's own edges are skipped by the callers. */
 private fun first(start: Double, spacing: Double): Double = ceil(start / spacing) * spacing
 
-private fun hLines(r: Renderer, pen: Pen, spacing: Double, bounds: Rect, clip: Rect) {
-    var y = first(clip.top, spacing)
+private fun hLines(r: Renderer, pen: Pen, spacing: Double, bounds: Rect, clip: Rect, offset: Double = 0.0) {
+    var y = first(clip.top - offset, spacing) + offset
     while (y <= clip.bottom && y < bounds.bottom) {
         if (y > bounds.top) r.strokePolyline(listOf(Pt(bounds.left, y), Pt(bounds.right, y)), pen)
         y += spacing

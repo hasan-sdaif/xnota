@@ -50,6 +50,10 @@ class BackgroundShader(contextGen: Int) {
         program.set("uSubAlpha", resolved.subdivisionAlpha.toFloat())
         program.set("uLineWidth", BackgroundPattern.LINE_WIDTH_PX.toFloat())
         program.set("uDotRadius", BackgroundPattern.DOT_RADIUS_PX.toFloat())
+        // The fork's Arabic rulings: the khatt every-fourth-line lattice needs the phase of the
+        // 4 × period (the base phase loses the period count). The naskh alif line's offset is a
+        // fraction of whatever period the shader is handed, so it scales with the subdivision too.
+        program.set("uQuadPhaseY", resolved.quadPhaseYPx.toFloat())
 
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         GLES30.glDepthMask(false)
@@ -65,6 +69,11 @@ class BackgroundShader(contextGen: Int) {
         PagePattern.LINES -> MODE_LINES
         PagePattern.DOTS -> MODE_DOTS
         PagePattern.GRID -> MODE_GRID
+        PagePattern.KHATT -> MODE_KHATT
+        // Ruqaa guides are baselines alone, so the lines shader is it exactly; the wide pitch
+        // comes from the resolve (the spacing is a cell).
+        PagePattern.RUQAA -> MODE_LINES
+        PagePattern.NASKH -> MODE_NASKH
     }
 
     companion object {
@@ -72,6 +81,8 @@ class BackgroundShader(contextGen: Int) {
         const val MODE_LINES = 1
         const val MODE_DOTS = 2
         const val MODE_GRID = 3
+        const val MODE_KHATT = 4
+        const val MODE_NASKH = 5
 
         private val VERTEX_SRC = """#version 300 es
             void main() {
@@ -96,6 +107,8 @@ class BackgroundShader(contextGen: Int) {
             uniform float uSubAlpha;
             uniform float uLineWidth;
             uniform float uDotRadius;
+            // The fork's Arabic rulings: see the matching setters in draw().
+            uniform float uQuadPhaseY;
 
             out vec4 fragColor;
 
@@ -111,7 +124,7 @@ class BackgroundShader(contextGen: Int) {
                 return 1.0 - smoothstep(radius - 0.5, radius + 0.5, distance);
             }
 
-            float patternAt(vec2 p, float period, vec2 phase) {
+            float patternAt(vec2 p, float period, vec2 phase, float heavyScale) {
                 float halfW = uLineWidth * 0.5;
                 if (uMode == 1) {
                     return coverage(axisDistance(p.y, period, phase.y), halfW);
@@ -126,6 +139,23 @@ class BackgroundShader(contextGen: Int) {
                     float cy = coverage(axisDistance(p.y, period, phase.y), halfW);
                     return max(cx, cy);
                 }
+                if (uMode == 4) {
+                    // Khatt: the square grid, with the baseline every fourth line double width.
+                    // The heavy line rides the uPeriod lattice only (heavyScale is 0 on the
+                    // subdivided pass, whose 4 × period is a different lattice), so it stays
+                    // put however far the grid subdivides.
+                    float cx = coverage(axisDistance(p.x, period, phase.x), halfW);
+                    float cy = coverage(axisDistance(p.y, period, phase.y), halfW);
+                    float heavy = coverage(axisDistance(p.y, period * 4.0, uQuadPhaseY), uLineWidth) * heavyScale;
+                    return max(max(cx, cy), heavy);
+                }
+                if (uMode == 5) {
+                    // Naskh: a baseline with a lighter alif-height line above it, the two-line
+                    // measure. The alif sits 0.35 of the period up, scaling with the subdivision.
+                    float base = coverage(axisDistance(p.y, period, phase.y), halfW);
+                    float alif = coverage(axisDistance(p.y + period * 0.35, period, phase.y), halfW) * 0.55;
+                    return max(base, alif);
+                }
                 return 0.0;
             }
 
@@ -135,8 +165,8 @@ class BackgroundShader(contextGen: Int) {
                 // GL counts y up from the bottom; the viewport transform counts it down from the top.
                 vec2 p = vec2(gl_FragCoord.x, uViewport.y - gl_FragCoord.y);
 
-                float base = patternAt(p, uPeriod, uPhase);
-                float sub = patternAt(p, uSubPeriod, uSubPhase) * uSubAlpha;
+                float base = patternAt(p, uPeriod, uPhase, 1.0);
+                float sub = patternAt(p, uSubPeriod, uSubPhase, 0.0) * uSubAlpha;
                 // The subdivision sits under the base level, so a shared line stays one line
                 // rather than compounding into a darker one.
                 float mask = max(base, sub);

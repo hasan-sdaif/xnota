@@ -134,6 +134,9 @@
     <string name="pattern_lines">Lines</string>
     <string name="pattern_dots">Dots</string>
     <string name="pattern_grid">Grid</string>
+    <string name="pattern_khatt">Khatt grid</string>
+    <string name="pattern_ruqaa">Ruqaa rules</string>
+    <string name="pattern_naskh">Naskh measure</string>
     <string name="caption_pattern_colour">Pattern colour</string>
     <string name="caption_template">Template</string>
     <string name="caption_accent_colour">Accent colour</string>

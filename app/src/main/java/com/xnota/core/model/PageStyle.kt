@@ -3,22 +3,34 @@ package com.xnota.core.model
 /**
  * A page background ruling. [NONE] is an **explicit** "off" — distinct from a null
  * [PageStyle.pattern], which means *inherit from the level below*. Serialized by [id].
+ *
+ * The fork's Arabic rulings share one family measure: [PageStyle.spacing] is the **cell** — the
+ * khatt grid square, the naskh two-line measure — and each pattern decides its line structure
+ * inside it (see [PagePatternPainter]): KHATT a full square grid with the baseline every fourth
+ * line emphasized, RUQAA widely-spaced baselines alone (it writes fast, so guides stay horizontal),
+ * NASKH a baseline with the alif-height line above it, the classic نسخ two-line measure.
  */
 enum class PagePattern(val id: String) {
     NONE("none"),
     LINES("lines"),
     DOTS("dots"),
-    GRID("grid");
+    GRID("grid"),
+    KHATT("khatt"),
+    RUQAA("ruqaa"),
+    NASKH("naskh");
 
     companion object {
         fun fromId(id: String?): PagePattern? = entries.firstOrNull { it.id == id }
     }
 }
 
-/** The page template keys that need no embedded file: none, and the three built-in rulings. */
+/** The page template keys that need no embedded file: none, and the six built-in rulings. */
 object PageTemplates {
     const val NONE = "none"
-    val BUILT_IN = setOf(PagePattern.LINES.id, PagePattern.DOTS.id, PagePattern.GRID.id)
+    val BUILT_IN = setOf(
+        PagePattern.LINES.id, PagePattern.DOTS.id, PagePattern.GRID.id,
+        PagePattern.KHATT.id, PagePattern.RUQAA.id, PagePattern.NASKH.id,
+    )
 
     fun isBuiltIn(key: String?) = key != null && key in BUILT_IN
 
@@ -77,6 +89,15 @@ data class PageStyle(
         /** Fixed (non-configurable) ruling thickness / dot radius, in content pixels. */
         const val LINE_THICKNESS = 1.5
         const val DOT_RADIUS = 2.0
+
+        // The fork's Arabic ruling family, in cells of [spacing]: the khatt baseline lands on
+        // every KHATT_BASELINE_EVERY-th grid line and is drawn KHATT_BASELINE_WIDTH times as
+        // thick; a ruqaa line sits every RUQAA_CELLS cells; the naskh alif-height line rides
+        // NASKH_ALIF_FRACTION of a cell above its baseline.
+        const val KHATT_BASELINE_EVERY = 4
+        const val KHATT_BASELINE_WIDTH = 3.0
+        const val RUQAA_CELLS = 2.0
+        const val NASKH_ALIF_FRACTION = 0.35
     }
 }
 

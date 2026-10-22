@@ -1,0 +1,18 @@
+{
+  "xtemplate": 1,
+  "id": "com.xnota.ruqaa",
+  "name": "Ruqaa guides · سطور الرقعة",
+  "description": "Ruqaa practice (رقعة): widely spaced baselines and nothing else — the script is written fast, so the guides stay horizontal with room to breathe. One line every two cells.",
+  "license": "MIT",
+  "tags": ["lines", "arabic", "calligraphy"],
+  "params": {
+    "spacing": { "type": "length", "default": "7mm", "min": "4mm", "max": "12mm",
+                 "label": "Cell size · حجم الخانة", "role": "spacing" }
+  },
+  "strokeWidth": "0.254mm",
+  "items": [
+    { "type": "repeat", "axis": "y", "period": "2 * spacing", "extend": true, "children": [
+      { "type": "hline", "y": 0 }
+    ]}
+  ]
+}

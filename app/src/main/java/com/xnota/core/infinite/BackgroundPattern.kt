@@ -1,5 +1,8 @@
 package com.xnota.core.infinite
 
+import com.xnota.core.model.PagePattern
+import com.xnota.core.model.PageStyle
+
 /**
  * Scale selection and phase for the infinite canvas ruling. The pattern is drawn procedurally in a
  * fragment shader rather than as geometry, so all the shader needs is a period and an offset, both
@@ -46,6 +49,10 @@ object BackgroundPattern {
         val subPhaseXPx: Double,
         val subPhaseYPx: Double,
         val subdivisionAlpha: Double,
+        /** The fork's khatt grid: the phase of the every-fourth-line lattice (4 × the period),
+         *  which the base phase alone cannot recover — `scroll mod period` loses the count of
+         *  periods the canvas has been panned. Device pixels, like every other field. */
+        val quadPhaseYPx: Double = 0.0,
     )
 
     /**
@@ -111,8 +118,10 @@ object BackgroundPattern {
 
     /** [resolve] from a snapshot of the view, which is what the render thread actually holds. */
     fun resolve(background: CanvasBackground, zoom: Double, scrollX: Double, scrollY: Double): Resolved {
-        val spacing = background.clampedSpacing
-        val contentPeriod = spacing * levelMultiplier(spacing, zoom)
+        // The fork's Arabic family keeps the spacing as a cell, so a ruqaa canvas shows one line
+        // every two cells — the same measure the paged painter and the bundled template draw.
+        val cell = background.clampedSpacing * if (background.pattern == PagePattern.RUQAA) PageStyle.RUQAA_CELLS else 1.0
+        val contentPeriod = cell * levelMultiplier(cell, zoom)
         val subContentPeriod = contentPeriod / 2.0
         val periodPx = contentPeriod * zoom
         return Resolved(
@@ -122,7 +131,8 @@ object BackgroundPattern {
             subPeriodPx = periodPx / 2.0,
             subPhaseXPx = phase(scrollX, subContentPeriod) * zoom,
             subPhaseYPx = phase(scrollY, subContentPeriod) * zoom,
-            subdivisionAlpha = subdivisionAlpha(periodPx, targetPeriodPx(spacing)),
+            subdivisionAlpha = subdivisionAlpha(periodPx, targetPeriodPx(cell)),
+            quadPhaseYPx = phase(scrollY, contentPeriod * PageStyle.KHATT_BASELINE_EVERY) * zoom,
         )
     }
 
