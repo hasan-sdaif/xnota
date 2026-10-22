@@ -119,4 +119,15 @@ class NoteExportersTest {
         assertTrue(html.contains("</body>\n</html>"))
         assertEquals("", NoteExporters.markdown("", emptyList()).trimEnd('\n'))
     }
+
+    @Test fun `export dispatches each format to its writer`() {
+        assertEquals(NoteExporters.markdown("T", sample), NoteExporters.export(NoteExporters.Format.MARKDOWN, "T", sample))
+        assertEquals(NoteExporters.plainText("T", sample), NoteExporters.export(NoteExporters.Format.TEXT, "T", sample))
+        assertEquals(NoteExporters.html("T", sample), NoteExporters.export(NoteExporters.Format.HTML, "T", sample))
+    }
+
+    @Test fun `each format names its own extension and mime type`() {
+        assertEquals(listOf("md" to "text/markdown", "txt" to "text/plain", "html" to "text/html"),
+            NoteExporters.Format.entries.map { it.extension to it.mime })
+    }
 }

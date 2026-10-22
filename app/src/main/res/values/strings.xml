@@ -670,6 +670,18 @@
         <item quantity="other">Exported %d PDFs.</item>
     </plurals>
     <string name="err_export_pdf">Could not export to PDF.</string>
+    <!-- The fork: text export (Markdown / plain text / HTML) and the bulk note-files zip -->
+    <string name="export_md">Markdown (.md)</string>
+    <string name="export_txt">Text (.txt)</string>
+    <string name="export_html">Web page (.html)</string>
+    <string name="exported_text">Exported the note\'s text.</string>
+    <string name="err_export_text">Could not export the note\'s text.</string>
+    <string name="export_zip_selected">Export ZIP</string>
+    <string name="err_export_zip">Could not export the ZIP.</string>
+    <plurals name="exported_zip_n">
+        <item quantity="one">Exported %d note in a ZIP.</item>
+        <item quantity="other">Exported %d notes in a ZIP.</item>
+    </plurals>
     <string name="err_save_copy">Could not save a copy.</string>
     <string name="err_save_image">Could not save the image.</string>
     <string name="err_save_images">Could not save the images.</string>

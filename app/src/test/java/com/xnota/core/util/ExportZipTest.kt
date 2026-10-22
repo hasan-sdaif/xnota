@@ -117,4 +117,33 @@ class ExportZipTest {
         assertEquals(listOf(folder("Empty/"), folder("Empty/Also/")), plan)
         assertTrue(plan.none { it.source != null })
     }
+
+    @Test
+    fun `a null ext keeps every file's own name`() {
+        assertEquals(
+            listOf(Entry("Board.xcanvas", "uri:a/Board.xcanvas", "Board.xcanvas"), Entry("Lecture 1.xnote", "uri:b/Lecture 1.xnote", "Lecture 1.xnote")),
+            ExportZip.plan(listOf(doc("b/Lecture 1.xnote"), doc("a/Board.xcanvas")), ext = null),
+        )
+    }
+
+    @Test
+    fun `kept names still dedupe and stay one segment`() {
+        val plan = ExportZip.plan(
+            listOf(
+                doc("x/plan.xnote"),
+                doc("y/plan.xnote"),
+                Node("a/b\\c.xnote", "k3", "s3", isDir = false),
+            ),
+            ext = null,
+        )
+        assertEquals(
+            listOf(
+                Entry("a_b_c.xnote", "s3", "a/b\\c.xnote"),
+                Entry("plan.xnote", "uri:x/plan.xnote", "plan.xnote"),
+                // the "(2)" rides after the whole kept name, as unique() spells it
+                Entry("plan.xnote (2)", "uri:y/plan.xnote", "plan.xnote"),
+            ),
+            plan,
+        )
+    }
 }

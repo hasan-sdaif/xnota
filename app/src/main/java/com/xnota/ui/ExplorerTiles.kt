@@ -106,6 +106,8 @@ internal class EntryActions(
     val share: (BrowseEntry) -> Unit,
     val saveCopy: (BrowseEntry) -> Unit,
     val exportPdf: (BrowseEntry) -> Unit,
+    /** Export the note's text in the asked shape (the fork); notes only. */
+    val exportText: (BrowseEntry, com.xnota.core.text.NoteExporters.Format) -> Unit,
     val preview: (BrowseEntry) -> Unit,
     /** Star or unstar (the fork). */
     val toggleFavorite: (BrowseEntry) -> Unit,
@@ -309,6 +311,7 @@ internal fun EntryMenuFor(b: ExplorerBody, e: BrowseEntry, expanded: Boolean, on
         onShare = if (e.isDir) null else ({ m.share(e) }),
         onSaveCopy = { m.saveCopy(e) },
         onExportPdf = { m.exportPdf(e) },
+        onExportText = if (!e.isDir && com.xnota.core.util.DocumentKind.ofName(e.name) == com.xnota.core.util.DocumentKind.NOTE) ({ format -> m.exportText(e, format) }) else null,
         onColor = { c -> m.color(e, c) },
         pinned = e.isDir && b.host.isPinned(e),
         onTogglePin = if (e.isDir) ({ m.togglePin(e) }) else null,

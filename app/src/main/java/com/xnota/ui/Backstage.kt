@@ -210,6 +210,10 @@ fun Backstage(
     onOpenBeside: (String) -> (() -> Unit)? = { null },
     /** Picked items are to be exported as PDFs, zipped under the given name; the callback runs once a destination is chosen. */
     onExportPdfs: (List<BrowseEntry>, String, () -> Unit) -> Unit = { _, _, _ -> },
+    /** The explorer asked to export a stored note's text in the given shape (the fork). */
+    onExportFileText: (String, com.xnota.core.text.NoteExporters.Format) -> Unit = { _, _ -> },
+    /** The explorer asked to zip the picked note files under the given archive name (the fork). */
+    onExportNotesZip: (List<String>, String) -> Unit = { _, _ -> },
     /** The New note screen asked to import a template file. */
     onImportTemplate: () -> Unit = {},
     /** The New note screen asked to make a cover or page template from a picture. */
@@ -231,6 +235,8 @@ fun Backstage(
         openSplit = onOpenSplit,
         openBeside = onOpenBeside,
         exportPdfs = onExportPdfs,
+        exportFileText = onExportFileText,
+        exportNotesZip = onExportNotesZip,
         importTemplate = onImportTemplate,
         templateFromImage = onTemplateFromImage,
     )
@@ -1024,6 +1030,10 @@ private class ExplorerCalls(
     val openBeside: (String) -> (() -> Unit)?,
     /** Exports picked items as PDFs, zipped under the given name; the callback runs once a destination is chosen. */
     val exportPdfs: (List<BrowseEntry>, String, () -> Unit) -> Unit,
+    /** Exports a stored note's text as Markdown / plain text / HTML (the fork). */
+    val exportFileText: (String, com.xnota.core.text.NoteExporters.Format) -> Unit,
+    /** Zips the picked note files under the given archive name (the fork). */
+    val exportNotesZip: (List<String>, String) -> Unit,
     val importTemplate: () -> Unit,
     val templateFromImage: (com.xnota.core.template.TemplateKind) -> Unit,
 )
@@ -1505,6 +1515,7 @@ private fun ExplorerSection(
                 share = { callsNow.value.shareFile(it.documentUri) },
                 saveCopy = { callsNow.value.saveCopyFile(it.documentUri) },
                 exportPdf = { callsNow.value.exportFilePdf(it.documentUri) },
+                exportText = { e, format -> callsNow.value.exportFileText(e.documentUri, format) },
                 preview = { previewing = it },
                 toggleFavorite = { e -> editor.toggleFavorite(e.documentUri); refreshSoon() },
                 toggleTopPin = { e -> editor.toggleTopPin(e.documentUri); refreshSoon() },
@@ -2041,6 +2052,15 @@ private fun ExplorerSection(
                         selection.clear()
                         if (uris.size == 1) calls.shareFile(uris[0]) else calls.shareFiles(uris)
                     }
+                    // The fork's bulk zip: every picked file into one archive, each under its own
+                    // name as a backup snapshot holds them. Folders can't ride along — the action
+                    // waits for a files-only pick, like Share.
+                    ExplorerIcon(NotaIcons.exportDoc, stringResource(R.string.export_zip_selected), fg, enabled = files.size == selection.size) {
+                        val uris = files.map { it.documentUri }
+                        val name = stack.lastOrNull()?.second ?: rootName ?: context.getString(R.string.folder)
+                        selection.clear()
+                        calls.exportNotesZip(uris, name)
+                    }
                     SelectionDivider()
                     ExplorerIcon(NotaIcons.trash, if (prefs.trashDays == 0) stringResource(R.string.delete) else stringResource(R.string.move_to_trash), palette.danger.toComposeColor()) { remove(selection.toList()) }
                 }
@@ -2525,6 +2545,8 @@ internal fun EntryMenu(
     onShare: (() -> Unit)? = null,
     onSaveCopy: (() -> Unit)? = null,
     onExportPdf: (() -> Unit)? = null,
+    /** The fork: the note's text as Markdown / plain text / HTML (offered for notes only). */
+    onExportText: ((com.xnota.core.text.NoteExporters.Format) -> Unit)? = null,
     onColor: ((Rgba?) -> Unit)? = null,
     pinned: Boolean = false,
     onTogglePin: (() -> Unit)? = null,
@@ -2581,6 +2603,11 @@ internal fun EntryMenu(
                 DropdownMenuItem(text = { Text(stringResource(R.string.share)) }, onClick = { onDismiss(); onShare() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.save_copy_ellipsis)) }, onClick = { onDismiss(); onSaveCopy?.invoke() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.export_pdf)) }, onClick = { onDismiss(); onExportPdf?.invoke() })
+                if (onExportText != null) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.export_md)) }, onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.MARKDOWN) })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.export_txt)) }, onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.TEXT) })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.export_html)) }, onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.HTML) })
+                }
             }
         }
     }

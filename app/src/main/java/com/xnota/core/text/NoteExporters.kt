@@ -21,6 +21,20 @@ data class ExportLine(val style: LineStyle, val text: String, val indent: Int = 
  */
 object NoteExporters {
 
+    /** The shapes a note's text can be exported as, each with the file extension and MIME type it lands in. */
+    enum class Format(val extension: String, val mime: String) {
+        MARKDOWN("md", "text/markdown"),
+        TEXT("txt", "text/plain"),
+        HTML("html", "text/html"),
+    }
+
+    /** [lines] titled [title] in [format]: the one door the UI's export menu goes through. */
+    fun export(format: Format, title: String, lines: List<ExportLine>): String = when (format) {
+        Format.MARKDOWN -> markdown(title, lines)
+        Format.TEXT -> plainText(title, lines)
+        Format.HTML -> html(title, lines)
+    }
+
     /** Which run a line belongs to: blocks separate themselves, runs separate from each other. */
     private fun family(style: LineStyle): Int = when (style) {
         LineStyle.HEADING, LineStyle.PARAGRAPH -> 0

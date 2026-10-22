@@ -719,6 +719,22 @@
         <item quantity="other">تم تصدير %d ملف PDF.</item>
     </plurals>
     <string name="err_export_pdf">تعذّر التصدير إلى PDF.</string>
+    <!-- The fork: text export (Markdown / plain text / HTML) and the bulk note-files zip -->
+    <string name="export_md">ماركداون (.md)</string>
+    <string name="export_txt">نص (.txt)</string>
+    <string name="export_html">صفحة ويب (.html)</string>
+    <string name="exported_text">تم تصدير نص الملاحظة.</string>
+    <string name="err_export_text">تعذّر تصدير نص الملاحظة.</string>
+    <string name="export_zip_selected">تصدير ملف ZIP</string>
+    <string name="err_export_zip">تعذّر تصدير ملف ZIP.</string>
+    <plurals name="exported_zip_n">
+        <item quantity="zero">تم تصدير %d من الملاحظات في ملف ZIP.</item>
+        <item quantity="one">تم تصدير %d ملاحظة في ملف ZIP.</item>
+        <item quantity="two">تم تصدير %d ملاحظتين في ملف ZIP.</item>
+        <item quantity="few">تم تصدير %d ملاحظات في ملف ZIP.</item>
+        <item quantity="many">تم تصدير %d ملاحظة في ملف ZIP.</item>
+        <item quantity="other">تم تصدير %d ملاحظة في ملف ZIP.</item>
+    </plurals>
     <string name="err_save_copy">تعذّر حفظ نسخة.</string>
     <string name="err_save_image">تعذّر حفظ الصورة.</string>
     <string name="err_save_images">تعذّر حفظ الصور.</string>

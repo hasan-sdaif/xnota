@@ -495,6 +495,66 @@ private fun EditorScreen(
     val exportPdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { exportPicked(it) }
     val exportZipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { exportPicked(it) }
 
+    // The fork: a note's text export (Markdown / plain text / HTML) waiting on its SAF destination.
+    // The bytes are built only after the picker returns — the note is read then, not before — and
+    // written on IO; the launcher's mime type is the shape the overflow menu asked for.
+    var pendingExportText by remember { mutableStateOf<PendingTextExport?>(null) }
+    fun exportTextPicked(uri: Uri?) {
+        val pending = pendingExportText; pendingExportText = null
+        if (uri == null || pending == null) return
+        scope.launch {
+            // Runs on the main dispatcher: the open note's live flow is walked on it (an edit can't
+            // land mid-read), and a closed note's read hops to IO inside.
+            val bytes = editor.exportNoteText(pending.uri, pending.format)
+            val ok = bytes != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { resolver.openOutputStream(uri)?.use { it.write(bytes) } != null }.getOrDefault(false)
+            }
+            editor.message = context.getString(if (ok) R.string.exported_text else R.string.err_export_text)
+        }
+    }
+    val exportMarkdownLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")) { exportTextPicked(it) }
+    val exportPlainTextLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { exportTextPicked(it) }
+    val exportHtmlLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")) { exportTextPicked(it) }
+
+    // The fork: the picked note files waiting on the SAF destination of their zip. The archive is
+    // laid out like a backup snapshot — each file under its own name, folders' trees kept — and
+    // streamed entry by entry on IO, so nothing but the zip itself is buffered.
+    var pendingExportZip by remember { mutableStateOf<List<String>?>(null) }
+    fun exportNotesZipPicked(dest: Uri?) {
+        val picked = pendingExportZip; pendingExportZip = null
+        if (dest == null || picked.isNullOrEmpty()) return
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            var touched = false // the destination was written into; a failed export must not leave a truncated zip
+            val written = runCatching {
+                // Keyed by uri: two picks of one file land in the zip once, as anywhere else.
+                val nodes = picked.distinct().map { u ->
+                    val name = displayNameOf(resolver, Uri.parse(u)) ?: "Note"
+                    com.xnota.core.util.ExportZip.Node(name, u, u, isDir = false)
+                }
+                val entries = com.xnota.core.util.ExportZip.plan(nodes, ext = null)
+                resolver.openOutputStream(dest)?.let { raw ->
+                    touched = true
+                    java.util.zip.ZipOutputStream(java.io.BufferedOutputStream(raw)).use { zip ->
+                        var n = 0
+                        for (entry in entries) {
+                            val source = entry.source ?: continue // no folders in a flat pick
+                            zip.putNextEntry(java.util.zip.ZipEntry(entry.path))
+                            resolver.openInputStream(Uri.parse(source))?.use { it.copyTo(zip) }
+                                ?: throw java.io.IOException("unreadable note")
+                            zip.closeEntry()
+                            n++
+                        }
+                        n
+                    }
+                } ?: 0
+            }.getOrDefault(0)
+            if (written == 0 && touched) runCatching { android.provider.DocumentsContract.deleteDocument(resolver, dest) }
+            editor.message = if (written > 0) context.resources.getQuantityString(R.plurals.exported_zip_n, written, written)
+            else context.getString(R.string.err_export_zip)
+        }
+    }
+    val exportNotesZipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { exportNotesZipPicked(it) }
+
     // Save a copy of an explorer file (a note or a canvas) elsewhere.
     val saveCopyLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream"),
@@ -715,6 +775,18 @@ private fun EditorScreen(
 
     /** What the export dialog counts for the stored document at [uriStr]: a note's pages, a canvas's items. */
     fun countingOf(uriStr: String): String = ExportProgress.countingFor(kindOf(uriStr))
+
+    // The fork: the explorer's text-export entries land here — note uri plus shape, a pending pick,
+    // and the launcher whose mime type carries that shape. The default name is the note's title.
+    fun launchTextExport(uri: String, format: com.xnota.core.text.NoteExporters.Format) {
+        pendingExportText = PendingTextExport(uri, format)
+        val name = "${stemOf(uri)}.${format.extension}"
+        when (format) {
+            com.xnota.core.text.NoteExporters.Format.MARKDOWN -> exportMarkdownLauncher.launch(name)
+            com.xnota.core.text.NoteExporters.Format.TEXT -> exportPlainTextLauncher.launch(name)
+            com.xnota.core.text.NoteExporters.Format.HTML -> exportHtmlLauncher.launch(name)
+        }
+    }
 
     // Render a PDF off the main thread into a temp file behind a cancellable progress dialog;
     // only once it finishes does [onReady] run — opening the SAF picker or a share sheet.
@@ -960,6 +1032,11 @@ private fun EditorScreen(
                     if (lone != null) exportPdfLauncher.launch("${com.xnota.core.util.DocumentKind.stripSuffix(lone.name)}.pdf")
                     else exportZipLauncher.launch("$name.zip")
                 },
+                onExportFileText = { uri, format -> launchTextExport(uri, format) },
+                onExportNotesZip = { uris, name ->
+                    pendingExportZip = uris
+                    exportNotesZipLauncher.launch("$name.zip")
+                },
                 onImportTemplate = { importTemplateLauncher.launch(arrayOf("*/*")) },
                 onTemplateFromImage = { kind ->
                     pendingTemplateKind = kind
@@ -1129,6 +1206,9 @@ private class PendingPdfInsert(val editor: Editor, val after: Int)
 
 /** Explorer picks waiting on the file their PDFs go to; [onStarted] runs once one is chosen. */
 private class PendingPdfs(val picked: List<com.xnota.ui.BrowseEntry>, val onStarted: () -> Unit)
+
+/** A note's text export waiting on its SAF destination: the note to read, and the shape to give it (the fork). */
+private class PendingTextExport(val uri: String, val format: com.xnota.core.text.NoteExporters.Format)
 
 /**
  * A running PDF export's progress: [done] of [total], and what those are. [counting] exists because

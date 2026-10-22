@@ -6290,6 +6290,37 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     }
 
     /**
+     * The note at [uri] as exported text in [format] (the fork): its flow's paragraphs walked into
+     * export lines — heading levels, list kinds, check states, indentation and code lines carry,
+     * see [com.xnota.core.text.FlowExport] — and run through the pure exporters. A note that is
+     * open, in whichever pane holds it, reads its live state (unsaved edits travel too); a closed
+     * note is loaded on IO with its heavy assets skipped, since only the flow is read. The bytes of
+     * the export, or null when the note could not be read (the caller reports).
+     */
+    suspend fun exportNoteText(uri: String, format: com.xnota.core.text.NoteExporters.Format): ByteArray? {
+        // A split's second pane owns its own open note; read the live state wherever it is held.
+        openPanes.firstOrNull { it !== this && it.noteOpen && !it.canvasOpen && it.currentUri == uri }
+            ?.let { return it.exportNoteText(uri, format) }
+        val title: String
+        val lines: List<com.xnota.core.text.ExportLine>
+        if (noteOpen && !canvasOpen && currentUri == uri) {
+            // The live flow is walked on the caller's (main) thread, so an edit can't land mid-read.
+            title = state.document.title
+            lines = com.xnota.core.text.FlowExport.lines(state.document.flow.paragraphs)
+        } else {
+            val doc = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    appContext.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { codec.read(it) }
+                }.getOrNull()
+            } ?: return null
+            title = com.xnota.core.util.Paths.stem(queryDisplayName(android.net.Uri.parse(uri)).orEmpty())
+                .ifEmpty { doc.title }
+            lines = com.xnota.core.text.FlowExport.lines(doc.flow.paragraphs)
+        }
+        return com.xnota.core.text.NoteExporters.export(format, title, lines).toByteArray(Charsets.UTF_8)
+    }
+
+    /**
      * Loads the document at [srcUri] and writes it flattened to a PDF in [out] (share-as-PDF /
      * export). Dispatches on the stored file's kind, because a canvas is a different bundle read by a
      * different codec and flattened by a different exporter. The decision lives here rather than at
