@@ -11,6 +11,7 @@ import com.xnota.core.infinite.InfiniteDocument
 import com.xnota.core.infinite.Waypoint
 import com.xnota.core.model.ConnectorEnd
 import com.xnota.core.model.ConnectorItem
+import com.xnota.core.model.FillPattern
 import com.xnota.core.model.ImageData
 import com.xnota.core.model.ImageItem
 import com.xnota.core.model.PagePattern
@@ -332,6 +333,40 @@ class CanvasCodecTest {
         assertTrue(back.dashed)
         assertEquals(7.0, back.dashLength, 1e-9)
         assertEquals(3.0, back.dashGap, 1e-9)
+    }
+
+    @Test fun fillPatternsRoundTrip() {
+        val doc = InfiniteDocument()
+        doc.add(
+            ShapeItem(
+                ShapeKind.RECTANGLE, Pt(0.0, 0.0), Pt(40.0, 30.0), Rgba(1, 2, 3, 255), 4.0,
+                fillRgba = Rgba(9, 9, 9, 128), fillPattern = FillPattern.CROSS_HATCH.id,
+            ),
+        )
+        // A rotated ellipse goes down as a stand-in polygon + geom; its pattern must ride along.
+        doc.add(
+            ShapeItem(
+                ShapeKind.ELLIPSE, Pt(0.0, 0.0), Pt(40.0, 40.0), Rgba(1, 2, 3, 255), 4.0,
+                fillRgba = Rgba(8, 8, 8, 200), fillPattern = FillPattern.DOTS.id, rotation = 0.3,
+            ),
+        )
+        doc.add(ShapeItem(ShapeKind.ELLIPSE, Pt(0.0, 0.0), Pt(40.0, 40.0), Rgba(1, 2, 3, 255), 4.0, fillRgba = Rgba(7, 7, 7, 200)))
+        val back = roundTrip(doc).items.map { it as ShapeItem }
+        assertEquals(FillPattern.CROSS_HATCH.id, back[0].fillPattern)
+        assertEquals(ShapeKind.ELLIPSE, back[1].shape)
+        assertEquals(FillPattern.DOTS.id, back[1].fillPattern)
+        assertEquals(null, back[2].fillPattern)
+        // Optional on the wire, like the heads: only a shape that has one names it.
+        assertEquals(2, Regex("\"fill_pattern\"").findAll(manifestText(doc)).count())
+    }
+
+    @Test fun polygonFillPatternsRoundTripThroughTheStandIn() {
+        val doc = InfiniteDocument()
+        val verts = listOf(Pt(10.0, 10.0), Pt(90.0, 20.0), Pt(50.0, 80.0))
+        doc.add(ShapeItem.poly(ShapeKind.POLYGON, verts, Rgba(3, 3, 3, 255), 2.0, Rgba(5, 5, 5, 90), fillPattern = FillPattern.HATCH.id))
+        val back = roundTrip(doc).items[0] as ShapeItem
+        assertEquals(FillPattern.HATCH.id, back.fillPattern)
+        assertEquals(FillPattern.HATCH, FillPattern.fromId(back.fillPattern))
     }
 
     @Test fun severalImagesKeepTheirOwnBytesAndSlots() {

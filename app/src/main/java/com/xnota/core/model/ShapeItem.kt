@@ -11,6 +11,7 @@ import com.xnota.core.pal.Renderer
 import com.xnota.core.shapes.ConnectionPoint
 import com.xnota.core.shapes.ConnectorPaths
 import com.xnota.core.shapes.EditDot
+import com.xnota.core.shapes.FillPatternRuns
 import com.xnota.core.shapes.FreePath
 import com.xnota.core.shapes.Head
 import com.xnota.core.shapes.PathRole
@@ -21,6 +22,8 @@ import com.xnota.core.shapes.ShapePainter
 import com.xnota.core.shapes.ShapeParams
 import com.xnota.core.shapes.ShapePath
 import com.xnota.core.shapes.VertexEdit
+import com.xnota.core.shapes.clipSegmentToRings
+import com.xnota.core.shapes.pointInRings
 import com.xnota.core.vector.PathFlattener
 import com.xnota.core.vector.VectorContour
 import com.xnota.core.vector.VectorSeg
@@ -69,6 +72,13 @@ class ShapeItem(
     /** What an open shape's two ends carry; an arrow starts with a chevron at its end. */
     var headStart: Head = shape.defaultHeadStart,
     var headEnd: Head = shape.defaultHeadEnd,
+    /**
+     * The fill's pattern id ([FillPattern]): null keeps the flat colour whenever [fillRgba] is
+     * set, "hatch"/"cross_hatch"/"dots" draw that pattern in the fill colour instead of the wash,
+     * "blank" is no fill at all. Optional on the wire — readers before patterns fall back to the
+     * flat colour.
+     */
+    var fillPattern: String? = null,
 ) : CanvasItem, Resizable, Labelled {
 
     override val kind = KIND
@@ -201,8 +211,53 @@ class ShapeItem(
     fun paintBody(r: Renderer) {
         val paths = paths()
         if (neon) return Outline.paintNeon(r, paths, fillRgba?.let(InkRendering::adapt), pen(), neonStrength, paintBounds())
-        ShapePainter.fill(r, paths, fillRgba?.let(InkRendering::adapt), InkRendering.adapt(strokeRgba))
+        // A drawn pattern takes the fill's place: the fill colour becomes the pattern's own ink
+        // rather than a wash under it, which is what the popup's Colour/Hatch/Cross/Dots chips mean.
+        val pattern = fillPatternRuns()
+        if (pattern == null) ShapePainter.fill(r, paths, fillRgba?.let(InkRendering::adapt), InkRendering.adapt(strokeRgba))
+        else pattern.paint(r)
         ShapePainter.stroke(r, paths, pen())
+    }
+
+    /**
+     * The shape's fill-pattern geometry in page space, or null when the fill is flat or absent:
+     * [FillPattern]'s rect math over the fill's own bounds, each run clipped to the outline's
+     * flattened rings (even-odd, so a ring's hole stays empty) in the unturned frame and then
+     * mapped through [toPage], so the lattice turns with the shape. The CPU painter
+     * ([paintBody]) and the GL tessellator both draw from this one object.
+     */
+    fun fillPatternRuns(): FillPatternRuns? {
+        val fill = fillRgba ?: return null
+        val pattern = FillPattern.fromId(fillPattern)
+        if (!pattern.drawsArea) return null
+        val rings = ArrayList<List<Pt>>(2)
+        var bounds: Rect? = null
+        for (p in localPaths()) {
+            if (p.role != PathRole.OUTLINE && p.role != PathRole.FILL_ONLY) continue
+            for (c in p.contours) {
+                val pts = PathFlattener.flatten(c, PATTERN_FLATTEN)
+                if (pts.size >= 3) {
+                    rings += pts
+                    val b = Rect.bounding(pts)
+                    bounds = bounds?.union(b) ?: b
+                }
+            }
+        }
+        val box = bounds ?: return null
+        val spacing = FillPatternRuns.spacing(strokeWidth)
+        val lines = pattern.hatchLines(box, spacing)
+            .flatMap { (a, b) -> clipSegmentToRings(a, b, rings) }
+            .map { (a, b) -> toPage(a) to toPage(b) }
+        val dots = pattern.dotGrid(box, spacing)
+            .filter { pointInRings(it, rings) }
+            .map(::toPage)
+        return FillPatternRuns(
+            lines,
+            dots,
+            dotRadius = (strokeWidth * FillPatternRuns.DOT_FRACTION).coerceAtLeast(FillPatternRuns.MIN_DOT),
+            lineWidth = (strokeWidth * FillPatternRuns.LINE_FRACTION).coerceAtLeast(FillPatternRuns.MIN_LINE),
+            color = InkRendering.adapt(fill),
+        )
     }
 
     /** The label set in [labelRect] and turned with the shape, as text a PDF reader can select. */
@@ -766,6 +821,9 @@ class ShapeItem(
 
         private const val LEGACY_FLATTEN = 0.25
 
+        /** How far a curve may stray when a fill pattern flattens the outline it clips to. */
+        private const val PATTERN_FLATTEN = 0.25
+
         /** [a] folded into (-PI, PI]. */
         private fun normalizeTurn(a: Double): Double {
             var r = a % (2.0 * PI)
@@ -786,12 +844,14 @@ class ShapeItem(
             dashed: Boolean = false,
             dashLength: Double = 10.0,
             dashGap: Double = 8.0,
+            fillPattern: String? = null,
         ): ShapeItem {
             val box = Rect.bounding(vertices)
             val outline = FreePath.normalize(listOf(FreePath.lines(vertices, shape.isClosed)), box)
             return ShapeItem(
                 shape, box.topLeft, Pt(box.right, box.bottom), strokeRgba, strokeWidth,
                 fillRgba, neon, neonStrength, outline, dashed, dashLength, dashGap,
+                fillPattern = fillPattern,
             )
         }
 

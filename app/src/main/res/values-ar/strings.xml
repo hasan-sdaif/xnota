@@ -329,6 +329,17 @@
     <string name="caption_perfect">مثالي</string>
     <string name="caption_opacity">العتامة</string>
     <string name="caption_dashed">متقطّع</string>
+    <!-- أنماط التقطيع الخمسة (DashPatterns) وشرائح التعبئة الخمسة -->
+    <string name="dash_solid">مصمت</string>
+    <string name="dash_dashed">متقطّع</string>
+    <string name="dash_dotted">منقّط</string>
+    <string name="dash_dash_dot">قطعة-نقطة</string>
+    <string name="dash_long">طويل</string>
+    <string name="fill_none">بلا</string>
+    <string name="fill_flat">لون</string>
+    <string name="fill_hatch">تهشير</string>
+    <string name="fill_cross_hatch">تهشير متقاطع</string>
+    <string name="fill_dots">نقاط</string>
     <string name="default_suffix">"  (افتراضي)"</string>
     <string name="caption_opacity_percent">"العتامة  %1$d%%"</string>
     <string name="caption_value_percent">"%1$s  %2$d%%"</string>

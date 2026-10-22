@@ -31,6 +31,12 @@ data class ShapeConfig(
     val dashed: Boolean = false,
     val dashLength: Double = 10.0,
     val dashGap: Double = 8.0,
+    /**
+     * The fill's pattern id ([com.xnota.core.model.FillPattern]): null = the flat colour, and
+     * only meaningful while [fill] is on for a closed shape — [startShape]/[placedShape] null it
+     * everywhere else, exactly as [fillFor] does the colour.
+     */
+    val fillPattern: String? = null,
     /** Every shape dragged out takes its kind's perfect proportions; lines and arrows keep to 15 degree steps. */
     val perfect: Boolean = false,
     /** A counted chip's point or side count; 0 takes the chip's own. */
@@ -78,6 +84,7 @@ data class ShapeConfig(
         return ShapeItem(
             kind, at, at, outline, width, fillFor(kind, outline), neon, neonStrength,
             dashed = dashed, dashLength = dashLength, dashGap = dashGap,
+            fillPattern = fillPattern.takeIf { fill && kind.isClosed },
             adj = chip.adj.copyOf(), n = count,
             headStart = if (kind.isOpen) headStart else Head.NONE,
             headEnd = if (kind.isOpen) headEnd else Head.NONE,
@@ -99,7 +106,8 @@ data class ShapeConfig(
     /** A polygon (closed) or polyline (open) through page-space [points], in this style. */
     fun placedShape(points: List<Pt>, closed: Boolean, outline: Rgba, width: Double): ShapeItem {
         val kind = if (closed) ShapeKind.POLYGON else ShapeKind.POLYLINE
-        return ShapeItem.poly(kind, points, outline, width, fillFor(kind, outline), neon, neonStrength, dashed, dashLength, dashGap)
+        val fill = fillFor(kind, outline)
+        return ShapeItem.poly(kind, points, outline, width, fill, neon, neonStrength, dashed, dashLength, dashGap, fillPattern.takeIf { fill != null })
             .also {
                 if (!closed) {
                     it.headStart = headStart

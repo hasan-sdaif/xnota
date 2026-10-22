@@ -33,6 +33,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xnota.R
+import com.xnota.core.model.DashPattern
+import com.xnota.core.model.FillPattern
 import com.xnota.core.model.Rgba
 import com.xnota.core.shapes.ConnectorPage
 import com.xnota.core.shapes.ConnectorPreset
@@ -77,7 +79,7 @@ fun ShapeConfigPopup(editor: ToolPopupHost, onDismiss: () -> Unit) {
                 emit(config.copy(strokeWidth = it.toDouble()))
             }
             if (!connecting && chip.kind.isClosed) {
-                ToggleRow(stringResource(R.string.caption_fill), config.fill) { emit(config.copy(fill = it)) }
+                FillPatternRow(config) { emit(it) }
                 if (config.fill) {
                     FillColourRow(config.fillColor, ink, editor) { emit(config.copy(fillColor = it)) }
                     val minPct = (ShapeConfig.FILL_ALPHA_MIN * 100).toFloat()
@@ -89,11 +91,7 @@ fun ShapeConfigPopup(editor: ToolPopupHost, onDismiss: () -> Unit) {
                 HeadRow(stringResource(R.string.caption_head_start), config.headStart, atStart = true) { emit(config.copy(headStart = it)) }
                 HeadRow(stringResource(R.string.caption_head_end), config.headEnd, atStart = false) { emit(config.copy(headEnd = it)) }
             }
-            ToggleRow(stringResource(R.string.caption_dashed), config.dashed) { emit(config.copy(dashed = it)) }
-            if (config.dashed) {
-                SliderRow(stringResource(R.string.caption_dash), config.dashLength.toFloat(), 2f..40f) { emit(config.copy(dashLength = it.toDouble())) }
-                SliderRow(stringResource(R.string.caption_gap), config.dashGap.toFloat(), 2f..40f) { emit(config.copy(dashGap = it.toDouble())) }
-            }
+            DashRow(config) { emit(it) }
             ToggleRow(stringResource(R.string.caption_neon), config.neon) { emit(config.copy(neon = it)) }
             if (config.neon) {
                 val intensity = ToolConversions.neonStrengthToIntensity(config.neonStrength).toFloat()
@@ -239,6 +237,85 @@ private fun HeadRow(caption: String, chosen: Head, atStart: Boolean, onPick: (He
     Text(caption, color = LocalPalette.current.text.toComposeColor(), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
     Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
         for (h in Head.entries) KindChip(ShapeIcons.head(h, atStart), stringResource(headLabel(h)), selected = h == chosen) { onPick(h) }
+    }
+}
+
+/**
+ * The outline's dash style as the five named patterns ([DashPattern] is the source of truth for
+ * the run lengths): a chip pick maps the pattern onto the config's single dash/gap pair through
+ * the pattern's *dominant* run — the honest limit of a (on, off) pair, as DashPatterns' own doc
+ * says — so a dash-dot keeps its dash's rhythm and its dot falls to the gap. A config whose pair
+ * matches no pattern at the current width keeps its values with no chip armed.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DashRow(config: ShapeConfig, onPick: (ShapeConfig) -> Unit) {
+    val current = dashPatternOf(config)
+    Text(stringResource(R.string.caption_dashed), color = LocalPalette.current.text.toComposeColor(), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    FlowRow(
+        Modifier.padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        for (p in DashPattern.entries) {
+            ModeChip(stringResource(dashPatternLabel(p)), selected = current == p) { onPick(withDashPattern(p, config)) }
+        }
+    }
+}
+
+/** The pattern [p] baked into [config]'s pair at the width the config draws. */
+private fun withDashPattern(p: DashPattern, config: ShapeConfig): ShapeConfig {
+    if (p == DashPattern.SOLID) return config.copy(dashed = false)
+    val runs = p.runs(config.strokeWidth)
+    return config.copy(dashed = true, dashLength = runs[0], dashGap = runs[1])
+}
+
+/** The pattern [config]'s pair reads as at its own width, or null for a hand-set pair. */
+private fun dashPatternOf(config: ShapeConfig): DashPattern? {
+    if (!config.dashed) return DashPattern.SOLID
+    val w = config.strokeWidth
+    fun near(a: Double, b: Double) = kotlin.math.abs(a - b) <= 0.15 * b + 0.5
+    return DashPattern.entries.firstOrNull { p ->
+        val runs = p.runs(w)
+        runs.size >= 2 && near(config.dashLength, runs[0]) && near(config.dashGap, runs[1])
+    }
+}
+
+@StringRes
+private fun dashPatternLabel(p: DashPattern): Int = when (p) {
+    DashPattern.SOLID -> R.string.dash_solid
+    DashPattern.DASH -> R.string.dash_dashed
+    DashPattern.DOT -> R.string.dash_dotted
+    DashPattern.DASH_DOT -> R.string.dash_dash_dot
+    DashPattern.LONG -> R.string.dash_long
+}
+
+/**
+ * The fill as the five chips: None (no fill at all), a flat colour, or one of the drawn patterns
+ * in the fill colour. A pattern replaces the wash rather than sitting under it — the pattern's
+ * ink is the fill colour — which is what [FillPatternRuns] paints.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FillPatternRow(config: ShapeConfig, onPick: (ShapeConfig) -> Unit) {
+    fun pick(fill: Boolean, pattern: String?) = onPick(config.copy(fill = fill, fillPattern = pattern))
+    Text(stringResource(R.string.caption_fill), color = LocalPalette.current.text.toComposeColor(), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    FlowRow(
+        Modifier.padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        ModeChip(stringResource(R.string.fill_none), selected = !config.fill) { pick(false, null) }
+        ModeChip(stringResource(R.string.fill_flat), selected = config.fill && config.fillPattern == null) { pick(true, null) }
+        ModeChip(stringResource(R.string.fill_hatch), selected = config.fillPattern == FillPattern.HATCH.id) {
+            pick(true, FillPattern.HATCH.id)
+        }
+        ModeChip(stringResource(R.string.fill_cross_hatch), selected = config.fillPattern == FillPattern.CROSS_HATCH.id) {
+            pick(true, FillPattern.CROSS_HATCH.id)
+        }
+        ModeChip(stringResource(R.string.fill_dots), selected = config.fillPattern == FillPattern.DOTS.id) {
+            pick(true, FillPattern.DOTS.id)
+        }
     }
 }
 

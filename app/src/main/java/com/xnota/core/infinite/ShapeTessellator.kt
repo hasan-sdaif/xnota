@@ -30,8 +30,19 @@ import kotlin.math.atan2
  */
 object ShapeTessellator {
 
-    fun tessellate(shape: ShapeItem, tolerance: Double = StrokeTessellator.DEFAULT_TOLERANCE): List<MeshPart> =
-        tessellate(shape.paths(), shape.fillRgba, shape.pen(), tolerance)
+    fun tessellate(shape: ShapeItem, tolerance: Double = StrokeTessellator.DEFAULT_TOLERANCE): List<MeshPart> {
+        // A drawn fill pattern takes the flat wash's place, exactly as the CPU painter's paintBody.
+        val pattern = shape.fillPatternRuns()
+        val base = tessellate(shape.paths(), if (pattern == null) shape.fillRgba else null, shape.pen(), tolerance)
+        if (pattern == null) return base
+        val b = MeshBuilder()
+        for ((a, e) in pattern.lines) {
+            b.polylineRibbon(listOf(a, e), pattern.lineWidth / 2.0, closed = false, tolerance, StrokeTessellator.JOIN_DISC_ANGLE)
+        }
+        for (d in pattern.dots) b.circle(d.x, d.y, pattern.dotRadius, tolerance)
+        if (b.isEmpty) return base
+        return base + MeshPart(b.build(), pattern.color, InkPass.OPAQUE)
+    }
 
     /** A connector's line and heads, drawn like an open shape's. */
     fun tessellate(connector: ConnectorItem, tolerance: Double = StrokeTessellator.DEFAULT_TOLERANCE): List<MeshPart> =

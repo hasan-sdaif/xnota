@@ -529,6 +529,7 @@ data class Settings(
             .apply { c.fillColor?.let { put("fill_color", rgbaArr(it)) } }
             .put("neon", c.neon).put("neon_strength", c.neonStrength)
             .put("dashed", c.dashed).put("dash_length", c.dashLength).put("dash_gap", c.dashGap)
+            .apply { c.fillPattern?.let { put("fill_pattern", it) } }
             .put("n", c.n).put("head_start", c.headStart.id).put("head_end", c.headEnd.id)
             .put("perfect", c.perfect)
             .put("shape_page", c.shapePage)
@@ -551,6 +552,7 @@ data class Settings(
                 dashed = o.optBoolean("dashed", false),
                 dashLength = o.optDouble("dash_length", 10.0),
                 dashGap = o.optDouble("dash_gap", 8.0),
+                fillPattern = o.optString("fill_pattern").takeIf { it.isNotEmpty() },
                 n = o.optInt("n", 0),
                 perfect = o.optBoolean("perfect", false),
                 headStart = com.xnota.core.shapes.Head.fromId(o.optString("head_start", chip.headStart.id)),

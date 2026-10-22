@@ -286,6 +286,8 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         j.name("stroke_width").value(s.strokeWidth)
         j.name("fill_rgba")
         s.fillRgba?.let { writeRgba(j, it) } ?: j.nullValue()
+        // Optional, like the heads: absent keeps the flat colour a reader always knew.
+        s.fillPattern?.let { j.name("fill_pattern").value(it) }
         // Polygon/polyline carry their vertices (absolute content px); other kinds omit them.
         (standIn ?: s.vertices()?.takeUnless { glyphs })?.let { verts ->
             j.name("points").beginArray()
@@ -667,6 +669,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         var strokeRgba: Rgba? = null
         var strokeWidth = 3.0
         var fillRgba: Rgba? = null
+        var fillPattern: String? = null
         var points: List<Pt>? = null
         var neon = false
         var neonStrength = 0.6
@@ -734,6 +737,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
                 "stroke_rgba" -> s.strokeRgba = rgbaOrNull(p)
                 "stroke_width" -> s.strokeWidth = doubleOr(p, 3.0)
                 "fill_rgba" -> s.fillRgba = rgbaOrNull(p)
+                "fill_pattern" -> s.fillPattern = stringOrNull(p)
                 "points" -> s.points = pointsOrNull(p)
                 "neon" -> s.neon = boolOr(p, false)
                 "neon_strength" -> s.neonStrength = doubleOr(p, 0.6)
@@ -953,7 +957,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
         s.points?.let { verts ->
             return ShapeItem.poly(
                 kind, verts, strokeRgba, s.strokeWidth, s.fillRgba, s.neon, s.neonStrength,
-                s.dashed, s.dashLength, s.dashGap,
+                s.dashed, s.dashLength, s.dashGap, s.fillPattern,
             )
         }
         return ShapeItem(
@@ -968,6 +972,7 @@ class CanvasCodec(private val imageCodec: ImageCodec, private val textMeasurer: 
             dashed = s.dashed,
             dashLength = s.dashLength,
             dashGap = s.dashGap,
+            fillPattern = s.fillPattern,
         )
     }
 
