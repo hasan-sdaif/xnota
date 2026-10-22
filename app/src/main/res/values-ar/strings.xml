@@ -1349,6 +1349,7 @@
     <string name="reader_autoscroll">تمرير تلقائي</string>
     <string name="reader_autoscroll_hint">المس الشاشة في أي مكان للإيقاف</string>
     <string name="reader_paper">الورق</string>
+    <string name="reader_brightness">سطوع القراءة</string>
     <string name="pref_reading">القراءة</string>
     <string name="pref_reader_font_scale">حجم نص القراءة</string>
     <string name="pref_reader_line_height">تباعد أسطر القراءة</string>

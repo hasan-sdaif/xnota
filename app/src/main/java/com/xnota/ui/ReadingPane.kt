@@ -23,6 +23,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -90,6 +91,7 @@ fun ReadingPane(editor: Editor) {
     var autoscroll by remember { mutableStateOf(false) }
     var paperOpen by remember { mutableStateOf(false) }
     var lineOpen by remember { mutableStateOf(false) }
+    var brightOpen by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val autoscrollPx = with(density) { AUTOSCROLL_DP_PER_S.toPx() } / 60f
 
@@ -155,6 +157,15 @@ fun ReadingPane(editor: Editor) {
                     }
                 }
             }
+            Tooltip(stringResource(R.string.reader_brightness)) {
+                TextButton(onClick = { brightOpen = !brightOpen }) {
+                    Text(
+                        "%" + if (prefs.readerBrightness < 1.0) "${(prefs.readerBrightness * 100).roundToInt()}" else "",
+                        color = if (brightOpen || prefs.readerBrightness < 1.0) ink else ink.copy(alpha = 0.45f),
+                        fontSize = 13.sp,
+                    )
+                }
+            }
             Tooltip(stringResource(R.string.reader_sepia)) {
                 Icon(
                     NotaIcons.palette, stringResource(R.string.reader_sepia),
@@ -205,6 +216,30 @@ fun ReadingPane(editor: Editor) {
                 )
             }
         }
+        if (brightOpen) {
+            // The brightness row: the slider the % chip reveals, settled straight into the pref.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.reader_brightness),
+                    color = ink.copy(alpha = 0.75f), fontSize = 12.sp,
+                )
+                Slider(
+                    value = prefs.readerBrightness.toFloat(),
+                    onValueChange = {
+                        editor.setReaderPref { p -> p.copy(readerBrightness = it.toDouble()) }
+                    },
+                    valueRange = Preferences.READER_BRIGHTNESS_MIN.toFloat()..1f,
+                    modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+                )
+                Text(
+                    "${(prefs.readerBrightness * 100).roundToInt()}%",
+                    color = ink, fontSize = 12.sp,
+                )
+            }
+        }
         if (autoscroll) {
             Text(
                 stringResource(R.string.reader_autoscroll_hint),
@@ -213,24 +248,32 @@ fun ReadingPane(editor: Editor) {
             )
         }
         // The text: comfortable typography on the chosen paper, a measure a long line enjoys.
-        Column(
-            Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) { detectTapGestures { if (autoscroll) autoscroll = false } }
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp, vertical = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            val fontSize = (17.0 * prefs.readerFontScale).sp
-            Text(
-                remember(editor.contentVersion) { editor.readingText() },
-                style = TextStyle(
-                    fontSize = fontSize,
-                    lineHeight = (fontSize.value * prefs.readerLineHeight).sp,
-                    color = ink,
-                ),
-                modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
-            )
+        Box(Modifier.fillMaxSize()) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) { detectTapGestures { if (autoscroll) autoscroll = false } }
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                val fontSize = (17.0 * prefs.readerFontScale).sp
+                Text(
+                    remember(editor.contentVersion) { editor.readingText() },
+                    style = TextStyle(
+                        fontSize = fontSize,
+                        lineHeight = (fontSize.value * prefs.readerLineHeight).sp,
+                        color = ink,
+                    ),
+                    modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
+                )
+            }
+            // The dim: brightness under 100% lays a black veil of alpha (1 − b) over the reading
+            // surface alone — the exit bar keeps its full contrast, and taps/scroll pass through.
+            val dim = 1.0 - prefs.readerBrightness
+            if (dim > 0.001) {
+                Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = dim.toFloat())))
+            }
         }
     }
 }

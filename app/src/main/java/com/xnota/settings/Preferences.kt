@@ -198,6 +198,9 @@ data class Preferences(
     val readerSepia: Boolean = false,
     /** Reading mode's paper colour (a warm white by default). */
     val readerPaperColor: Rgba = DEFAULT_READER_PAPER,
+    /** Reading mode's brightness: 1.0 (default) is the paper untouched, down to
+     *  [READER_BRIGHTNESS_MIN] where a black veil dims the reading surface for dark rooms. */
+    val readerBrightness: Double = 1.0,
     /** The focus timer's work phase, in minutes. */
     val focusMinutes: Int = 25,
     /** The focus timer's break phase, in minutes. */
@@ -330,6 +333,7 @@ data class Preferences(
         .put("reader_line_height", readerLineHeight)
         .put("reader_sepia", readerSepia)
         .put("reader_paper_color", Rgba.toHex(readerPaperColor))
+        .put("reader_brightness", readerBrightness)
         .put("focus_minutes", focusMinutes)
         .put("focus_break", focusBreak)
         .put("daily_word_goal", dailyWordGoal)
@@ -348,6 +352,9 @@ data class Preferences(
 
         /** Reading mode's default paper: a warm white, kind to the eyes for long reads. */
         val DEFAULT_READER_PAPER = Rgba(255, 248, 240, 255)
+
+        /** The floor of reading brightness: the dimmest the reader's slider goes. */
+        const val READER_BRIGHTNESS_MIN = 0.3
 
         /** Preferences payload version. v2 is the fork's gesture-and-pen defaults: a file written
          *  before the fork (or by upstream) carries no `pref_schema`, and its untouched "none"
@@ -496,6 +503,8 @@ data class Preferences(
                 readerLineHeight = o.optDouble("reader_line_height", 1.7).coerceIn(1.2, 2.4),
                 readerSepia = o.optBoolean("reader_sepia", false),
                 readerPaperColor = Rgba.fromHex(o.optString("reader_paper_color")) ?: DEFAULT_READER_PAPER,
+                readerBrightness = o.optDouble("reader_brightness", 1.0)
+                    .coerceIn(READER_BRIGHTNESS_MIN, 1.0),
                 focusMinutes = o.optInt("focus_minutes", 25).coerceIn(1, 180),
                 focusBreak = o.optInt("focus_break", 5).coerceIn(1, 60),
                 dailyWordGoal = o.optInt("daily_word_goal", 0).coerceIn(0, 100000),

@@ -583,4 +583,14 @@ class SettingsTest {
         assertEquals(listOf("z"), back.pinnedUris)
         assertEquals(listOf(SmartFolder("n", "q", null)), back.smartFolders)
     }
+
+    @Test fun readerBrightnessRoundTripsAndClamps() {
+        val prefs = Preferences(readerBrightness = 0.55)
+        val back = Settings.fromJson(Settings(prefs = prefs).toJson()).prefs
+        assertEquals(0.55, back.readerBrightness, 1e-9)
+        // A wild stored value is pulled back into the slider's range, never above untouched paper.
+        val wild = JSONObject().put("prefs", JSONObject().put("reader_brightness", 0.05))
+        assertEquals(Preferences.READER_BRIGHTNESS_MIN, Settings.fromJson(wild).prefs.readerBrightness, 1e-9)
+        assertEquals(1.0, Settings.fromJson(JSONObject()).prefs.readerBrightness, 1e-9)
+    }
 }

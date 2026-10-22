@@ -1232,6 +1232,7 @@
     <string name="reader_autoscroll">Auto-scroll</string>
     <string name="reader_autoscroll_hint">Tap anywhere to stop scrolling</string>
     <string name="reader_paper">Paper</string>
+    <string name="reader_brightness">Reading brightness</string>
     <string name="pref_reading">Reading</string>
     <string name="pref_reader_font_scale">Reading text size</string>
     <string name="pref_reader_line_height">Reading line height</string>
