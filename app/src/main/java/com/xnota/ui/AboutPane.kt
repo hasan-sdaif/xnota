@@ -108,23 +108,29 @@ fun AboutPane() {
                 Image(appIcon, "XNota", modifier = Modifier.size(72.dp))
                 Spacer(Modifier.height(16.dp))
             }
-            Text("XNota", color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Text("XNota", color = palette.text.toComposeColor(), fontWeight = FontWeight.W800, fontSize = 22.sp)
             Spacer(Modifier.height(5.dp))
             Text(
                 stringResource(R.string.app_tagline),
-                color = palette.textDim.toComposeColor(), fontSize = 13.sp, textAlign = TextAlign.Center,
+                color = palette.textDim.toComposeColor(), fontSize = 12.sp, textAlign = TextAlign.Center,
             )
             if (version.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                // Tap to copy, so a version string is easy to paste into a report.
+                // Tap to copy, so a version string is easy to paste into a report — worn as the
+                // reference design's version pill: a wash of the accent, ringed by its own border.
                 Tooltip(stringResource(R.string.copy_version)) {
                     Row(
-                        Modifier.clickable { copyVersion(ctx, version) }.padding(horizontal = 8.dp, vertical = 4.dp),
+                        Modifier
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(palette.accentAlpha(30).toComposeColor())
+                            .border(1.dp, palette.accentAlpha(56).toComposeColor(), MaterialTheme.shapes.medium)
+                            .clickable { copyVersion(ctx, version) }
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(R.string.version_n, version), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
+                        Text(stringResource(R.string.version_n, version), color = palette.accent.toComposeColor(), fontSize = 11.sp, fontWeight = FontWeight.W600)
                         Spacer(Modifier.width(6.dp))
-                        Icon(NotaIcons.copy, stringResource(R.string.copy_version), tint = palette.textDim.toComposeColor(), modifier = Modifier.size(12.dp))
+                        Icon(NotaIcons.copy, stringResource(R.string.copy_version), tint = palette.accent.toComposeColor(), modifier = Modifier.size(12.dp))
                     }
                 }
             }
@@ -245,21 +251,34 @@ private fun WhatsNewDialog(onClose: () -> Unit) {
         onDismissRequest = onClose,
         title = { Text(stringResource(R.string.whats_new)) },
         text = {
-            Column(Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 for (release in com.xnota.core.util.ForkChangelog.releases) {
-                    Text(
-                        stringResource(R.string.changelog_version, release.version),
-                        color = palette.accent.toComposeColor(), fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
-                    )
-                    for (entry in release.entries) {
-                        val res = CHANGELOG_TEXT[entry.id]
-                        if (res != null) {
-                            Text(
-                                "•  " + ctx.getString(res),
-                                color = palette.text.toComposeColor(), fontSize = 12.sp, lineHeight = 17.sp,
-                                modifier = Modifier.padding(vertical = 1.dp),
-                            )
+                    // One card per release, the reference design's card recipe: rounded, panel-
+                    // backed, hairline-bordered — the version at 13sp W700 over 11.5sp dim entries.
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.large)
+                            .background(palette.menuBg.toComposeColor())
+                            .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.large)
+                            .padding(14.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.changelog_version, release.version),
+                            color = palette.accent.toComposeColor(), fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        )
+                        for (entry in release.entries) {
+                            val res = CHANGELOG_TEXT[entry.id]
+                            if (res != null) {
+                                Text(
+                                    "•  " + ctx.getString(res),
+                                    color = palette.textDim.toComposeColor(), fontSize = 11.5.sp, lineHeight = 17.sp,
+                                    modifier = Modifier.padding(vertical = 1.dp),
+                                )
+                            }
                         }
                     }
                 }

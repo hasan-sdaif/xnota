@@ -74,7 +74,15 @@ internal fun FilePreview(b: ExplorerBody, e: BrowseEntry, where: String?, action
     val kind = b.kind(e)
     val pages = b.pages(e)
     val landscape = kind == EntryKind.CANVAS
-    Column(modifier.verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+    Column(
+        modifier
+            .verticalScroll(rememberScrollState())
+            .clip(MaterialTheme.shapes.large)
+            .background(palette.menuBg.toComposeColor())
+            .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.large)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
+    ) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val stacked = maxWidth < 440.dp
             // The first page in its own shape, within an upright or landscape frame to match.
@@ -201,20 +209,17 @@ private fun PreviewButton(icon: ImageVector, label: String, filled: Boolean, ena
     }
 }
 
-/** [FilePreview] in a dialog, for "Tapping a file shows a preview". */
+/** [FilePreview] in a dialog, for "Tapping a file shows a preview" — the preview brings its own
+ *  card surface, so the dialog window only frames it and floats the close button over it. */
 @Composable
 internal fun FilePreviewDialog(b: ExplorerBody, e: BrowseEntry, where: String?, actions: PreviewActions, onDismiss: () -> Unit) {
     val palette = LocalPalette.current
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        val shape = MaterialTheme.shapes.large
         Box(
             Modifier
                 .padding(24.dp)
                 .widthIn(max = 720.dp)
-                .heightIn(max = 760.dp)
-                .clip(shape)
-                .background(palette.menuBg.toComposeColor())
-                .border(1.dp, palette.border.toComposeColor(), shape),
+                .heightIn(max = 760.dp),
         ) {
             FilePreview(b, e, where, actions)
             Box(Modifier.align(Alignment.TopEnd).padding(8.dp)) {

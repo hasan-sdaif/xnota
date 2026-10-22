@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,7 +37,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,7 +53,8 @@ import com.xnota.ui.theme.toComposeColor
 private data class ColourPreset(@param:StringRes val name: Int, val accent: Rgba, val surface: Rgba? = null)
 private fun rgb(value: Int) = Rgba.fromArgb(value or (0xff shl 24))
 
-private val singleColourSize = 32.dp
+/** The single-tone swatch circles' size — the reference design's 26dp palette-chip. */
+private val singleColourSize = 26.dp
 private val singleColourSpacing = 4.dp
 
 private val singleTonePresets = listOf(
@@ -159,16 +160,16 @@ internal fun MaterialColourPicker(prefs: Preferences, update: (Preferences) -> U
 private fun SingleColourChoice(preset: ColourPreset, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val palette = LocalPalette.current
     val name = stringResource(preset.name)
-    val shape = MaterialTheme.shapes.small
+    // The reference design's palette-chip: a 26dp circle ringed by 2dp of the surface it sits
+    // on, and by the accent itself once picked (no single preset shares the accent's own hue,
+    // so the picked ring always reads).
     Box(
-        Modifier.size(singleColourSize).alpha(if (enabled) 1f else 0.4f).clip(shape)
-            .border(2.dp, if (selected) palette.accent.toComposeColor() else Color.Transparent, shape)
+        Modifier.size(singleColourSize).alpha(if (enabled) 1f else 0.4f).clip(CircleShape)
+            .background(preset.accent.toComposeColor())
+            .border(2.dp, if (selected) palette.accent.toComposeColor() else palette.menuBg.toComposeColor(), CircleShape)
             .semantics { contentDescription = name }
-            .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
-            .padding(4.dp),
-    ) {
-        Box(Modifier.size(24.dp).clip(MaterialTheme.shapes.extraSmall).background(preset.accent.toComposeColor()))
-    }
+            .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
+    )
 }
 
 @Composable

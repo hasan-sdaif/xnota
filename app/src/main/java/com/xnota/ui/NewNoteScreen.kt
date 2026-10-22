@@ -363,6 +363,29 @@ internal fun NewNoteScreen(
             }
         }
 
+        // The reference design's theme-option recipe for the screen's format/template choices: a
+        // quiet surface-backed hairline chip until picked, then a wash of the accent ringed by
+        // the accent's own border and labelled in it.
+        @Composable
+        fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+            Box(
+                Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(if (selected) palette.accentAlpha(26).toComposeColor() else palette.surface.toComposeColor())
+                    .border(1.dp, if (selected) accent else border, MaterialTheme.shapes.medium)
+                    .semantics { this.selected = selected }
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    label,
+                    color = if (selected) accent else dim,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+
         @Composable
         fun Dashed(w: Dp, h: Dp, content: @Composable ColumnScope.() -> Unit) {
             Column(
@@ -500,7 +523,7 @@ internal fun NewNoteScreen(
             val sticky = custom && cw == STICKY_MM && ch == STICKY_MM &&
                 style.pageColor == STICKY_PAPER && style.template == PageTemplates.NONE && !coverOn
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ModeChip(stringResource(R.string.new_sticky), sticky) {
+                ChoiceChip(stringResource(R.string.new_sticky), sticky) {
                     size = PageSize.CUSTOM
                     customW = mmText(STICKY_MM)
                     customH = mmText(STICKY_MM)
@@ -684,29 +707,24 @@ internal fun NewNoteScreen(
         @Composable
         fun Tile(label: String, selected: Boolean, onClick: () -> Unit, onRemove: (() -> Unit)?, framed: Boolean = true, thumb: @Composable (Dp, Dp) -> Unit) {
             var menu by remember { mutableStateOf(false) }
+            // The reference design's preview card: rounded, panel-backed, hairline-bordered, 12dp
+            // of padding — and the picked template's card ringed by the accent. The card's own
+            // border carries the frame, so the picture keeps one size whatever is picked and is
+            // never drawn again for a pick.
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(MaterialTheme.shapes.extraSmall)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(palette.menuBg.toComposeColor())
+                    .border(if (selected) 1.5.dp else 1.dp, if (selected) accent else border, MaterialTheme.shapes.large)
                     .semantics { this.selected = selected }
-                    .combinedClickable(onClick = onClick, onLongClick = onRemove?.let { { menu = true } }),
+                    .combinedClickable(onClick = onClick, onLongClick = onRemove?.let { { menu = true } })
+                    .padding(12.dp),
             ) {
                 BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio((pageMm.first / pageMm.second).toFloat())) {
                     val w = maxWidth
                     val h = maxHeight
-                    // The ring draws over the picture's edge, so the picture keeps one size and is never drawn again for a pick.
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .then(
-                                when {
-                                    selected -> Modifier.border(2.dp, accent, RoundedCornerShape(3.dp))
-                                    framed -> Modifier.border(1.dp, border, RoundedCornerShape(3.dp))
-                                    else -> Modifier
-                                },
-                            )
-                            .padding(1.dp),
-                    ) { thumb(w - 2.dp, h - 2.dp) }
+                    Box(Modifier.fillMaxSize().padding(1.dp)) { thumb(w - 2.dp, h - 2.dp) }
                     if (selected) {
                         Box(
                             Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp).background(accent, CircleShape),
@@ -761,8 +779,8 @@ internal fun NewNoteScreen(
                     .entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).map { it.key }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ModeChip(stringResource(R.string.tag_all), tag == null) { tag = null }
-                        for (t in tags) ModeChip(t.replaceFirstChar { it.uppercase() }, tag == t) { tag = t }
+                        ChoiceChip(stringResource(R.string.tag_all), tag == null) { tag = null }
+                        for (t in tags) ChoiceChip(t.replaceFirstChar { it.uppercase() }, tag == t) { tag = t }
                     }
                 }
                 fun shown(e: TemplateLibrary.Entry) = tag == null || tag in e.template.tags

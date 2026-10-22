@@ -1,6 +1,7 @@
 package com.xnota.ui
 
 import android.os.Build
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -298,7 +299,7 @@ fun PreferencesPane(
             // Ending at the keyboard's edge scrolls a focused field up out from under it.
             Modifier.fillMaxSize().imePadding().verticalScroll(scrollState)
                 .onGloballyPositioned { viewport = it.boundsInRoot() },
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (inCategory(SettingsCategory.INTERFACE) && sectionShown(
                 R.string.pref_general,
@@ -327,7 +328,7 @@ fun PreferencesPane(
                 R.string.corners_rounded,
                 R.string.corners_soft,
                 R.string.pref_start_fullscreen
-            )) {
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_general), NotaIcons.gear)
                 FieldLabel(stringResource(R.string.pref_ui_theme))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -408,8 +409,7 @@ fun PreferencesPane(
                 R.string.lock_after_60s,
                 R.string.lock_after_5m,
                 R.string.pref_app_lock_delay_help
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_app_lock), NotaIcons.shield)
                 AppLockSection(prefs, ::updateHome)
 
@@ -432,8 +432,7 @@ fun PreferencesPane(
                 R.string.pref_redmi_buttons,
                 R.string.pen_button_1,
                 R.string.pen_button_2
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_input), NotaIcons.hand)
                 CheckRow(stringResource(R.string.pref_finger_draws), prefs.fingerDraws) { update(prefs.copy(fingerDraws = it)) }
                 FieldLabel(stringResource(R.string.pref_zoom_lock_pan))
@@ -501,8 +500,7 @@ fun PreferencesPane(
                 R.string.pref_pen_haptics,
                 R.string.pref_keep_screen_on,
                 R.string.pref_immersive
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_text_typing), NotaIcons.keyboard)
                 // The fork's typing behaviour: the flow editor's input transforms and its feedback.
                 CheckRow(stringResource(R.string.pref_smart_quotes), prefs.smartQuotes) {
@@ -542,8 +540,7 @@ fun PreferencesPane(
                 R.string.blend_normal,
                 R.string.pref_join_strokes,
                 R.string.pref_undo_coalesce
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_ink_engine), NotaIcons.zap)
                 Text(stringResource(R.string.pref_ink_engine_help), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
                 FieldLabel(stringResource(R.string.pref_stroke_filter))
@@ -602,8 +599,7 @@ fun PreferencesPane(
                 R.string.pref_filename_template,
                 R.string.pref_filename_template_help,
                 R.string.pref_next_note_named
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_new_notes), NotaIcons.filePlus)
                 FieldLabel(stringResource(R.string.pref_filename_template))
                 Text(
@@ -649,8 +645,7 @@ fun PreferencesPane(
                 R.string.page_numbers_right,
                 R.string.pref_page_colour,
                 R.string.pref_page_colour_follows_theme
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_page), NotaIcons.page)
                 FieldLabel(stringResource(R.string.pref_adaptive_ink))
                 FlowRow(
@@ -762,8 +757,7 @@ fun PreferencesPane(
                 R.string.words_today_plain,
                 R.string.pref_daily_word_goal,
                 R.string.pref_daily_word_goal_off
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_home_explorer), NotaIcons.home)
                 Text(
                     stringResource(R.string.pref_home_explorer_help),
@@ -931,8 +925,7 @@ fun PreferencesPane(
                 R.string.backup_nothing_to_restore,
                 R.string.backup_decrypt_failed,
                 R.string.cancel
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_backup), NotaIcons.archive)
                 Text(
                     stringResource(R.string.pref_backup_help),
@@ -947,8 +940,7 @@ fun PreferencesPane(
                 R.string.pref_reader_font_scale,
                 R.string.pref_reader_line_height,
                 R.string.reader_sepia
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_reading), NotaIcons.bookOpen)
                 // The fork's reading kit: the reader pane adjusts these live; here they are settable
                 // directly, for settling in before the first read.
@@ -971,8 +963,7 @@ fun PreferencesPane(
                 }
 
             }
-            if (inCategory(SettingsCategory.READING) && sectionShown(R.string.pref_focus, R.string.pref_focus_minutes, R.string.pref_focus_break)) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            if (inCategory(SettingsCategory.READING) && sectionShown(R.string.pref_focus, R.string.pref_focus_minutes, R.string.pref_focus_break)) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_focus), NotaIcons.target)
                 FieldLabel(stringResource(R.string.pref_focus_minutes))
                 Slider(
@@ -998,8 +989,7 @@ fun PreferencesPane(
                 R.string.qibla_distance,
                 R.string.qibla_help,
                 R.string.qibla_reset
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_qibla), NotaIcons.compass)
                 // The fork's Qibla pane: coordinates typed by hand, the bearing drawn on a compass
                 // rose — see QiblaPane for what it shows and why it never asks for location.
@@ -1008,8 +998,7 @@ fun PreferencesPane(
                 }
 
             }
-            if (inCategory(SettingsCategory.READING) && sectionShown(R.string.pref_pdf_export, R.string.pref_pdf_heading_bookmarks)) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            if (inCategory(SettingsCategory.READING) && sectionShown(R.string.pref_pdf_export, R.string.pref_pdf_heading_bookmarks)) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_pdf_export), NotaIcons.exportDoc)
                 CheckRow(stringResource(R.string.pref_pdf_heading_bookmarks), prefs.pdfHeadingBookmarks) {
                     updateHome(prefs.copy(pdfHeadingBookmarks = it))
@@ -1031,8 +1020,7 @@ fun PreferencesPane(
                 R.string.custom_theme,
                 R.string.reset,
                 R.string.import_theme
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_performance), NotaIcons.gauge)
                 FieldLabel(stringResource(R.string.pref_max_cache_px, prefs.maxCacheResolution))
                 Slider(
@@ -1057,7 +1045,8 @@ fun PreferencesPane(
                 )
 
                 if (editor.treeSitterAvailable) {
-                    HorizontalDivider(color = palette.border.toComposeColor())
+                    // Inline, so a hairline at a whisper (the card border already frames the section).
+                    HorizontalDivider(color = palette.border.toComposeColor().copy(alpha = 0.6f))
                     SectionTitle(stringResource(R.string.pref_code_highlighting), NotaIcons.code)
 
                     val langOptions = editor.scmLanguages().map { it to it }
@@ -1097,8 +1086,7 @@ fun PreferencesPane(
                 R.string.import_font,
                 R.string.mono_suffix,
                 R.string.remove
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_fonts), NotaIcons.fontFace)
                 Text(
                     stringResource(R.string.pref_fonts_help),
@@ -1139,8 +1127,7 @@ fun PreferencesPane(
                 R.string.pref_toolbar_colours_n,
                 R.string.reset,
                 R.string.pref_toolbar_help
-            )) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+            )) SettingsCard {
                 SectionTitle(stringResource(R.string.pref_toolbar), NotaIcons.columns)
                 // The look, like the swatch count below, is one setting for both bars.
                 val look = prefs.toolbarLook
@@ -1315,15 +1302,36 @@ private fun prefSearchFold(s: String): String {
     return out.toString().trim()
 }
 
+/**
+ * One settings-card: the reference design's section wrapper (.settings-card) — rounded, panel-
+ * backed, hairline-bordered, padded, with the pane's own row rhythm inside. Purely a wrapper:
+ * everything emitted into it is the section's own rows, byte for byte.
+ */
+@Composable
+private fun SettingsCard(content: @Composable () -> Unit) {
+    val palette = LocalPalette.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(palette.menuBg.toComposeColor())
+            .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.large)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        content()
+    }
+}
+
 @Composable
 private fun SectionTitle(text: String, icon: ImageVector? = null) {
     // The hub's section headers carry their line icon beside the title, dim like the help lines
-    // so the title stays dominant; the title's own typography is unchanged.
+    // so the title stays dominant; the title itself is the reference recipe's 14sp W700.
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         if (icon != null) {
             Icon(icon, null, tint = LocalPalette.current.textDim.toComposeColor(), modifier = Modifier.size(18.dp))
         }
-        Text(text, color = LocalPalette.current.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Text(text, color = LocalPalette.current.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }
 
@@ -1399,17 +1407,18 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * One chip of the hub's category row: the pane's [Chip] recipe with the category's line icon
- * set beside its label, so the row reads as the same control family as the sections' chips.
+ * One chip of the hub's category row: the reference design's selected-pill recipe — a rounded
+ * pill that fills with a wash of the accent and rings itself with the accent's own border when
+ * picked, and sits as a quiet surface-backed hairline chip otherwise.
  */
 @Composable
 private fun CategoryChip(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     val palette = LocalPalette.current
     Row(
         Modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(if (selected) palette.selectionBackground.toComposeColor() else palette.surface.toComposeColor())
-            .border(1.dp, if (selected) palette.accent.toComposeColor() else palette.border.toComposeColor(), MaterialTheme.shapes.small)
+            .clip(MaterialTheme.shapes.medium)
+            .background(if (selected) palette.accentAlpha(36).toComposeColor() else palette.surface.toComposeColor())
+            .border(1.dp, if (selected) palette.accent.toComposeColor() else palette.border.toComposeColor(), MaterialTheme.shapes.medium)
             .semantics { this.selected = selected }
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1419,12 +1428,12 @@ private fun CategoryChip(label: String, icon: ImageVector, selected: Boolean, on
         Icon(
             icon,
             null,
-            tint = if (selected) palette.selectionForeground.toComposeColor() else palette.textDim.toComposeColor(),
+            tint = if (selected) palette.accent.toComposeColor() else palette.textDim.toComposeColor(),
             modifier = Modifier.size(16.dp),
         )
         Text(
             label,
-            color = if (selected) palette.selectionForeground.toComposeColor() else palette.text.toComposeColor(),
+            color = if (selected) palette.accent.toComposeColor() else palette.textDim.toComposeColor(),
             fontSize = 14.sp,
             maxLines = 1,
             softWrap = false,
@@ -1843,11 +1852,17 @@ private fun BackupSection(
     }
     if (showRestores) {
         Dialog(onDismissRequest = { showRestores = false }) {
-            Surface(shape = RoundedCornerShape(16.dp), color = palette.surface.toComposeColor()) {
+            // The app's dialog-chrome recipe on a hand-rolled container: rounded extra-large, the
+            // menu surface, a hairline border — title 14sp W700, body 11.5sp dim.
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                color = palette.menuBg.toComposeColor(),
+                border = BorderStroke(1.dp, palette.border.toComposeColor()),
+            ) {
                 Column(Modifier.widthIn(max = 360.dp).padding(16.dp)) {
-                    Text(stringResource(R.string.backup_restore), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(stringResource(R.string.backup_restore), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.backup_restore_help), fontSize = 12.sp, color = palette.textDim.toComposeColor())
+                    Text(stringResource(R.string.backup_restore_help), fontSize = 11.5.sp, color = palette.textDim.toComposeColor())
                     Spacer(Modifier.height(12.dp))
                     Column(
                         Modifier.fillMaxWidth().heightIn(max = 320.dp).verticalScroll(rememberScrollState()),

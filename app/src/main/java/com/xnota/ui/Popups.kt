@@ -661,12 +661,13 @@ internal fun TemplateParamControls(
     }
 }
 
+/** A popup's caption/body line: 11.5sp dim, per the reference dialog recipe. */
 @Composable
 internal fun StyleCaption(text: String) {
     Text(
         text,
         color = LocalPalette.current.textDim.toComposeColor(),
-        fontSize = 12.sp,
+        fontSize = 11.5.sp,
     )
 }
 
@@ -1046,12 +1047,13 @@ fun ColorSwitcherPopup(host: ToolPopupHost, index: Int, onDismiss: () -> Unit) {
     )
 }
 
+/** A popup's title line: 14sp W700 in the accent, per the reference dialog recipe. */
 @Composable
 internal fun PopupTitle(text: String) {
     Text(
         text,
         color = LocalPalette.current.accent.toComposeColor(),
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
         modifier = Modifier.padding(vertical = 4.dp),
     )
@@ -1143,8 +1145,8 @@ internal fun DropdownMenu(
 }
 
 /**
- * The app's dialog: material's, pinned to the palette menu surface and given the same hairline
- * border and 14dp corners the hand-rolled progress dialogs use, so a dialog reads against
+ * The app's dialog: material's, pinned to the palette menu surface and given a hairline border
+ * and the reference design's rounder dialog corners (extra-large), so a dialog reads against
  * same-tone surfaces (the backstage, OLED black) and matches the menus. Shadows material3's
  * composable for every same-package caller that doesn't import material's directly.
  */
@@ -1156,7 +1158,7 @@ internal fun AlertDialog(
     dismissButton: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null,
-    shape: Shape = MaterialTheme.shapes.large,
+    shape: Shape = MaterialTheme.shapes.extraLarge,
     containerColor: Color = LocalPalette.current.menuBg.toComposeColor(),
 ) {
     androidx.compose.material3.AlertDialog(

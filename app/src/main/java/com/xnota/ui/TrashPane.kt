@@ -155,34 +155,46 @@ internal fun TrashPane(editor: Editor, sidebarOpen: Boolean, onShowSidebar: () -
                 list.isEmpty() -> EmptyPane(stringResource(R.string.trash_empty), EmptyArt.TRASH)
                 shown.isEmpty() -> EmptyPane(stringResource(R.string.trash_no_match, query.trim()))
                 else -> Column(Modifier.fillMaxSize()) {
-                    Row(Modifier.fillMaxWidth().height(36.dp).padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        TrashHead(stringResource(R.string.sort_name), Modifier.weight(1f).padding(start = 54.dp))
-                        if (wide) {
-                            TrashHead(stringResource(R.string.trash_was_in), Modifier.width(170.dp))
-                            TrashHead(stringResource(R.string.trash_deleted), Modifier.width(150.dp), on = true)
-                            TrashHead(stringResource(R.string.trash_removed_in), Modifier.width(110.dp))
+                    // The reference design's file-list: one outer card (rounded, panel-backed,
+                    // hairline-bordered, clipped) with the rows separated by hairlines inside it.
+                    val listShape = MaterialTheme.shapes.large
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .clip(listShape)
+                            .background(palette.menuBg.toComposeColor())
+                            .border(1.dp, palette.border.toComposeColor(), listShape),
+                    ) {
+                        Row(Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            TrashHead(stringResource(R.string.sort_name), Modifier.weight(1f).padding(start = 54.dp))
+                            if (wide) {
+                                TrashHead(stringResource(R.string.trash_was_in), Modifier.width(170.dp))
+                                TrashHead(stringResource(R.string.trash_deleted), Modifier.width(150.dp), on = true)
+                                TrashHead(stringResource(R.string.trash_removed_in), Modifier.width(110.dp))
+                            }
+                            Spacer(Modifier.width(150.dp))
                         }
-                        Spacer(Modifier.width(150.dp))
-                    }
-                    Hairline()
-                    // The keyboard slides over the rows; its height joins the end padding so the last ones scroll clear.
-                    val endPad = WindowInsets.ime.exclude(WindowInsets.systemBars).add(WindowInsets(bottom = 16.dp)).asPaddingValues()
-                    LazyColumn(Modifier.weight(1f), contentPadding = endPad) {
-                        items(shown, key = { it.wrapperDocId }) { item ->
-                            TrashRow(
-                                editor, item, wide, rootName ?: stringResource(R.string.the_top_folder), now, clock24, zone, prefs.trashDays,
-                                onRestore = {
-                                    busy = true
-                                    scope.launch {
-                                        val ok = withContext(Dispatchers.IO) { editor.restoreTrash(root, item) }
-                                        busy = false
-                                        refresh++
-                                        editor.say(if (ok) context.getString(R.string.restored_item, label(item)) else context.getString(R.string.err_restore_item, label(item)))
-                                    }
-                                },
-                                onDelete = { confirmDelete = item },
-                            )
-                            Hairline()
+                        Hairline()
+                        // The keyboard slides over the rows; its height joins the end padding so the last ones scroll clear.
+                        val endPad = WindowInsets.ime.exclude(WindowInsets.systemBars).add(WindowInsets(bottom = 16.dp)).asPaddingValues()
+                        LazyColumn(Modifier.weight(1f), contentPadding = endPad) {
+                            items(shown, key = { it.wrapperDocId }) { item ->
+                                TrashRow(
+                                    editor, item, wide, rootName ?: stringResource(R.string.the_top_folder), now, clock24, zone, prefs.trashDays,
+                                    onRestore = {
+                                        busy = true
+                                        scope.launch {
+                                            val ok = withContext(Dispatchers.IO) { editor.restoreTrash(root, item) }
+                                            busy = false
+                                            refresh++
+                                            editor.say(if (ok) context.getString(R.string.restored_item, label(item)) else context.getString(R.string.err_restore_item, label(item)))
+                                        }
+                                    },
+                                    onDelete = { confirmDelete = item },
+                                )
+                                Hairline()
+                            }
                         }
                     }
                     Text(
@@ -264,7 +276,9 @@ private fun TrashRow(
     val wasIn = item.path.lastOrNull() ?: rootName
     val deleted = formatWhen(words, item.deleted, now, "day", true, clock24, zone)
     val left = if (days > 0) (days - ((now - item.deleted) / 86_400_000L).toInt()).coerceAtLeast(0) else null
-    Row(Modifier.fillMaxWidth().height(60.dp).padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    // The reference design's file-row: 14dp horizontal / 12dp vertical padding, the title at
+    // 12.5sp W700 over a 10.5sp dim sub and dim 10.5sp meta columns.
+    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         val shape = MaterialTheme.shapes.small
         if (e.isDir) {
             Box(Modifier.size(40.dp).clip(shape).background(palette.surface.toComposeColor()), contentAlignment = Alignment.Center) {
@@ -274,23 +288,23 @@ private fun TrashRow(
             EntryThumb(editor, e, ThumbShape.TOP, Modifier.size(40.dp).clip(shape).border(1.dp, palette.border.toComposeColor(), shape))
         }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text(label(item), color = palette.text.toComposeColor(), fontSize = 14.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label(item), color = palette.text.toComposeColor(), fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 Icon(kindIcon(kind), null, tint = dim, modifier = Modifier.size(12.dp))
                 val sub = if (wide) kindLabel(kind) else stringResource(R.string.trash_row_sub, kindLabel(kind), wasIn, deleted)
-                Text(sub, color = dim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(sub, color = dim, fontSize = 10.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (wide) {
             Row(Modifier.width(170.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(NotaIcons.folder, null, tint = dim, modifier = Modifier.size(14.dp))
-                Text(wasIn, color = dim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(wasIn, color = dim, fontSize = 10.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(deleted, color = dim, fontSize = 13.sp, maxLines = 1, modifier = Modifier.width(150.dp))
+            Text(deleted, color = dim, fontSize = 10.5.sp, maxLines = 1, modifier = Modifier.width(150.dp))
             Text(
                 when (left) { null -> stringResource(R.string.never); 0 -> stringResource(R.string.today); else -> pluralStringResource(R.plurals.days_count, left, left) },
                 color = if (left != null && left <= 3) palette.danger.toComposeColor() else palette.text.toComposeColor(),
-                fontSize = 13.sp, maxLines = 1, modifier = Modifier.width(110.dp),
+                fontSize = 10.5.sp, maxLines = 1, modifier = Modifier.width(110.dp),
             )
         }
         Row(Modifier.width(150.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
