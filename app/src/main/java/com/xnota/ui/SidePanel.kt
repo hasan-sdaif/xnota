@@ -325,6 +325,9 @@ private fun PageContextMenu(
                     DropdownMenuItem(text = { Text(stringResource(R.string.add_cover_ellipsis)) }, leadingIcon = menuIcon(NotaIcons.palette), onClick = { onDismiss(); onPickCover() })
                     HorizontalDivider(color = palette.border.toComposeColor())
                 }
+                // The page-list operations get their named group here; the cover rows above
+                // (when there are any) already end with their own divider.
+                MenuGroupHeader(stringResource(R.string.menu_group_page))
                 DropdownMenuItem(text = { Text(stringResource(R.string.add_page)) }, leadingIcon = menuIcon(NotaIcons.plus), onClick = { editor.insertPageAfter(index); onDismiss() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.insert_pdf)) }, leadingIcon = menuIcon(NotaIcons.importDoc), onClick = { onInsertPdf(index); onDismiss() })
                 DropdownMenuItem(text = { Text(stringResource(R.string.copy)) }, leadingIcon = menuIcon(NotaIcons.copy), onClick = { editor.copyPages(one); onDismiss() })

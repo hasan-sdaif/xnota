@@ -128,6 +128,11 @@ class NotaIconsGeometryTest {
         assertOnCanvas("gear", NotaIcons.gear, 40)
     }
 
+    @Test fun mirrorGlyphsParseOntoTheCanvas() {
+        assertOnCanvas("mirrorLeftRight", NotaIcons.mirrorLeftRight, 12)
+        assertOnCanvas("mirrorUpDown", NotaIcons.mirrorUpDown, 12)
+    }
+
     @Test fun everyIconCarriesTheSetViewport() {
         val all = listOf(
             NotaIcons.sun, NotaIcons.moon, NotaIcons.monitor, NotaIcons.globe,

@@ -304,6 +304,20 @@ object NotaIcons {
     val distributeH = icon(rect(3.0, 7.0, 4.0, 10.0), rect(10.0, 9.0, 4.0, 6.0), rect(17.0, 7.0, 4.0, 10.0))
     val distributeV = icon(rect(7.0, 3.0, 10.0, 4.0), rect(9.0, 10.0, 6.0, 4.0), rect(7.0, 17.0, 10.0, 4.0))
 
+    // Mirroring a selection: the two rounded halves facing each other across the axis they flip
+    // about, the axis dashed so it reads as the mirror line rather than a third object. The
+    // brackets speak the rounded-rect language with two sides left open, facing their reflection.
+    val mirrorLeftRight = icon(
+        "M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3",
+        "M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3",
+        "M12 20v-4", "M12 8V4", "M12 12h.01",
+    )
+    val mirrorUpDown = icon(
+        "M3 8V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3",
+        "M3 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3",
+        "M4 12h4", "M20 12h-4", "M12 12h.01",
+    )
+
     // The layers panel: an item's eye (hidden or shown).
     val eye = icon(
         "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z",

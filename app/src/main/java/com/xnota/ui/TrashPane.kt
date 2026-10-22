@@ -310,8 +310,16 @@ private fun TrashRow(
                     }
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.restore)) }, onClick = { menu = false; onRestore() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.delete_permanently)) }, onClick = { menu = false; onDelete() })
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.restore)) },
+                        leadingIcon = { Icon(NotaIcons.restore, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                        onClick = { menu = false; onRestore() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.delete_permanently)) },
+                        leadingIcon = { Icon(NotaIcons.trash, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                        onClick = { menu = false; onDelete() },
+                    )
                 }
             }
         }

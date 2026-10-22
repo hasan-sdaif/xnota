@@ -229,58 +229,69 @@ fun SelectionMenu(host: SelectionMenuHost) {
                     val styles = host.selectionStyles()
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.change_style)) },
+                        leadingIcon = { Icon(NotaIcons.palette, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         enabled = styles.isNotEmpty(),
                         onClick = { overflowOpen = false; styleOpen = true },
                     )
                     if (host.canLabelSelection()) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.shape_label)) },
+                            leadingIcon = { Icon(NotaIcons.textBox, contentDescription = null, modifier = Modifier.size(20.dp)) },
                             onClick = { overflowOpen = false; host.labelSelection() },
                         )
                     }
                     if (host.canRerouteSelection()) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.connector_reroute)) },
+                            leadingIcon = { Icon(NotaIcons.magicWand, contentDescription = null, modifier = Modifier.size(20.dp)) },
                             onClick = { overflowOpen = false; host.rerouteSelection() },
                         )
                     }
                     val mirrors = host.canMirrorSelection()
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.mirror_left_right)) },
+                        leadingIcon = { Icon(NotaIcons.mirrorLeftRight, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         enabled = mirrors,
                         onClick = { overflowOpen = false; host.mirrorSelection(upsideDown = false) },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.mirror_upside_down)) },
+                        leadingIcon = { Icon(NotaIcons.mirrorUpDown, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         enabled = mirrors,
                         onClick = { overflowOpen = false; host.mirrorSelection(upsideDown = true) },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.title_align)) },
+                        leadingIcon = { Icon(NotaIcons.alignCentreV, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         enabled = host.canAlignSelection(),
                         onClick = { overflowOpen = false; alignOpen = true },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.duplicate_array)) },
+                        leadingIcon = { Icon(NotaIcons.duplicate, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         onClick = { overflowOpen = false; arrayOpen = true },
                     )
                     // The fork's corner rounding: shown while the selection holds a picture.
                     if (host.selectionImages().isNotEmpty()) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.image_corners)) },
+                            leadingIcon = { Icon(NotaIcons.corners, contentDescription = null, modifier = Modifier.size(20.dp)) },
                             onClick = { overflowOpen = false; cornersOpen = true },
                         )
                     }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.lock)) },
+                        leadingIcon = { Icon(NotaIcons.lock, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         onClick = { overflowOpen = false; host.lockSelection() },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.hide_selection)) },
+                        leadingIcon = { Icon(NotaIcons.eyeOff, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         onClick = { overflowOpen = false; host.hideSelection() },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.layers_title)) },
+                        leadingIcon = { Icon(NotaIcons.layers, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         onClick = { overflowOpen = false; host.openLayersPanel() },
                     )
                 }
@@ -598,24 +609,40 @@ fun LongPressMenu(host: LongPressMenuHost, onInsertImageAt: (com.xnota.core.geom
         DropdownMenu(expanded = true, onDismissRequest = { host.dismissContextMenu() }) {
             val locked = target.locked
             if (locked != null) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.unlock)) }, onClick = {
-                    host.unlockItem(locked); host.dismissContextMenu()
-                })
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.unlock)) },
+                    leadingIcon = { Icon(NotaIcons.unlock, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    onClick = {
+                        host.unlockItem(locked); host.dismissContextMenu()
+                    },
+                )
                 return@DropdownMenu
             }
             if (host.hasClipboardItems) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.paste_here)) }, onClick = {
-                    host.pasteItemsAt(target.content); host.dismissContextMenu()
-                })
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.paste_here)) },
+                    leadingIcon = { Icon(NotaIcons.paste, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    onClick = {
+                        host.pasteItemsAt(target.content); host.dismissContextMenu()
+                    },
+                )
             }
             if (host.clipboardHasImage) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.paste_image)) }, onClick = {
-                    host.pasteClipboardImageAt(target.content); host.dismissContextMenu()
-                })
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.paste_image)) },
+                    leadingIcon = { Icon(NotaIcons.image, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    onClick = {
+                        host.pasteClipboardImageAt(target.content); host.dismissContextMenu()
+                    },
+                )
             }
-            DropdownMenuItem(text = { Text(stringResource(R.string.insert_image_ellipsis)) }, onClick = {
-                onInsertImageAt(target.content); host.dismissContextMenu()
-            })
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.insert_image_ellipsis)) },
+                leadingIcon = { Icon(NotaIcons.importDoc, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                onClick = {
+                    onInsertImageAt(target.content); host.dismissContextMenu()
+                },
+            )
         }
     }
 }
@@ -673,15 +700,27 @@ fun FlowEditMenu(editor: Editor) {
                     onDismissRequest = { pasteOpen = false },
                     properties = PopupProperties(focusable = false),
                 ) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.paste)) }, onClick = {
-                        pasteOpen = false; editor.pastePlainAtCaret(); editor.dismissFlowContextMenu()
-                    })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.paste_markdown)) }, onClick = {
-                        pasteOpen = false; editor.pasteMarkdownAtCaret(); editor.dismissFlowContextMenu()
-                    })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.paste_code)) }, onClick = {
-                        pasteOpen = false; editor.pasteAsCodeAtCaret(); editor.dismissFlowContextMenu()
-                    })
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.paste)) },
+                        leadingIcon = { Icon(NotaIcons.paste, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        onClick = {
+                            pasteOpen = false; editor.pastePlainAtCaret(); editor.dismissFlowContextMenu()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.paste_markdown)) },
+                        leadingIcon = { Icon(NotaIcons.markup, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        onClick = {
+                            pasteOpen = false; editor.pasteMarkdownAtCaret(); editor.dismissFlowContextMenu()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.paste_code)) },
+                        leadingIcon = { Icon(NotaIcons.code, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        onClick = {
+                            pasteOpen = false; editor.pasteAsCodeAtCaret(); editor.dismissFlowContextMenu()
+                        },
+                    )
                 }
             }
             ActionIcon(NotaIcons.trash, stringResource(R.string.delete), enabled = hasSelection, shortcut = Keys.DELETE) {
@@ -695,12 +734,20 @@ fun FlowEditMenu(editor: Editor) {
                     onDismissRequest = { stampOpen = false },
                     properties = PopupProperties(focusable = false),
                 ) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.insert_stamp)) }, onClick = {
-                        stampOpen = false; editor.flowInsertStamp(hijri = false); editor.dismissFlowContextMenu()
-                    })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.insert_stamp_hijri)) }, onClick = {
-                        stampOpen = false; editor.flowInsertStamp(hijri = true); editor.dismissFlowContextMenu()
-                    })
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.insert_stamp)) },
+                        leadingIcon = { Icon(NotaIcons.clock, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        onClick = {
+                            stampOpen = false; editor.flowInsertStamp(hijri = false); editor.dismissFlowContextMenu()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.insert_stamp_hijri)) },
+                        leadingIcon = { Icon(NotaIcons.moon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        onClick = {
+                            stampOpen = false; editor.flowInsertStamp(hijri = true); editor.dismissFlowContextMenu()
+                        },
+                    )
                 }
             }
             // The fork's symbol picker: Arabic punctuation, marks and quick symbols at the caret.

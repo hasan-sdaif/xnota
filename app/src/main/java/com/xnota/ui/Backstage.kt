@@ -620,7 +620,11 @@ private fun BackstageRail(modifier: Modifier, nav: SidebarNav, onExpand: () -> U
                     Box {
                         RailItem(NotaIcons.magicWand, f.name, selected = f.name == nav.activeSmart, onLongClick = { menuOpen = true }) { nav.onOpenSmart(f) }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.delete_smart_folder)) }, onClick = { menuOpen = false; nav.onDeleteSmart(f) })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete_smart_folder)) },
+                                leadingIcon = { Icon(NotaIcons.trash, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                                onClick = { menuOpen = false; nav.onDeleteSmart(f) },
+                            )
                         }
                     }
                 }
@@ -632,7 +636,11 @@ private fun BackstageRail(modifier: Modifier, nav: SidebarNav, onExpand: () -> U
                     Box {
                         RailItem(NotaIcons.folder, pin.name, selected = i == nav.activePin, onLongClick = { menuOpen = true }) { nav.onOpenPin(pin) }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.unpin_from_sidebar)) }, onClick = { menuOpen = false; nav.onUnpin(pin) })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.unpin_from_sidebar)) },
+                                leadingIcon = { Icon(NotaIcons.close, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                                onClick = { menuOpen = false; nav.onUnpin(pin) },
+                            )
                         }
                     }
                 }
@@ -671,7 +679,11 @@ private fun BackstageBottomBar(modifier: Modifier, nav: SidebarNav, onOpenDrawer
                     Box {
                         RailItem(NotaIcons.magicWand, f.name, selected = f.name == nav.activeSmart, onLongClick = { menuOpen = true }) { nav.onOpenSmart(f) }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.delete_smart_folder)) }, onClick = { menuOpen = false; nav.onDeleteSmart(f) })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete_smart_folder)) },
+                                leadingIcon = { Icon(NotaIcons.trash, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                                onClick = { menuOpen = false; nav.onDeleteSmart(f) },
+                            )
                         }
                     }
                 }
@@ -682,7 +694,11 @@ private fun BackstageBottomBar(modifier: Modifier, nav: SidebarNav, onOpenDrawer
                     Box {
                         RailItem(NotaIcons.folder, pin.name, selected = i == nav.activePin, onLongClick = { menuOpen = true }) { nav.onOpenPin(pin) }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.unpin_from_sidebar)) }, onClick = { menuOpen = false; nav.onUnpin(pin) })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.unpin_from_sidebar)) },
+                                leadingIcon = { Icon(NotaIcons.close, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                                onClick = { menuOpen = false; nav.onUnpin(pin) },
+                            )
                         }
                     }
                 }
@@ -848,8 +864,16 @@ private fun ColorCommand(color: Rgba, name: String, selected: Boolean, onClick: 
             )
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = { menuOpen = false; onRename() })
-            DropdownMenuItem(text = { Text(stringResource(R.string.remove_name)) }, onClick = { menuOpen = false; onForget() })
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.rename)) },
+                leadingIcon = { Icon(NotaIcons.edit, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                onClick = { menuOpen = false; onRename() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.remove_name)) },
+                leadingIcon = { Icon(NotaIcons.close, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                onClick = { menuOpen = false; onForget() },
+            )
         }
     }
 }
@@ -921,7 +945,11 @@ private fun SmartFolderCommand(
             }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.delete_smart_folder)) }, onClick = { menuOpen = false; onDelete() })
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.delete_smart_folder)) },
+                leadingIcon = { Icon(NotaIcons.trash, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                onClick = { menuOpen = false; onDelete() },
+            )
         }
     }
 }
@@ -954,7 +982,11 @@ private fun PinnedCommand(label: String, selected: Boolean, onClick: () -> Unit,
             )
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.unpin_from_sidebar)) }, onClick = { menuOpen = false; onUnpin() })
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.unpin_from_sidebar)) },
+                leadingIcon = { Icon(NotaIcons.close, null, tint = palette.text.toComposeColor(), modifier = Modifier.size(18.dp)) },
+                onClick = { menuOpen = false; onUnpin() },
+            )
         }
     }
 }
@@ -1020,6 +1052,19 @@ private fun NewItemMenuItems(
     // The fork's migration path: notes coming over from Evernote / Keep / Joplin.
     item(NotaIcons.importDoc, stringResource(R.string.import_from_apps)) { onImportFromApps() }
     item(NotaIcons.newFolder, stringResource(R.string.new_folder_menu)) { onCreateMode(CreateMode.FOLDER) }
+}
+
+/** A tiny non-clickable group label inside a dropdown menu — the "Create" / "Folder" / "Page"
+ *  headers of the big overflow menus. Deliberately not a menu item: it must never take a click,
+ *  and its small-caps feel is the fontSize alone, so the Arabic headers read just like the Latin. */
+@Composable
+internal fun MenuGroupHeader(label: String) {
+    Text(
+        label,
+        color = LocalPalette.current.textDim.toComposeColor(),
+        fontSize = 11.sp,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
+    )
 }
 
 /** What the explorer hands back to the activity: opening, sharing and exporting files it can't do itself. */
@@ -2019,14 +2064,36 @@ private fun ExplorerSection(
                     Box(Modifier.floatingBacking(liftNow, CircleShape, floatFill, floatEdge)) {
                         ExplorerIcon(NotaIcons.more, stringResource(R.string.more)) { moreOpen = true }
                         DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                            // Grouped headers name the menu's two blocks — what can be made here,
+                            // and what the folder itself can do — while the paste / select-all
+                            // rows keep the divider as their own quiet group between them.
+                            val menuTint = palette.text.toComposeColor()
+                            MenuGroupHeader(stringResource(R.string.menu_group_create))
                             NewItemMenuItems({ moreOpen = false }, onCreateMode, calls.importPdf) { importWizardOpen = true }
                             HorizontalDivider(color = palette.border.toComposeColor())
                             clipboard?.let { clip ->
-                                DropdownMenuItem(text = { Text(pluralStringResource(R.plurals.paste_items_here, clip.entries.size, clip.entries.size)) }, onClick = { moreOpen = false; paste(clip) })
+                                DropdownMenuItem(
+                                    text = { Text(pluralStringResource(R.plurals.paste_items_here, clip.entries.size, clip.entries.size)) },
+                                    leadingIcon = { Icon(NotaIcons.paste, null, tint = menuTint, modifier = Modifier.size(18.dp)) },
+                                    onClick = { moreOpen = false; paste(clip) },
+                                )
                             }
-                            DropdownMenuItem(text = { Text(stringResource(R.string.select_all)) }, onClick = { moreOpen = false; selection.clear(); selection.addAll(arranged.orEmpty()) })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.change_folder)) }, onClick = { moreOpen = false; calls.pickRoot() })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.forget_folder)) }, onClick = { moreOpen = false; editor.clearBrowseRoot() })
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.select_all)) },
+                                leadingIcon = { Icon(NotaIcons.check, null, tint = menuTint, modifier = Modifier.size(18.dp)) },
+                                onClick = { moreOpen = false; selection.clear(); selection.addAll(arranged.orEmpty()) },
+                            )
+                            MenuGroupHeader(stringResource(R.string.menu_group_folder))
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.change_folder)) },
+                                leadingIcon = { Icon(NotaIcons.moveToFolder, null, tint = menuTint, modifier = Modifier.size(18.dp)) },
+                                onClick = { moreOpen = false; calls.pickRoot() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.forget_folder)) },
+                                leadingIcon = { Icon(NotaIcons.close, null, tint = menuTint, modifier = Modifier.size(18.dp)) },
+                                onClick = { moreOpen = false; editor.clearBrowseRoot() },
+                            )
                         }
                     }
                 }
@@ -2608,40 +2675,121 @@ internal fun EntryMenu(
         if (showColors) {
             ColorCodeMenuContent { c -> onDismiss(); onColor?.invoke(c) }
         } else {
-            if (onPreview != null) DropdownMenuItem(text = { Text(stringResource(R.string.preview)) }, onClick = { onDismiss(); onPreview() })
-            DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = { onDismiss(); onRename?.invoke() })
-            if (onMoveTo != null) DropdownMenuItem(text = { Text(stringResource(R.string.move_to_folder_ellipsis)) }, onClick = { onDismiss(); onMoveTo() })
-            DropdownMenuItem(text = { Text(stringResource(R.string.copy)) }, onClick = { onDismiss(); onCopy?.invoke() })
-            DropdownMenuItem(text = { Text(stringResource(R.string.cut)) }, onClick = { onDismiss(); onCut?.invoke() })
-            if (onDuplicate != null) DropdownMenuItem(text = { Text(stringResource(R.string.duplicate_note)) }, onClick = { onDismiss(); onDuplicate() })
-            if (onColor != null) DropdownMenuItem(text = { Text(stringResource(R.string.colour_code)) }, onClick = { showColors = true })
-            if (onNameColor != null) DropdownMenuItem(text = { Text(stringResource(R.string.name_colour_ellipsis)) }, onClick = { onDismiss(); onNameColor() })
-            if (onEditTags != null) DropdownMenuItem(text = { Text(stringResource(R.string.edit_tags)) }, onClick = { onDismiss(); onEditTags() })
-            if (onStats != null) DropdownMenuItem(text = { Text(stringResource(R.string.stats_title)) }, onClick = { onDismiss(); onStats() })
+            val tint = palette.text.toComposeColor()
+            if (onPreview != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.preview)) },
+                leadingIcon = { Icon(NotaIcons.eye, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onPreview() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.rename)) },
+                leadingIcon = { Icon(NotaIcons.edit, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onRename?.invoke() },
+            )
+            if (onMoveTo != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.move_to_folder_ellipsis)) },
+                leadingIcon = { Icon(NotaIcons.moveToFolder, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onMoveTo() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.copy)) },
+                leadingIcon = { Icon(NotaIcons.copy, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onCopy?.invoke() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.cut)) },
+                leadingIcon = { Icon(NotaIcons.cut, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onCut?.invoke() },
+            )
+            if (onDuplicate != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.duplicate_note)) },
+                leadingIcon = { Icon(NotaIcons.duplicate, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onDuplicate() },
+            )
+            if (onColor != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.colour_code)) },
+                leadingIcon = { Icon(NotaIcons.palette, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { showColors = true },
+            )
+            if (onNameColor != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.name_colour_ellipsis)) },
+                leadingIcon = { Icon(NotaIcons.text, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onNameColor() },
+            )
+            if (onEditTags != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.edit_tags)) },
+                leadingIcon = { Icon(NotaIcons.tag, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onEditTags() },
+            )
+            if (onStats != null) DropdownMenuItem(
+                text = { Text(stringResource(R.string.stats_title)) },
+                leadingIcon = { Icon(NotaIcons.chart, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onStats() },
+            )
             if (onHistory != null) DropdownMenuItem(
                 text = { Text(stringResource(R.string.history)) },
                 onClick = { onDismiss(); onHistory() },
                 leadingIcon = { Icon(NotaIcons.restore, null, modifier = Modifier.size(17.dp)) },
             )
             if (onTogglePin != null) {
-                DropdownMenuItem(text = { Text(if (pinned) stringResource(R.string.unpin_from_sidebar) else stringResource(R.string.pin_to_sidebar)) }, onClick = { onDismiss(); onTogglePin() })
+                DropdownMenuItem(
+                    text = { Text(if (pinned) stringResource(R.string.unpin_from_sidebar) else stringResource(R.string.pin_to_sidebar)) },
+                    leadingIcon = { Icon(NotaIcons.sidebar, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                    onClick = { onDismiss(); onTogglePin() },
+                )
             }
             if (onToggleTopPin != null) {
-                DropdownMenuItem(text = { Text(if (topPinned) stringResource(R.string.unpin) else stringResource(R.string.pin_to_top)) }, onClick = { onDismiss(); onToggleTopPin() })
+                DropdownMenuItem(
+                    text = { Text(if (topPinned) stringResource(R.string.unpin) else stringResource(R.string.pin_to_top)) },
+                    leadingIcon = { Icon(NotaIcons.pin, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                    onClick = { onDismiss(); onToggleTopPin() },
+                )
             }
             if (onToggleFavorite != null) {
-                DropdownMenuItem(text = { Text(if (favorite) stringResource(R.string.unfavorite) else stringResource(R.string.favorite)) }, onClick = { onDismiss(); onToggleFavorite() })
+                DropdownMenuItem(
+                    text = { Text(if (favorite) stringResource(R.string.unfavorite) else stringResource(R.string.favorite)) },
+                    leadingIcon = { Icon(NotaIcons.star, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                    onClick = { onDismiss(); onToggleFavorite() },
+                )
             }
-            DropdownMenuItem(text = { Text(deleteLabel) }, onClick = { onDismiss(); onDelete?.invoke() })
+            DropdownMenuItem(
+                text = { Text(deleteLabel) },
+                leadingIcon = { Icon(NotaIcons.trash, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                onClick = { onDismiss(); onDelete?.invoke() },
+            )
             if (onShare != null) {
                 HorizontalDivider(color = palette.border.toComposeColor())
-                DropdownMenuItem(text = { Text(stringResource(R.string.share)) }, onClick = { onDismiss(); onShare() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.save_copy_ellipsis)) }, onClick = { onDismiss(); onSaveCopy?.invoke() })
-                DropdownMenuItem(text = { Text(stringResource(R.string.export_pdf)) }, onClick = { onDismiss(); onExportPdf?.invoke() })
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share)) },
+                    leadingIcon = { Icon(NotaIcons.share, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                    onClick = { onDismiss(); onShare() },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.save_copy_ellipsis)) },
+                    leadingIcon = { Icon(NotaIcons.download, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                    onClick = { onDismiss(); onSaveCopy?.invoke() },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.export_pdf)) },
+                    leadingIcon = { Icon(NotaIcons.pdfFile, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                    onClick = { onDismiss(); onExportPdf?.invoke() },
+                )
                 if (onExportText != null) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.export_md)) }, onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.MARKDOWN) })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.export_txt)) }, onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.TEXT) })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.export_html)) }, onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.HTML) })
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.export_md)) },
+                        leadingIcon = { Icon(NotaIcons.file, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                        onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.MARKDOWN) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.export_txt)) },
+                        leadingIcon = { Icon(NotaIcons.fontFace, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                        onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.TEXT) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.export_html)) },
+                        leadingIcon = { Icon(NotaIcons.code, null, tint = tint, modifier = Modifier.size(18.dp)) },
+                        onClick = { onDismiss(); onExportText(com.xnota.core.text.NoteExporters.Format.HTML) },
+                    )
                 }
             }
         }
