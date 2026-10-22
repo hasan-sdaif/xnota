@@ -593,4 +593,16 @@ class SettingsTest {
         assertEquals(Preferences.READER_BRIGHTNESS_MIN, Settings.fromJson(wild).prefs.readerBrightness, 1e-9)
         assertEquals(1.0, Settings.fromJson(JSONObject()).prefs.readerBrightness, 1e-9)
     }
+
+    @Test fun pageNumberModesRoundTripAndDropJunk() {
+        val prefs = Preferences(pageNumbers = 2)
+        val back = Settings.fromJson(Settings(prefs = prefs).toJson()).prefs
+        assertEquals(2, back.pageNumbers)
+        val centre = JSONObject().put("prefs", JSONObject().put("page_numbers", 1))
+        assertEquals(1, Settings.fromJson(centre).prefs.pageNumbers)
+        // A mode the chips never offered falls back to off, and a fresh file starts off.
+        val junk = JSONObject().put("prefs", JSONObject().put("page_numbers", 5))
+        assertEquals(0, Settings.fromJson(junk).prefs.pageNumbers)
+        assertEquals(0, Settings.fromJson(JSONObject()).prefs.pageNumbers)
+    }
 }

@@ -74,6 +74,9 @@ data class Preferences(
     val sideMargin: Double = 16.0,
     /** Whether the hairline outline around every page is left undrawn. */
     val hidePageBorders: Boolean = false,
+    /** Page number stamps on the paged canvas and its exports: 0 (default) off, 1 bottom-centre,
+     *  2 bottom-right — the number itself drawn in the ruling's ink colour (the fork's folio). */
+    val pageNumbers: Int = 0,
     /** User zoom floor: when enabled, no zoom path goes below [minZoomPercent]%. */
     val minZoomEnabled: Boolean = false,
     val minZoomPercent: Int = 50,
@@ -255,6 +258,7 @@ data class Preferences(
         .put("stylus_button_2_tap", stylusButton2Tap)
         .put("side_margin", sideMargin)
         .put("hide_page_borders", hidePageBorders)
+        .put("page_numbers", pageNumbers)
         .put("min_zoom_enabled", minZoomEnabled)
         .put("min_zoom_percent", minZoomPercent)
         .put("max_zoom_enabled", maxZoomEnabled)
@@ -369,6 +373,9 @@ data class Preferences(
         /** The app lock's re-arm delays the preferences chips offer, in seconds (0 = cold-start only). */
         val APP_LOCK_DELAYS = setOf(0, 30, 60, 300)
 
+        /** The page-number stamp modes the pref can hold: 0 off, 1 bottom-centre, 2 bottom-right. */
+        val PAGE_NUMBERS_MODES = setOf(0, 1, 2)
+
         fun fromJson(o: JSONObject?): Preferences {
             if (o == null) return Preferences()
             val appearance = o.optString("ui_appearance", "system")
@@ -434,6 +441,7 @@ data class Preferences(
                 stylusButton2Tap = migrated("stylus_button_2_tap", "undo"),
                 sideMargin = o.optDouble("side_margin", 16.0).coerceIn(0.0, 80.0),
                 hidePageBorders = o.optBoolean("hide_page_borders", false),
+                pageNumbers = o.optInt("page_numbers", 0).let { if (it in PAGE_NUMBERS_MODES) it else 0 },
                 minZoomEnabled = o.optBoolean("min_zoom_enabled", false),
                 minZoomPercent = o.optInt("min_zoom_percent", 50).coerceIn(ZOOM_LIMIT_MIN_PCT, ZOOM_LIMIT_MAX_PCT),
                 maxZoomEnabled = o.optBoolean("max_zoom_enabled", false),

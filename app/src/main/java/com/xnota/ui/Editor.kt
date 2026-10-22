@@ -55,6 +55,7 @@ import com.xnota.core.model.PageSizeChoice
 import com.xnota.core.model.PagePattern
 import com.xnota.core.model.PageSize
 import com.xnota.core.model.PageStyle
+import com.xnota.core.model.paintPageNumber
 import com.xnota.core.model.PageTemplates
 import com.xnota.core.model.Rgba
 import com.xnota.core.model.TextMarkup
@@ -73,6 +74,7 @@ import com.xnota.core.model.deepCopy
 import com.xnota.core.model.snapshot
 import com.xnota.core.model.insets
 import com.xnota.core.model.resolvedPageColor
+import com.xnota.core.model.resolvedPatternColor
 import com.xnota.core.text.CellIndex
 import com.xnota.core.text.CharStyle
 import com.xnota.core.text.DeadKeyLatch
@@ -1855,8 +1857,10 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             }
             // A template covers a blank note page whole; on an imported PDF page it rules the
             // margins only, so the page itself is never drawn over.
-            TemplateLibrary.paint(renderer, state.document, page, state.footprint(page), region)
+            val cover = state.footprint(page)
+            TemplateLibrary.paint(renderer, state.document, page, cover, region)
             if (pi == null) MarkupPainter.paint(renderer, markups, state.document.dpi / 72.0)
+            stampPageNumber(renderer, state.document, page, cover, region)
         }
     }
 
@@ -3317,6 +3321,31 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     private fun paintExportRuling(doc: Document, page: Page, r: Renderer) {
         val cover = exportFootprint(doc, page)
         TemplateLibrary.paint(r, doc, page, cover, cover)
+        // The folio rides the export too: the same stamp the live canvas paints, whole-paper region.
+        stampPageNumber(r, doc, page, cover, cover)
+    }
+
+    /**
+     * The page-number stamp (the fork's folio): [page]'s own 1-based number in [doc]'s page list,
+     * set in the ruling's ink colour at the paper's bottom margin — the pref's mode picks centre
+     * or right; 0 stamps nothing. Drawn where the ruling is painted (the cached background layer
+     * and PDF export), so it rides the same caches and lands in exports; [region] is the slice
+     * actually being painted. The digits are shaped by the app's digit pref, like the date stamps.
+     */
+    private fun stampPageNumber(r: Renderer, doc: Document, page: Page, paper: Rect, region: Rect) {
+        val place = settings.prefs.pageNumbers
+        if (place == 0) return
+        val number = doc.pages.indexOf(page) + 1
+        if (number < 1) return
+        paintPageNumber(r, textMeasurer, pageNumberText(number), place, paper, page.resolvedPatternColor(doc), region)
+    }
+
+    /** The stamp's digits in the app's digit system (Arabic-Indic when the pref or locale says so). */
+    private fun pageNumberText(number: Int): String {
+        val s = number.toString()
+        return if (com.xnota.settings.DigitSystem.active(settings.prefs.digitSystem, appLanguage)) {
+            com.xnota.settings.DigitSystem.apply(s)
+        } else s
     }
 
     /** [page]'s whole paper in page space, margins included, resolved against [doc] (export/thumbnails). */

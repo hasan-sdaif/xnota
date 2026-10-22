@@ -2,8 +2,11 @@ package com.xnota.core.model
 
 import com.xnota.core.geometry.Pt
 import com.xnota.core.geometry.Rect
+import com.xnota.core.pal.FontFace
+import com.xnota.core.pal.FontSpec
 import com.xnota.core.pal.Pen
 import com.xnota.core.pal.Renderer
+import com.xnota.core.pal.TextMeasurer
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -163,6 +166,49 @@ private fun intersect(a: Rect, b: Rect): Rect? {
 
 /** The first ruling coordinate at or after [start]; the paper's own edges are skipped by the callers. */
 private fun first(start: Double, spacing: Double): Double = ceil(start / spacing) * spacing
+
+// ── The page-number stamp (the fork's folio) ─────────────────────────────────
+
+/** The stamp's type size in points: a folio's quiet ~9pt. */
+const val PAGE_NUMBER_PT = 9.0
+
+/** Content px the stamp's baseline clears the paper's bottom edge by. */
+private const val PAGE_NUMBER_BOTTOM_PAD = 6.0
+
+/** Content px the right-hand stamp clears the paper's right edge by. */
+private const val PAGE_NUMBER_RIGHT_PAD = 10.0
+
+/**
+ * Stamps a page's number in the bottom margin of its paper [paper] (the page's whole footprint,
+ * margins included — same box the ruling fills), in the ruling's ink colour [ink]: [placement] 1
+ * centres it on the paper, 2 tucks it into the right edge, anything else (0, the default) draws
+ * nothing. [text] arrives already digit-shaped by the caller (the app's digit pref). It is set
+ * through [TextMeasurer] so the run's width and metrics come from the same paint
+ * [Renderer.drawTextRun] draws with. [region] is the page-local rect actually being painted — the
+ * cached background layers pass their slice so a stamp outside it is skipped, and PDF export
+ * passes the whole paper — and a stamp whose box misses it draws nothing. Returns true when a
+ * stamp actually landed, false otherwise.
+ */
+fun paintPageNumber(
+    r: Renderer,
+    m: TextMeasurer,
+    text: String,
+    placement: Int,
+    paper: Rect,
+    ink: Rgba,
+    region: Rect,
+): Boolean {
+    if ((placement != 1 && placement != 2) || text.isEmpty() || ink.a == 0) return false
+    val font = FontSpec(PAGE_NUMBER_PT, FontFace.SANS)
+    val w = m.advances(text, font).sum()
+    val met = m.metrics(font)
+    val baseline = paper.bottom - met.descent - PAGE_NUMBER_BOTTOM_PAD
+    val x = if (placement == 1) paper.centerX - w / 2.0 else paper.right - PAGE_NUMBER_RIGHT_PAD - w
+    val box = Rect(x, baseline - met.ascent, w, met.ascent + met.descent)
+    if (!box.intersects(region)) return false
+    r.drawTextRun(text, x, baseline, font, ink)
+    return true
+}
 
 private fun hLines(r: Renderer, pen: Pen, spacing: Double, bounds: Rect, clip: Rect, offset: Double = 0.0) {
     var y = first(clip.top - offset, spacing) + offset

@@ -428,6 +428,10 @@
     <string name="orientation_portrait">Portrait</string>
     <string name="orientation_landscape">Landscape</string>
     <string name="pref_hide_page_borders">Hide page borders</string>
+    <string name="pref_page_numbers">Page numbers</string>
+    <string name="page_numbers_off">Off</string>
+    <string name="page_numbers_centre">Bottom centre</string>
+    <string name="page_numbers_right">Bottom right</string>
     <string name="pref_page_colour">Page colour</string>
     <string name="pref_page_colour_follows_theme">Page colour follows the theme</string>
     <string name="pref_pdf_export">PDF export</string>

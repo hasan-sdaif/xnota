@@ -429,6 +429,10 @@
     <string name="orientation_portrait">عمودي</string>
     <string name="orientation_landscape">أفقي</string>
     <string name="pref_hide_page_borders">إخفاء حدود الصفحات</string>
+    <string name="pref_page_numbers">أرقام الصفحات</string>
+    <string name="page_numbers_off">إيقاف</string>
+    <string name="page_numbers_centre">أسفل الوسط</string>
+    <string name="page_numbers_right">أسفل يمينًا</string>
     <string name="pref_page_colour">لون الصفحة</string>
     <string name="pref_page_colour_follows_theme">لون الصفحة يتبع السمة</string>
     <string name="pref_pdf_export">تصدير PDF</string>
