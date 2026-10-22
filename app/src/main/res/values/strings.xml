@@ -1440,6 +1440,7 @@
     <string name="array_cols">Columns</string>
     <string name="array_gap">Gap</string>
     <string name="image_corners">Corners…</string>
+    <string name="search_prefs">Search settings</string>
     <string name="image_corner_radius">Corner radius</string>
     <string name="image_corners_hint">0 makes the corners square again.</string>
     <plurals name="array_count_n">
