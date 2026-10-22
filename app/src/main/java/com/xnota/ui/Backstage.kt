@@ -56,6 +56,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -1032,6 +1033,11 @@ private fun ExplorerSection(
     val stack = remember(root) { mutableStateListOf<Pair<String, String>>() }
     val currentDocId = if (stack.isEmpty()) rootDocId else stack.last().first
     var refreshKey by remember(root) { mutableIntStateOf(0) }
+    // The fork's organization actions land here: one bump re-runs every listing producer.
+    fun refreshSoon() { refreshKey++ }
+    // The tag editor and the statistics panel (the fork): one entry at a time.
+    var tagEditing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
+    var statsShowing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     var fieldError by remember(root) { mutableStateOf<String?>(null) }
     var renaming by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     val selection = remember(root) { mutableStateListOf<BrowseEntry>() }
@@ -1321,6 +1327,8 @@ private fun ExplorerSection(
             selecting = { selection.isNotEmpty() },
             isCut = { e -> clipboard?.let { c -> c.isCut && c.entries.any { it.documentUri == e.documentUri } } == true },
             isPinned = { e -> e.isDir && editor.isPinned(e.documentUri) },
+            isFavorite = { e -> editor.isFavorite(e.documentUri) },
+            isTopPinned = { e -> editor.isTopPinned(e.documentUri) },
             isDropTarget = { e -> dragPos != null && dropTargetUri == e.documentUri },
             isPulsing = { e -> pulseUri == e.documentUri },
             onPulseDone = { e -> if (pulseUri == e.documentUri) pulseUri = null },
@@ -1354,6 +1362,11 @@ private fun ExplorerSection(
                 saveCopy = { callsNow.value.saveCopyFile(it.documentUri) },
                 exportPdf = { callsNow.value.exportFilePdf(it.documentUri) },
                 preview = { previewing = it },
+                toggleFavorite = { e -> editor.toggleFavorite(e.documentUri); refreshSoon() },
+                toggleTopPin = { e -> editor.toggleTopPin(e.documentUri); refreshSoon() },
+                editTags = { e -> tagEditing = e },
+                stats = { e -> statsShowing = e },
+                duplicate = { e -> editor.duplicateDocument(e)?.let { refreshSoon() } },
             ),
         )
     }
@@ -1955,6 +1968,56 @@ private fun ExplorerSection(
 
     namingColor?.let { c -> ColorNameDialog(editor, c) { namingColor = null } }
 
+    fun statsLine(label: Int, value: String): String = context.getString(label) + ": " + value
+
+    // The fork's tag editor: one note's tags, comma-separated, written back through the editor.
+    tagEditing?.let { entry ->
+        NameDialog(
+            title = stringResource(R.string.edit_tags),
+            initial = editor.tagsOf(entry).joinToString(", "),
+            confirmLabel = stringResource(R.string.save),
+            allowEmpty = true,
+            onConfirm = { raw ->
+                val tags = com.xnota.core.util.Tags.parse(raw)
+                scope.launch {
+                    val ok = withContext(Dispatchers.IO) { editor.setDocumentTags(entry.documentUri, tags) }
+                    tagEditing = null
+                    if (ok) refreshKey++ else opError = context.getString(R.string.err_rename_note)
+                }
+            },
+            onDismiss = { tagEditing = null },
+        )
+    }
+
+    // The fork's statistics panel: the document's own numbers, read on IO, shown as a dialog.
+    statsShowing?.let { entry ->
+        val stats = produceState<com.xnota.core.util.DocumentStats?>(null, entry) {
+            value = withContext(Dispatchers.IO) { editor.documentStatsFor(entry) }
+        }.value
+        AlertDialog(
+            onDismissRequest = { statsShowing = null },
+            title = { Text(stringResource(R.string.stats_title)) },
+            text = {
+                if (stats == null) {
+                    Text(stringResource(R.string.stats_loading))
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(statsLine(R.string.stats_pages, stats.pages.toString()), fontSize = 13.sp)
+                        Text(statsLine(R.string.stats_items, stats.items.toString()), fontSize = 13.sp)
+                        Text(statsLine(R.string.stats_strokes, stats.strokes.toString()), fontSize = 13.sp)
+                        Text(statsLine(R.string.stats_shapes, stats.shapes.toString()), fontSize = 13.sp)
+                        Text(statsLine(R.string.stats_texts, stats.texts.toString()), fontSize = 13.sp)
+                        Text(statsLine(R.string.stats_images, stats.images.toString()), fontSize = 13.sp)
+                        Text(statsLine(R.string.stats_ink, formatSize(stats.inkLength.toLong(), words::digits)), fontSize = 13.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { statsShowing = null }) { Text(stringResource(R.string.close_pane)) }
+            },
+        )
+    }
+
     renaming?.let { entry ->
         NameDialog(
             title = if (entry.isDir) stringResource(R.string.rename_folder) else stringResource(R.string.rename_note),
@@ -2176,6 +2239,14 @@ internal fun EntryMenu(
     onNameColor: (() -> Unit)? = null,
     onMoveTo: (() -> Unit)? = null,
     onPreview: (() -> Unit)? = null,
+    /** The fork: star state and actions for favorites, top pins, tags, statistics and duplication. */
+    favorite: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null,
+    topPinned: Boolean = false,
+    onToggleTopPin: (() -> Unit)? = null,
+    onEditTags: (() -> Unit)? = null,
+    onStats: (() -> Unit)? = null,
+    onDuplicate: (() -> Unit)? = null,
     deleteLabel: String = stringResource(R.string.delete),
 ) {
     val palette = LocalPalette.current
@@ -2192,10 +2263,19 @@ internal fun EntryMenu(
             if (onMoveTo != null) DropdownMenuItem(text = { Text(stringResource(R.string.move_to_folder_ellipsis)) }, onClick = { onDismiss(); onMoveTo() })
             DropdownMenuItem(text = { Text(stringResource(R.string.copy)) }, onClick = { onDismiss(); onCopy?.invoke() })
             DropdownMenuItem(text = { Text(stringResource(R.string.cut)) }, onClick = { onDismiss(); onCut?.invoke() })
+            if (onDuplicate != null) DropdownMenuItem(text = { Text(stringResource(R.string.duplicate_note)) }, onClick = { onDismiss(); onDuplicate() })
             if (onColor != null) DropdownMenuItem(text = { Text(stringResource(R.string.colour_code)) }, onClick = { showColors = true })
             if (onNameColor != null) DropdownMenuItem(text = { Text(stringResource(R.string.name_colour_ellipsis)) }, onClick = { onDismiss(); onNameColor() })
+            if (onEditTags != null) DropdownMenuItem(text = { Text(stringResource(R.string.edit_tags)) }, onClick = { onDismiss(); onEditTags() })
+            if (onStats != null) DropdownMenuItem(text = { Text(stringResource(R.string.stats_title)) }, onClick = { onDismiss(); onStats() })
             if (onTogglePin != null) {
                 DropdownMenuItem(text = { Text(if (pinned) stringResource(R.string.unpin_from_sidebar) else stringResource(R.string.pin_to_sidebar)) }, onClick = { onDismiss(); onTogglePin() })
+            }
+            if (onToggleTopPin != null) {
+                DropdownMenuItem(text = { Text(if (topPinned) stringResource(R.string.unpin) else stringResource(R.string.pin_to_top)) }, onClick = { onDismiss(); onToggleTopPin() })
+            }
+            if (onToggleFavorite != null) {
+                DropdownMenuItem(text = { Text(if (favorite) stringResource(R.string.unfavorite) else stringResource(R.string.favorite)) }, onClick = { onDismiss(); onToggleFavorite() })
             }
             DropdownMenuItem(text = { Text(deleteLabel) }, onClick = { onDismiss(); onDelete?.invoke() })
             if (onShare != null) {

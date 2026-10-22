@@ -78,6 +78,8 @@ data class ExplorerView(
     val compactRows: Boolean = false,
     /** The Timeline places files on the day they were created, or else the day they were last saved. */
     val timelineByCreated: Boolean = true,
+    /** The tag the listing is filtered to (the fork), or "" for every note. Kept per folder like the rest of the view. */
+    val tagFilter: String = "",
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("layout", layout.id)
@@ -94,6 +96,7 @@ data class ExplorerView(
         .put("folders", folders.id)
         .put("compact_rows", compactRows)
         .put("timeline_by_created", timelineByCreated)
+        .apply { if (tagFilter.isNotEmpty()) put("tag_filter", tagFilter) }
 
     companion object {
         fun fromJson(o: JSONObject?): ExplorerView {
@@ -113,6 +116,7 @@ data class ExplorerView(
                 folders = FolderPlacement.fromId(o.optString("folders")),
                 compactRows = o.optBoolean("compact_rows", false),
                 timelineByCreated = o.optBoolean("timeline_by_created", true),
+                tagFilter = o.optString("tag_filter", ""),
             )
         }
     }

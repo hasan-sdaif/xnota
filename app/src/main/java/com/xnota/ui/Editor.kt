@@ -3763,6 +3763,194 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         settingsRepo.save(settings)
     }
 
+    // --- Explorer organization 2.0 (the fork): favorites, top pins, tags, smart folders ---
+
+    /** Notes and folders starred on this device, uri strings in star order. */
+    val favoriteUris: List<String> get() = settings.favorites
+
+    fun isFavorite(uri: String): Boolean {
+        val key = documentKey(uri)
+        return settings.favorites.any { documentKey(it) == key }
+    }
+
+    /** Star or unstar a note or folder. Main thread. */
+    fun toggleFavorite(uri: String) {
+        val key = documentKey(uri)
+        val next = if (isFavorite(uri)) settings.favorites.filterNot { documentKey(it) == key } else settings.favorites + uri
+        if (next == settings.favorites) return
+        settings = settings.copy(favorites = next)
+        saveSettingsSoon()
+    }
+
+    /**
+     * What the sidebar's Favorites section shows: each starred note or folder under [treeUri] as it
+     * is now. A starred item that has gone is left out of the view (not out of the settings, so a
+     * file that comes back — a sync, an undo — stars again on its own). IO.
+     */
+    fun favoriteEntries(treeUri: String): List<BrowseEntry> {
+        val tree = android.net.Uri.parse(treeUri)
+        val out = ArrayList<BrowseEntry>()
+        for (favorite in settings.favorites) {
+            if (!isUnderTree(favorite, treeUri)) continue
+            val docId = runCatching { android.provider.DocumentsContract.getDocumentId(android.net.Uri.parse(favorite)) }.getOrNull() ?: continue
+            val canonical = android.provider.DocumentsContract.buildDocumentUriUsingTree(tree, docId)
+            val name = queryDisplayName(canonical) ?: continue
+            val stamp = stampOf(canonical.toString())
+            out.add(
+                BrowseEntry(
+                    name, canonical.toString(), isDirDocument(canonical),
+                    stamp?.size ?: 0L, (stamp?.modified ?: 0L).coerceAtLeast(0L),
+                    createdStore.get(documentKey(favorite)) ?: 0L, parentDocIdOf(favorite).orEmpty(), null,
+                ),
+            )
+        }
+        return out
+    }
+
+    /** Whether the document at [uri] is a folder, as the provider says. */
+    private fun isDirDocument(uri: android.net.Uri): Boolean = runCatching {
+        appContext.contentResolver.query(
+            uri, arrayOf(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE), null, null, null,
+        )?.use { c -> c.moveToFirst() && c.getString(0) == android.provider.DocumentsContract.Document.MIME_TYPE_DIR } ?: false
+    }.getOrDefault(false)
+
+    /** Notes and folders pinned to the top of their folder listing (the fork), uri strings in pin order. */
+    val topPinnedUris: List<String> get() = settings.pinnedUris
+
+    fun isTopPinned(uri: String): Boolean {
+        val key = documentKey(uri)
+        return settings.pinnedUris.any { documentKey(it) == key }
+    }
+
+    /** Pin or unpin a note or folder to the top of its listing. Main thread. */
+    fun toggleTopPin(uri: String) {
+        val key = documentKey(uri)
+        val next = if (isTopPinned(uri)) settings.pinnedUris.filterNot { documentKey(it) == key } else settings.pinnedUris + uri
+        if (next == settings.pinnedUris) return
+        settings = settings.copy(pinnedUris = next)
+        saveSettingsSoon()
+    }
+
+    /** The tags [entry]'s tile shows, from whatever was last read of the file. Instant. */
+    fun tagsOf(entry: BrowseEntry): List<String> =
+        if (entry.isDir) emptyList() else docMeta.latest(documentKey(entry.documentUri))?.tags.orEmpty()
+
+    /**
+     * Rewrites a note's tags. The open note's tags ride its ordinary autosave (marking it dirty);
+     * a closed note's bundle is read and written back in place with everything else untouched.
+     * Returns false when the file could not be read or written; the caller refreshes the listing.
+     * IO for a closed note.
+     */
+    fun setDocumentTags(uri: String, tags: List<String>): Boolean {
+        if (currentUri == uri) {
+            state.document.tags = com.xnota.core.util.Tags.normalize(tags)
+            state.document.dirty = true
+            return true
+        }
+        return runCatching {
+            val doc = appContext.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { codec.read(it, pdfDir, imageDir) }
+                ?: return false
+            doc.tags = com.xnota.core.util.Tags.normalize(tags)
+            appContext.contentResolver.openOutputStream(android.net.Uri.parse(uri), "wt")?.use { codec.write(doc, it) }
+                ?: return false
+            rememberStamp(uri)
+            true
+        }.getOrDefault(false)
+    }
+
+    /** The user's saved searches, in sidebar order. */
+    val smartFolders: List<com.xnota.settings.SmartFolder> get() = settings.smartFolders
+
+    /** Adds or replaces a smart folder (same name), capped; main thread. */
+    fun saveSmartFolder(folder: com.xnota.settings.SmartFolder) {
+        val next = com.xnota.settings.SmartFolders.save(settings.smartFolders, folder)
+        if (next == settings.smartFolders) return
+        settings = settings.copy(smartFolders = next)
+        saveSettingsSoon()
+    }
+
+    /** Removes the smart folder named [name]; main thread. */
+    fun deleteSmartFolder(name: String) {
+        val next = com.xnota.settings.SmartFolders.delete(settings.smartFolders, name)
+        if (next == settings.smartFolders) return
+        settings = settings.copy(smartFolders = next)
+        saveSettingsSoon()
+    }
+
+    /**
+     * A note's statistics (the fork): page and item counts and the total ink length, by loading the
+     * document. The open note reads from its live state. IO for a closed note.
+     */
+    fun documentStatsFor(entry: BrowseEntry): com.xnota.core.util.DocumentStats? {
+        if (entry.isDir || DocumentKind.ofName(entry.name) != DocumentKind.NOTE) return null
+        if (currentUri == entry.documentUri) return com.xnota.core.util.DocumentStats.of(state.document)
+        return runCatching {
+            appContext.contentResolver.openInputStream(android.net.Uri.parse(entry.documentUri))?.use { input ->
+                com.xnota.core.util.DocumentStats.of(codec.read(input, pdfDir, imageDir))
+            }
+        }.getOrNull()
+    }
+
+    /**
+     * Copies a note or canvas beside itself as "Name (copy)", byte for byte, so everything — tags,
+     * cover, embedded PDF — comes along. Returns the copy's uri, or null. IO.
+     */
+    fun duplicateDocument(entry: BrowseEntry): String? {
+        val kind = DocumentKind.ofName(entry.name) ?: return null
+        val root = browseRoot ?: return null
+        val stem = DocumentKind.stripSuffix(entry.name)
+        val name = uniqueDocumentName(root, entry.parentDocId, "$stem (copy)", kind)
+        val uri = createNoteFile(root, entry.parentDocId, name) { out ->
+            val input = appContext.contentResolver.openInputStream(android.net.Uri.parse(entry.documentUri))
+                ?: throw java.io.IOException("unreadable source")
+            input.use { copyStream(it, out) { false } }
+        } ?: return null
+        rememberStamp(uri)
+        // The copy keeps the original's created stamp; record it for this uri too so ordering matches.
+        runCatching {
+            peekFile(uri, { codec.peek(it) }, { codec.peek(it) })?.created?.let { createdStore.put(documentKey(uri), it) }
+        }
+        treeVersion++
+        return uri
+    }
+
+    /** Total bytes the notes root holds, recursively; cached until the root changes. IO. */
+    fun storageUsedBytes(treeUri: String): Long {
+        storageScan[treeUri]?.let { return it }
+        val total = sumTree(android.net.Uri.parse(treeUri), browseRootDocId(treeUri))
+        storageScan[treeUri] = total
+        return total
+    }
+
+    /** Sum of the sizes of every file at or under [docId], walking the tree a folder at a time. */
+    private fun sumTree(tree: android.net.Uri, docId: String): Long {
+        var total = 0L
+        runCatching {
+            appContext.contentResolver.query(
+                android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId),
+                arrayOf(
+                    android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE,
+                    android.provider.OpenableColumns.SIZE,
+                ),
+                null, null, null,
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val id = c.getString(0) ?: continue
+                    if (c.getString(1) == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) {
+                        total += sumTree(tree, id)
+                    } else if (!c.isNull(2)) {
+                        total += c.getLong(2)
+                    }
+                }
+            }
+        }
+        return total
+    }
+
+    /** Storage totals by tree uri; re-scanned only when the root itself changes. */
+    private val storageScan = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
     /** The explorer's (doc id, name) stack from [treeUri]'s root down to [folderUri], or null when it can't be reached. IO. */
     fun folderChain(treeUri: String, folderUri: String): List<Pair<String, String>>? {
         val tree = android.net.Uri.parse(treeUri)
@@ -4036,8 +4224,8 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         return createNoteFile(treeUri, parentDocId, name) { codec.write(blank, it) }
     }
 
-    /** What the New note screen chose: the page size in mm, every page's style, and the cover's when there is one. */
-    class NewNoteSetup(val widthMm: Double, val heightMm: Double, val style: PageStyle, val cover: PageStyle?)
+    /** What the New note screen chose: the page size in mm, every page's style, the cover's when there is one, and the tags to file it under (the fork). */
+    class NewNoteSetup(val widthMm: Double, val heightMm: Double, val style: PageStyle, val cover: PageStyle?, val tags: List<String> = emptyList())
 
     /** Creates a `.xnote` under [parentDocId] as [setup] describes, a cover first when it has one; returns its URI, or null. IO. */
     fun createNoteFile(treeUri: String, parentDocId: String, rawName: String, setup: NewNoteSetup): String? {
@@ -4055,6 +4243,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             TemplateLibrary.embed(doc, style.template, imageDir)
             doc.pages.add(0, cover)
         }
+        doc.tags = com.xnota.core.util.Tags.normalize(setup.tags)
         return createNoteFile(treeUri, parentDocId, name) { codec.write(doc, it) }
     }
 

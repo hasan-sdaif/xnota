@@ -312,4 +312,14 @@ object NotaIcons {
         circle(12.0, 12.0, 3.0),
         "M3 3l18 18",
     )
+
+    // Explorer organization 2.0 (the fork). The star stays an outline whatever state it
+    // shows — filled glyphs are foreign to this set, and the accent tint carries "on".
+    val star = icon("M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z")
+    val tag = icon(
+        "M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z",
+        "M7.5 7.5h.01",
+    )
+    /** The statistics panel: three bars of a bar chart. */
+    val chart = icon("M3 3v18h18", "M18 17V9", "M13 17V5", "M8 17v-3")
 }

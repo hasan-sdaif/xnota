@@ -6,6 +6,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -81,6 +83,8 @@ internal class TileHost(
     val isPinned: (BrowseEntry) -> Boolean,
     val isDropTarget: (BrowseEntry) -> Boolean,
     val isPulsing: (BrowseEntry) -> Boolean,
+    val isFavorite: (BrowseEntry) -> Boolean,
+    val isTopPinned: (BrowseEntry) -> Boolean,
     val onPulseDone: (BrowseEntry) -> Unit,
     val onClick: (BrowseEntry) -> Unit,
     val onLongClick: (BrowseEntry) -> Unit,
@@ -103,6 +107,16 @@ internal class EntryActions(
     val saveCopy: (BrowseEntry) -> Unit,
     val exportPdf: (BrowseEntry) -> Unit,
     val preview: (BrowseEntry) -> Unit,
+    /** Star or unstar (the fork). */
+    val toggleFavorite: (BrowseEntry) -> Unit,
+    /** Pin or unpin from the top of the listing (the fork). */
+    val toggleTopPin: (BrowseEntry) -> Unit,
+    /** Open the tag editor (the fork); notes only. */
+    val editTags: (BrowseEntry) -> Unit,
+    /** Show the statistics panel (the fork); notes only. */
+    val stats: (BrowseEntry) -> Unit,
+    /** Copy the file beside itself (the fork). */
+    val duplicate: (BrowseEntry) -> Unit,
 )
 
 /** Everything an explorer layout draws from: the view, what's in it, and how to describe each item. */
@@ -150,6 +164,9 @@ internal class ExplorerBody(
     }
 
     fun colorOf(e: BrowseEntry): Rgba? = e.color.takeIf { view.showColour }
+
+    /** The tags a file's tile chips show (the fork), from the meta last read of it. */
+    fun tags(e: BrowseEntry): List<String> = meta(e)?.tags.orEmpty()
 }
 
 internal fun entryKind(e: BrowseEntry, meta: DocMetaStore.Meta?): EntryKind = when {
@@ -232,6 +249,38 @@ internal fun ThumbBadges(b: ExplorerBody, e: BrowseEntry, inset: Dp = 8.dp) {
         }
         val pages = b.pages(e)
         if (b.view.showPages && pages > 1) TileBadge(NotaIcons.pages, "$pages", Modifier.align(Alignment.BottomEnd))
+        // The fork's marks: a star on a favorite, a pin on a top-pinned item.
+        if (b.host.isFavorite(e)) Icon(NotaIcons.star, stringResource(R.string.unfavorite), tint = paletteStar(), modifier = Modifier.size(15.dp).align(Alignment.TopEnd))
+        if (b.host.isTopPinned(e)) Icon(NotaIcons.pin, stringResource(R.string.pinned_to_top), tint = paletteStar(), modifier = Modifier.size(14.dp).align(Alignment.TopEnd).padding(end = if (b.host.isFavorite(e)) 20.dp else 0.dp))
+    }
+}
+
+/** The accent tint the thumbnail badges carry. */
+@Composable
+private fun paletteStar(): Color = LocalPalette.current.accent.toComposeColor()
+
+/**
+ * A file's tags as small dimmed chips (the fork): at most three spelled out, the rest as " +N".
+ * Runs under whatever space it's given; the parent clips or wraps as its layout wants.
+ */
+@Composable
+internal fun TagChips(tags: List<String>, modifier: Modifier = Modifier) {
+    if (tags.isEmpty()) return
+    val palette = LocalPalette.current
+    val dim = palette.textDim.toComposeColor()
+    val shape = MaterialTheme.shapes.extraSmall
+    Row(modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        tags.take(3).forEach { tag ->
+            Text(
+                tag,
+                color = dim,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clip(shape).background(palette.surface.toComposeColor()).border(0.5.dp, palette.border.toComposeColor(), shape).padding(horizontal = 5.dp, vertical = 1.dp),
+            )
+        }
+        if (tags.size > 3) Text("+${tags.size - 3}", color = dim, fontSize = 10.sp, modifier = Modifier.padding(top = 1.dp))
     }
 }
 
@@ -264,6 +313,13 @@ internal fun EntryMenuFor(b: ExplorerBody, e: BrowseEntry, expanded: Boolean, on
         onNameColor = e.color?.let { c -> { m.nameColor(c) } },
         onMoveTo = { m.moveTo(e) },
         onPreview = if (e.isDir) null else ({ m.preview(e) }),
+        favorite = b.host.isFavorite(e),
+        onToggleFavorite = { m.toggleFavorite(e) },
+        topPinned = b.host.isTopPinned(e),
+        onToggleTopPin = { m.toggleTopPin(e) },
+        onEditTags = if (!e.isDir && com.xnota.core.util.DocumentKind.ofName(e.name) == com.xnota.core.util.DocumentKind.NOTE) ({ m.editTags(e) }) else null,
+        onStats = if (!e.isDir && com.xnota.core.util.DocumentKind.ofName(e.name) == com.xnota.core.util.DocumentKind.NOTE) ({ m.stats(e) }) else null,
+        onDuplicate = if (e.isDir) null else ({ m.duplicate(e) }),
         deleteLabel = b.deleteLabel,
     )
 }
@@ -313,6 +369,7 @@ internal fun GridFileTile(b: ExplorerBody, e: BrowseEntry) {
                 if (meta.isNotEmpty()) {
                     Text(meta, color = palette.textDim.toComposeColor(), fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                TagChips(b.tags(e))
             }
             if (!selecting) EntryMenuButton(b, e, palette.textDim.toComposeColor())
         }
@@ -474,9 +531,12 @@ internal fun ListRow(b: ExplorerBody, e: BrowseEntry, wide: Boolean) {
                 val where = b.whereOf?.invoke(e)
                 if (!wide && !compact) Text(listOfNotNull(where, b.metaText(e).ifEmpty { null }).joinToString(" · "), color = dim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 else if (where != null && !compact) Text(where, color = dim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (!compact) TagChips(b.tags(e))
             }
             if (code != null && !e.isDir) Box(Modifier.size(8.dp).clip(CircleShape).background(code))
             if (b.host.isPinned(e)) Icon(NotaIcons.pin, stringResource(R.string.pinned_to_sidebar), tint = dim, modifier = Modifier.size(14.dp))
+            if (b.host.isTopPinned(e)) Icon(NotaIcons.pin, stringResource(R.string.pinned_to_top), tint = dim, modifier = Modifier.size(14.dp))
+            if (b.host.isFavorite(e)) Icon(NotaIcons.star, stringResource(R.string.unfavorite), tint = palette.accent.toComposeColor(), modifier = Modifier.size(14.dp))
         }
         if (wide) {
             Row(Modifier.width(LIST_KIND_W), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
