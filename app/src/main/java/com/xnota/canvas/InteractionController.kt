@@ -168,6 +168,8 @@ class InteractionController(
     private val onAddPageAtEnd: () -> Unit = {},
     /** A short haptic tick (e.g. the overscroll pull crossed the add-page threshold). */
     private val onHaptic: () -> Unit = {},
+    /** The fork's pen haptics: a soft tick the moment a stroke's edit lands (pref-gated by the host). */
+    private val onStrokeCommit: () -> Unit = {},
 ) {
     /** Whether the system clipboard currently holds an image (provided by the host). */
     var clipboardHasImage: () -> Boolean = { false }
@@ -1346,10 +1348,12 @@ class InteractionController(
         strokeCoalescer.notePenUp(nowMs)
         if (coalesce && history.tryCoalesce(command)) {
             onContentChanged()
+            onStrokeCommit()
             return
         }
         history.push(command)
         onContentChanged()
+        onStrokeCommit()
     }
 
     /** Add a finished stroke to its page and its cache; returns the command that undoes it. */

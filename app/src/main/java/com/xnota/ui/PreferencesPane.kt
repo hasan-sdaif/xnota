@@ -356,6 +356,28 @@ fun PreferencesPane(
             }
 
             HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.pref_text_typing))
+            // The fork's typing behaviour: the flow editor's input transforms and its feedback.
+            CheckRow(stringResource(R.string.pref_smart_quotes), prefs.smartQuotes) {
+                update(prefs.copy(smartQuotes = it))
+            }
+            CheckRow(stringResource(R.string.pref_typewriter), prefs.typewriterScrolling) {
+                update(prefs.copy(typewriterScrolling = it))
+            }
+            CheckRow(stringResource(R.string.pref_typing_sounds), prefs.typingSounds) {
+                update(prefs.copy(typingSounds = it))
+            }
+            CheckRow(stringResource(R.string.pref_pen_haptics), prefs.penHaptics) {
+                update(prefs.copy(penHaptics = it))
+            }
+            CheckRow(stringResource(R.string.pref_keep_screen_on), prefs.keepScreenOn) {
+                update(prefs.copy(keepScreenOn = it))
+            }
+            CheckRow(stringResource(R.string.pref_immersive), prefs.immersiveMode) {
+                update(prefs.copy(immersiveMode = it))
+            }
+
+            HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_ink_engine))
             Text(stringResource(R.string.pref_ink_engine_help), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
             FieldLabel(stringResource(R.string.pref_stroke_filter))
@@ -613,6 +635,53 @@ fun PreferencesPane(
                 fontSize = 12.sp,
             )
             BackupSection(editor, onPickBackupRoot, prefs) { updateHome(prefs.copy(backupEvery = it)) }
+
+            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.pref_reading))
+            // The fork's reading kit: the reader pane adjusts these live; here they are settable
+            // directly, for settling in before the first read.
+            FieldLabel(stringResource(R.string.pref_reader_font_scale))
+            Slider(
+                value = prefs.readerFontScale.toFloat(),
+                onValueChange = { updateHome(prefs.copy(readerFontScale = (Math.round(it * 10) / 10.0).coerceIn(0.8, 2.0))) },
+                valueRange = 0.8f..2.0f,
+                modifier = Modifier.width(280.dp),
+            )
+            FieldLabel(stringResource(R.string.pref_reader_line_height))
+            Slider(
+                value = prefs.readerLineHeight.toFloat(),
+                onValueChange = { updateHome(prefs.copy(readerLineHeight = (Math.round(it * 20) / 20.0).coerceIn(1.2, 2.4))) },
+                valueRange = 1.2f..2.4f,
+                modifier = Modifier.width(280.dp),
+            )
+            CheckRow(stringResource(R.string.reader_sepia), prefs.readerSepia) {
+                updateHome(prefs.copy(readerSepia = it))
+            }
+
+            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.pref_focus))
+            FieldLabel(stringResource(R.string.pref_focus_minutes))
+            Slider(
+                value = prefs.focusMinutes.toFloat(),
+                onValueChange = { updateHome(prefs.copy(focusMinutes = Math.round(it))) },
+                valueRange = 5f..90f,
+                modifier = Modifier.width(280.dp),
+            )
+            FieldLabel(stringResource(R.string.pref_focus_break))
+            Slider(
+                value = prefs.focusBreak.toFloat(),
+                onValueChange = { updateHome(prefs.copy(focusBreak = Math.round(it))) },
+                valueRange = 1f..30f,
+                modifier = Modifier.width(280.dp),
+            )
+
+            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.pref_qibla))
+            // The fork's Qibla pane: coordinates typed by hand, the bearing drawn on a compass
+            // rose — see QiblaPane for what it shows and why it never asks for location.
+            QiblaPane(prefs.qiblaLat, prefs.qiblaLon) { lat, lon ->
+                updateHome(prefs.copy(qiblaLat = lat, qiblaLon = lon))
+            }
 
             HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_pdf_export))

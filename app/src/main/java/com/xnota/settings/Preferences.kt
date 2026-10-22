@@ -179,6 +179,31 @@ data class Preferences(
     val symmetryMode: String = "none",
     /** Segment count of the radial symmetry, 2..8; only read when [symmetryMode] is "radial". */
     val symmetrySegments: Int = 6,
+    // ── Reading, focus & Arabic wiring (the fork) ────────────────────────────────
+    /** Where the Qibla pane's compass points from: typed by hand, never read from the device.
+     *  Defaults to Manama, Bahrain. */
+    val qiblaLat: Double = 26.0667,
+    val qiblaLon: Double = 50.5577,
+    /** A soft haptic tick the moment a pen stroke commits. */
+    val penHaptics: Boolean = false,
+    /** The screen stays on while a note or canvas is open (drawing/reading time). */
+    val keepScreenOn: Boolean = false,
+    /** The system bars hide themselves while a note or canvas is open (immersive drawing). */
+    val immersiveMode: Boolean = false,
+    /** Reading mode's text size multiplier (the reader's A-/A+ chips step it). */
+    val readerFontScale: Double = 1.0,
+    /** Reading mode's line height (the reader's taller/tighter chips step it). */
+    val readerLineHeight: Double = 1.7,
+    /** Reading mode's sepia tint over the paper. */
+    val readerSepia: Boolean = false,
+    /** Reading mode's paper colour (a warm white by default). */
+    val readerPaperColor: Rgba = DEFAULT_READER_PAPER,
+    /** The focus timer's work phase, in minutes. */
+    val focusMinutes: Int = 25,
+    /** The focus timer's break phase, in minutes. */
+    val focusBreak: Int = 5,
+    /** Daily word goal; 0 (default) keeps the explorer's progress chip hidden. */
+    val dailyWordGoal: Int = 0,
 
     /** Version of the preferences payload, so one-off migrations can tell a stale file from a
      *  fresh one; see [PREF_SCHEMA]. */
@@ -288,6 +313,18 @@ data class Preferences(
         .put("undo_coalesce", undoCoalesce)
         .put("symmetry_mode", symmetryMode)
         .put("symmetry_segments", symmetrySegments)
+        .put("qibla_lat", qiblaLat)
+        .put("qibla_lon", qiblaLon)
+        .put("pen_haptics", penHaptics)
+        .put("keep_screen_on", keepScreenOn)
+        .put("immersive_mode", immersiveMode)
+        .put("reader_font_scale", readerFontScale)
+        .put("reader_line_height", readerLineHeight)
+        .put("reader_sepia", readerSepia)
+        .put("reader_paper_color", Rgba.toHex(readerPaperColor))
+        .put("focus_minutes", focusMinutes)
+        .put("focus_break", focusBreak)
+        .put("daily_word_goal", dailyWordGoal)
         .put("pref_schema", prefSchema)
 
     companion object {
@@ -298,6 +335,9 @@ data class Preferences(
 
         /** [trashDays] for keeping deleted items until Trash is emptied by hand. */
         const val TRASH_FOREVER = -1
+
+        /** Reading mode's default paper: a warm white, kind to the eyes for long reads. */
+        val DEFAULT_READER_PAPER = Rgba(255, 248, 240, 255)
 
         /** Preferences payload version. v2 is the fork's gesture-and-pen defaults: a file written
          *  before the fork (or by upstream) carries no `pref_schema`, and its untouched "none"
@@ -434,6 +474,18 @@ data class Preferences(
                     .let { if (it in SymmetryMode.ids) it else "none" },
                 symmetrySegments = o.optInt("symmetry_segments", 6)
                     .coerceIn(Symmetry.MIN_SEGMENTS, Symmetry.MAX_SEGMENTS),
+                qiblaLat = o.optDouble("qibla_lat", 26.0667).coerceIn(-90.0, 90.0),
+                qiblaLon = o.optDouble("qibla_lon", 50.5577).coerceIn(-180.0, 180.0),
+                penHaptics = o.optBoolean("pen_haptics", false),
+                keepScreenOn = o.optBoolean("keep_screen_on", false),
+                immersiveMode = o.optBoolean("immersive_mode", false),
+                readerFontScale = o.optDouble("reader_font_scale", 1.0).coerceIn(0.8, 2.0),
+                readerLineHeight = o.optDouble("reader_line_height", 1.7).coerceIn(1.2, 2.4),
+                readerSepia = o.optBoolean("reader_sepia", false),
+                readerPaperColor = Rgba.fromHex(o.optString("reader_paper_color")) ?: DEFAULT_READER_PAPER,
+                focusMinutes = o.optInt("focus_minutes", 25).coerceIn(1, 180),
+                focusBreak = o.optInt("focus_break", 5).coerceIn(1, 60),
+                dailyWordGoal = o.optInt("daily_word_goal", 0).coerceIn(0, 100000),
                 prefSchema = schema.coerceAtLeast(PREF_SCHEMA),
             )
         }

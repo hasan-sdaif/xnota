@@ -551,9 +551,11 @@ fun FlowEditMenu(editor: Editor) {
     val hasClip = editor.clipboardHasText()
     val hasSelection = editor.flowHasSelection
     var pasteOpen by remember { mutableStateOf(false) }
+    var stampOpen by remember { mutableStateOf(false) }
+    var symbolsOpen by remember { mutableStateOf(false) }
 
     val barHeightPx = with(density) { 48.dp.toPx() }
-    val barWidthPx = with(density) { (4 * 46).dp.toPx() }
+    val barWidthPx = with(density) { (8 * 46).dp.toPx() }
     val gap = with(density) { 10.dp.toPx() }
     // When pushed below the selection, also clear the teardrop handles hanging there.
     val handleClearance = with(density) { (2 * com.xnota.canvas.TextHandles.RADIUS_DP).dp.toPx() }
@@ -600,6 +602,45 @@ fun FlowEditMenu(editor: Editor) {
             }
             ActionIcon(NotaIcons.trash, stringResource(R.string.delete), enabled = hasSelection, shortcut = Keys.DELETE) {
                 editor.flowDeleteSelection(); editor.dismissFlowContextMenu()
+            }
+            // The fork's insert-stamp: the date and time (Gregorian or Hijri) at the caret.
+            Box {
+                ActionIcon(NotaIcons.clock, stringResource(R.string.insert_stamp)) { stampOpen = true }
+                DropdownMenu(
+                    expanded = stampOpen,
+                    onDismissRequest = { stampOpen = false },
+                    properties = PopupProperties(focusable = false),
+                ) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.insert_stamp)) }, onClick = {
+                        stampOpen = false; editor.flowInsertStamp(hijri = false); editor.dismissFlowContextMenu()
+                    })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.insert_stamp_hijri)) }, onClick = {
+                        stampOpen = false; editor.flowInsertStamp(hijri = true); editor.dismissFlowContextMenu()
+                    })
+                }
+            }
+            // The fork's symbol picker: Arabic punctuation, marks and quick symbols at the caret.
+            Box {
+                ActionIcon(NotaIcons.fontFace, stringResource(R.string.insert_symbol)) { symbolsOpen = true }
+                DropdownMenu(
+                    expanded = symbolsOpen,
+                    onDismissRequest = { symbolsOpen = false },
+                    properties = PopupProperties(focusable = false),
+                ) {
+                    DropdownMenuItem(
+                        text = { SymbolPicker { symbol ->
+                            symbolsOpen = false
+                            editor.flowInsertText(symbol)
+                            editor.dismissFlowContextMenu()
+                        } },
+                        onClick = {},
+                    )
+                }
+            }
+            // The fork's reading mode: the note's text alone, on comfortable paper.
+            ActionIcon(NotaIcons.contents, stringResource(R.string.reading_mode)) {
+                editor.enterReadingMode()
+                editor.dismissFlowContextMenu()
             }
             // The fork's find & replace: the bar opens above the keyboard and stays while editing.
             ActionIcon(NotaIcons.search, stringResource(R.string.find_replace)) {

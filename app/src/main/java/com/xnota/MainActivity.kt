@@ -96,6 +96,7 @@ import com.xnota.ui.theme.NotaTheme
 import com.xnota.ui.theme.toComposeColor
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Minimum time the launch loader stays up, so its animation is briefly seen even
@@ -166,7 +167,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             val ed = remember { Editor(context).also { editor = it } }
-            LaunchedEffect(ed.fullscreen) { applyFullscreen(ed.fullscreen) }
+            LaunchedEffect(ed.fullscreen, ed.noteOpen, ed.prefsVersion) {
+                // The fork's immersive mode hides the system bars while a note is open, on top of
+                // whatever the fullscreen pref itself says.
+                applyFullscreen(ed.fullscreen || (ed.preferences.immersiveMode && ed.noteOpen))
+            }
             var ready by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) {
                 val start = android.os.SystemClock.uptimeMillis()
@@ -880,12 +885,14 @@ private fun EditorScreen(
             // a note is open.
             val focused = editor.active
             if (focused.noteOpen) {
+                // Reading mode backs out to the editor first.
+                BackHandler(enabled = focused.readingMode) { focused.exitReadingMode() }
                 // While a text box is open, Back commits-or-dismisses it (and hides the keyboard).
                 BackHandler(enabled = focused.editingField != null) { focused.commitText() }
                 // A live flow caret session ends first (flushing its typing burst).
                 BackHandler(enabled = focused.flowEditingActive) { focused.flowText.endSession() }
                 // Otherwise Back closes that pane (guarded for unsaved edits); the other one stays.
-                BackHandler(enabled = focused.editingField == null && !focused.flowEditingActive) {
+                BackHandler(enabled = focused.editingField == null && !focused.flowEditingActive && !focused.readingMode) {
                     guarded(focused) { focused.goHome() }
                 }
             }
@@ -1201,6 +1208,21 @@ private fun EditorPane(
             }
         }
     }
+    // The fork's reading clock: one tick a second while this pane's note is open, settled into
+    // the note's reading-time tally when it closes.
+    LaunchedEffect(editor.noteOpen, editor.currentUri) {
+        val uri = editor.currentUri
+        while (isActive && editor.noteOpen && editor.currentUri == uri) {
+            kotlinx.coroutines.delay(1000)
+            editor.readingTick()
+        }
+    }
+    // The fork's keep-screen-on: the pref holds the display awake while the pane shows a note.
+    val keepOnView = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(keepOnView, editor.noteOpen, editor.prefsVersion) {
+        keepOnView.keepScreenOn = editor.noteOpen && editor.preferences.keepScreenOn
+        onDispose { keepOnView.keepScreenOn = false }
+    }
     Column(
         modifier = modifier
             .background(palette.bg.toComposeColor())
@@ -1211,6 +1233,11 @@ private fun EditorPane(
                 ke.type == KeyEventType.KeyDown && editor.handleKeyDown(ke.nativeKeyEvent)
             },
     ) {
+        // The fork's reading mode: the pane becomes the reader, chrome and all.
+        if (editor.readingMode) {
+            Box(Modifier.fillMaxSize()) { com.xnota.ui.ReadingPane(editor) }
+            return@Column
+        }
         val onClose = if (closable) ({ actions.onClosePane(editor) }) else null
         // In a split, a hairline over the toolbar marks the pane the pen and the keyboard are in.
         if (closable) {
@@ -1238,6 +1265,10 @@ private fun EditorPane(
                         modifier = Modifier.fillMaxSize(),
                         update = { canvas.view.publish() },
                     )
+                    // The fork's focus timer HUD, floating over the canvas's top edge.
+                    Box(Modifier.align(Alignment.TopCenter).padding(top = 8.dp)) {
+                        com.xnota.ui.FocusHud(editor)
+                    }
                     canvas.editingField?.let { field ->
                         com.xnota.ui.TextEditorOverlay(canvas, field)
                     }
@@ -1284,6 +1315,10 @@ private fun EditorPane(
                             modifier = Modifier.fillMaxSize(),
                             update = { editor.view.requestRender() }, // repaint on (re)attach so a push never flashes blank
                         )
+                        // The fork's focus timer HUD, floating over the note's top edge.
+                        Box(Modifier.align(Alignment.TopCenter).padding(top = 8.dp)) {
+                            com.xnota.ui.FocusHud(editor)
+                        }
                         editor.editingField?.let { field ->
                             com.xnota.ui.TextEditorOverlay(editor, field)
                         }

@@ -923,6 +923,9 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         onContextMenu = { vp, content, locked -> contextMenu = ContextMenuTarget(vp.x, vp.y, content, locked) },
         onAddPageAtEnd = { addPageAtEnd() },
         onHaptic = { runCatching { view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS) } },
+        // The fork's pen haptics: a soft tick as each stroke commits (gated by the pref inside),
+        // and any stroke marks the day as an editing one for the streak.
+        onStrokeCommit = { penStrokeTick(); noteActivity(0) },
     )
 
     /**
@@ -1408,6 +1411,31 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         flowText.replaceExternal(flowText.selection, text)
     }
 
+    /** Insert [text] at the flow caret (the fork's symbol picker and stamps). */
+    fun flowInsertText(text: String) {
+        if (!flowText.active) return
+        flowText.replaceExternal(flowText.selection, text)
+    }
+
+    /**
+     * Insert the current date and time at the flow caret (the fork's stamp): the Gregorian
+     * wording, or the Hijri one with its Arabic month names. Digits follow the digit pref.
+     */
+    fun flowInsertStamp(hijri: Boolean) {
+        if (!flowText.active) return
+        val arabic = appLanguage.startsWith("ar")
+        val digits: (String) -> String =
+            if (com.xnota.settings.DigitSystem.active(settings.prefs.digitSystem, appLanguage)) {
+                com.xnota.settings.DigitSystem::apply
+            } else {
+                { it }
+            }
+        val stamp = com.xnota.core.text.DateStamps.stampText(
+            java.time.LocalDateTime.now(), hijri, arabic, digits,
+        )
+        flowText.replaceExternal(flowText.selection, stamp)
+    }
+
     /** Parse the clipboard's text as markdown and paste it at the caret's font size. */
     fun pasteMarkdownAtCaret() {
         if (!flowText.active) return
@@ -1525,6 +1553,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     /** A burst landed. */
     private fun onFlowFlushed() {
         refreshContent()
+        noteActivity(0) // the note was edited (the streak's day set); words arrive separately
     }
 
     private fun onFlowSessionChanged(active: Boolean) {
@@ -2374,6 +2403,13 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         controller.detectShapes = p.detectShapes
         flowText.markdownInput = p.markdownInput
         flowText.slashCommands = p.slashCommands
+        // The fork's typing & reading polish: the four text prefs land on the controller, the key
+        // click's tone follows the typing-sounds pref, and typed words feed the daily goal.
+        flowText.smartQuotes = p.smartQuotes
+        flowText.autoLists = p.autoLists
+        flowText.typewriterScrolling = p.typewriterScrolling
+        flowText.onKeyClick = { keyClick() }
+        flowText.onWordsTyped = { n -> noteActivity(n) }
         controller.penButtonTool = if (p.penButtonTool == "none") null else (Tool.fromId(p.penButtonTool) ?: Tool.ERASER)
         controller.penButton2Tool = if (p.penButton2Tool == "none") null else (Tool.fromId(p.penButton2Tool) ?: Tool.PAN)
         controller.penButtonHover = p.penButtonHover
@@ -2414,6 +2450,193 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             editor.flowText.slashCommands = on
             if (!on) editor.slashDismissed = null
         }
+    }
+
+    // ── Reading mode (the fork): chrome-free, read-only, comfortable typography ──────────────
+
+    /** True while the note is shown in reading mode (transient — never persisted). */
+    var readingMode by mutableStateOf(false)
+        private set
+
+    /** Show the note's text in the reader (end any live caret first; the keyboard gives way). */
+    fun enterReadingMode() {
+        flowText.endSession()
+        readingMode = true
+    }
+
+    /** Leave the reader back to the ordinary editor. */
+    fun exitReadingMode() {
+        readingMode = false
+    }
+
+    /** Adjust a reading preference (the reader's chips) and persist it, live for every pane. */
+    fun setReaderPref(change: (Preferences) -> Preferences) {
+        settings = settings.copy(prefs = change(settings.prefs))
+        saveSettingsSoon()
+        for (editor in listOfNotNull(this, sibling)) editor.prefsVersion++
+    }
+
+    /** The note's text as the reader shows it: the flow's paragraphs, one paragraph a line. */
+    fun readingText(): String =
+        state.document.flow.paragraphs.joinToString("\n") { it.plainText() }
+
+    // ── Reading time, scroll memory, daily words & streak (the fork) ─────────────────────────
+
+    /** Seconds the open note has been open for (flushed into [Settings.readingSeconds] on close). */
+    private var readingSecondsSession = 0L
+
+    /** Whether this note's session actually edited something (drives the streak's day set). */
+    private var sessionEdited = false
+
+    /** Words typed this session, waiting for their throttled flush into the daily tally. */
+    private var pendingWords = 0
+
+    private val wordsFlushRun = Runnable { flushDailyWords() }
+
+    /** One second of the open note went by (the shell's reading clock calls this). */
+    fun readingTick() {
+        if (noteOpen) readingSecondsSession++
+    }
+
+    /** Words written today so far (the daily goal chip's numerator). */
+    fun wordsToday(): Long =
+        com.xnota.core.util.DailyWords.words(settings.dailyWords, com.xnota.core.util.DailyWords.keyOfToday())
+
+    /** The writing streak over the recorded edit days. */
+    fun writingStreak(): Int = com.xnota.core.util.Streak.of(settings.editDays.toSet())
+
+    /** Seconds [uri] has been read for across sessions, for its stats row. */
+    fun readingSecondsOf(uri: String): Long =
+        com.xnota.core.util.ReadingTime.seconds(settings.readingSeconds, uri)
+
+    /**
+     * Note activity landed: [words] typed words count toward today's goal, and the day joins the
+     * streak's set. The settings write is throttled (typed words arrive in bursts), so a long
+     * writing session settles once, shortly after it goes quiet.
+     */
+    fun noteActivity(words: Int) {
+        sessionEdited = true
+        if (words <= 0) return
+        pendingWords += words
+        view.removeCallbacks(wordsFlushRun)
+        view.postDelayed(wordsFlushRun, WORDS_FLUSH_MS)
+    }
+
+    private fun flushDailyWords() {
+        view.removeCallbacks(wordsFlushRun)
+        if (pendingWords <= 0) return
+        val today = com.xnota.core.util.DailyWords.keyOfToday()
+        settings = settings.copy(
+            dailyWords = com.xnota.core.util.DailyWords.add(settings.dailyWords, today, pendingWords),
+            editDays = withEditDay(settings.editDays, today),
+        )
+        pendingWords = 0
+        saveSettingsSoon()
+    }
+
+    /** The day set with [day] added, kept sorted and capped. */
+    private fun withEditDay(days: List<String>, day: String): List<String> =
+        (days.filter { it != day } + day).sorted().takeLast(EDIT_DAYS_KEPT)
+
+    /**
+     * The open note's session is closing: its reading seconds, scroll offset and the day's edit
+     * mark settle into settings. [scroll] carries the canvas position captured as the close began
+     * (the flush may follow asynchronously); null leaves the scroll memory alone (a canvas).
+     */
+    private fun noteSessionClosing(scroll: Pt?) {
+        val uri = currentUri
+        flushDailyWords()
+        if (uri != null) {
+            var next = settings
+            if (readingSecondsSession > 0) {
+                next = next.copy(readingSeconds = com.xnota.core.util.ReadingTime.add(next.readingSeconds, uri, readingSecondsSession))
+                readingSecondsSession = 0
+            }
+            if (sessionEdited) next = next.copy(editDays = withEditDay(next.editDays, com.xnota.core.util.DailyWords.keyOfToday()))
+            if (scroll != null) {
+                next = next.copy(scrollOffsets = com.xnota.core.util.ScrollMemory.store(next.scrollOffsets, uri, scroll.x, scroll.y))
+            }
+            if (next != settings) {
+                settings = next
+                saveSettingsSoon()
+            }
+        }
+        sessionEdited = false
+        readingSecondsSession = 0
+    }
+
+    /** Where [uri] was last scrolled to, applied once the fresh layout is in place. */
+    private fun restoreScrollOf(uri: String) {
+        val at = com.xnota.core.util.ScrollMemory.restore(settings.scrollOffsets, uri) ?: return
+        if (at[0] == 0L && at[1] == 0L) return
+        view.post {
+            if (currentUri != uri) return@post
+            state.relayout()
+            state.scrollX = at[0].toDouble()
+            state.scrollY = at[1].toDouble()
+            state.clampScroll()
+            refreshView()
+            view.requestRender()
+        }
+    }
+
+    // ── The fork's soft tones and pen haptics ────────────────────────────────────────────────
+
+    /** One shared tone generator for the key click and the timer's ring, made on first use. */
+    private var toneGen: android.media.ToneGenerator? = null
+
+    private fun toneGenOrNull(): android.media.ToneGenerator? {
+        if (toneGen == null) {
+            toneGen = runCatching {
+                android.media.ToneGenerator(android.media.AudioManager.STREAM_SYSTEM, TONE_VOLUME)
+            }.getOrNull()
+        }
+        return toneGen
+    }
+
+    /** The typing-sounds pref's soft key click (a short PIP; silent when the pref is off). */
+    fun keyClick() {
+        if (!settings.prefs.typingSounds) return
+        runCatching { toneGenOrNull()?.startTone(android.media.ToneGenerator.TONE_CDMA_PIP, KEY_CLICK_MS) }
+    }
+
+    /** A slightly longer soft tone, for the focus timer's phase transitions. */
+    fun softTone() {
+        runCatching { toneGenOrNull()?.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, RING_MS) }
+    }
+
+    /** The pen-haptics pref's soft tick as a stroke commits (VibratorManager on 31+, else Vibrator). */
+    fun penStrokeTick() {
+        if (!settings.prefs.penHaptics) return
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                appContext.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                appContext.getSystemService(android.os.Vibrator::class.java)
+            }?.let { v ->
+                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                    v.vibrate(android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_TICK))
+                } else {
+                    @Suppress("DEPRECATION")
+                    v.vibrate(TICK_MS)
+                }
+            }
+        }
+    }
+
+    private companion object {
+        /** How long a typed-word burst waits before settling into the daily tally. */
+        const val WORDS_FLUSH_MS = 10_000L
+
+        /** Days of edit history kept for the streak. */
+        const val EDIT_DAYS_KEPT = 120
+
+        /** Tone generator volume (0-100) and the two tone lengths. */
+        const val TONE_VOLUME = 35
+        const val KEY_CLICK_MS = 25
+        const val RING_MS = 180
+        const val TICK_MS = 15L
     }
 
     /** Set fullscreen and persist it as an explicit choice (used by the toolbar, F11, and the
@@ -3219,6 +3442,8 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             maybeBindAutosave(uri) // resume autosaving if this note lives in the granted folder
             noteOpen = true // push the editor on top of backstage (only on a successful open)
             rememberOpened(uri, name)
+            // The fork's scroll memory: return the note to where it was last read.
+            restoreScrollOf(uri)
         } catch (e: XNoteFormatException) {
             message = appContext.getString(R.string.err_not_xnotes)
         } catch (e: Exception) {
@@ -8118,22 +8343,29 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         // so leaving one is just popping the layer.
         if (canvasOpen) {
             infinite.commitText() // an open label goes down with what was typed
+            // Capture the session's tally before the async flush; a canvas keeps no scroll memory.
+            val closing = { noteSessionClosing(scroll = null) }
             flushCanvasThen(showOverlay = true) {
                 canvasAutosaveUri = null
                 canvasOpen = false
                 noteOpen = false
+                closing()
             }
             return
         }
         commitText() // commit an open text box before leaving (also hides its keyboard)
         flowText.endSession() // end any live flow caret (flushes typing, hides the keyboard)
         saveViewState() // remember this folder note's view before leaving
+        // The session's scroll position and reading seconds, captured while the view still holds them.
+        val scrollAtClose = Pt(state.scrollX, state.scrollY)
+        val closing = { noteSessionClosing(scroll = scrollAtClose) }
         flushThen(showOverlay = true) {
             // Regenerate this folder note's grid tile now that editing is done (off-thread, low priority);
             // a non-folder note (no autosave binding) isn't in the explorer, so there's nothing to do.
             autosaveUri?.let { uri -> autosaveScope.launch { regenerateClosedNoteThumb(uri) } }
             autosaveUri = null
             noteOpen = false
+            closing()
         }
     }
 }

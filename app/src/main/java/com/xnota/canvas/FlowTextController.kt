@@ -21,9 +21,12 @@ import com.xnota.core.text.FlowHit
 import com.xnota.core.text.FlowPos
 import com.xnota.core.text.FlowRange
 import com.xnota.core.text.InputRules
+import com.xnota.core.text.ListKind
+import com.xnota.core.text.ListMarkers
 import com.xnota.core.text.Paragraph
 import com.xnota.core.text.SelShape
 import com.xnota.core.text.SlashCommands
+import com.xnota.core.text.SmartQuotes
 import com.xnota.core.text.TextFlow
 import com.xnota.core.text.wordRangeAt
 import kotlin.math.abs
@@ -77,6 +80,21 @@ class FlowTextController(
 
     /** Whether "/" opens the command menu (the text tool's Slash commands toggle). */
     var slashCommands = true
+
+    /** Whether straight quotes land as typographic ones as they are typed (the fork). */
+    var smartQuotes = true
+
+    /** Whether Enter after a typed list marker carries the marker onto the new line (the fork). */
+    var autoLists = true
+
+    /** Whether the caret's line stays vertically centred while typing (the fork). */
+    var typewriterScrolling = false
+
+    /** A soft key click to play as text lands (the fork's typing sounds); null-silent by default. */
+    var onKeyClick: () -> Unit = {}
+
+    /** Words just typed (the fork's daily word goal counts them as they land). */
+    var onWordsTyped: (Int) -> Unit = {}
 
     /** Claims Enter while the slash menu is open, so the host commits its top entry. */
     var onSlashEnter: () -> Boolean = { false }
@@ -488,24 +506,39 @@ class FlowTextController(
         if (text == "\n" && r.collapsed) {
             if (slashCommands && onSlashEnter()) return selection.end
             InputRules.forEnter(flow(), r.start, markdownInput)?.let { return applyRule(it, r.start) }
+            // The fork's auto-continue: Enter after a typed (not model) list marker carries the
+            // marker over; Enter on the bare marker drops it and stays put.
+            if (autoLists) autoContinueList(r.start)?.let { return it }
+        }
+        // The fork's smart quotes: the straight quotes a keyboard sends become typographic ones
+        // as they land (curly for Latin, guillemets for Arabic). One-for-one characters, so the
+        // IME mirror's offsets stay valid; its text reconciles on the next pass.
+        val typedText = if (smartQuotes && text.isNotEmpty() && '\n' !in text && r.start.para == r.end.para) {
+            SmartQuotes.transform(text, charBefore(r.start), arabicAround(r.start, text))
+        } else {
+            text
         }
         // The armed style is only spent on text that actually lands; a deletion keeps it.
         val effStyle = style
             ?: (if (text.isNotEmpty()) pendingStyle?.also { pendingStyle = null } else null)
             ?: (if (text.isNotEmpty()) styleAt(r.start) else null)
-        if (r.start.para == r.end.para && '\n' !in text && para != null) {
+        if (r.start.para == r.end.para && '\n' !in typedText && para != null) {
             if (burstPara !== para) {
                 flushBurst()
                 burstPara = para
                 burstBefore = ParaSnapshot.of(para)
             }
-            val (_, caret) = FlowEditor(flow()).replaceRange(r, text, effStyle)
+            val (_, caret) = FlowEditor(flow()).replaceRange(r, typedText, effStyle)
             onChanged(active)
             burstExtras += autoAppendPages()
             selection = FlowRange.caret(caret)
             onTyped()
-            if (markdownInput) InputRules.forTyped(flow(), caret, text)?.let { return applyRule(it, caret) }
-            if (slashCommands && text == "/") {
+            if (typedText.isNotEmpty()) {
+                onKeyClick()
+                countWordsTyped(typedText)
+            }
+            if (markdownInput) InputRules.forTyped(flow(), caret, typedText)?.let { return applyRule(it, caret) }
+            if (slashCommands && typedText == "/") {
                 SlashCommands.escapeAt(flow(), caret)?.let { return dropSlash(caret.para, it) }
             }
             handler.removeCallbacks(idleFlush)
@@ -519,15 +552,62 @@ class FlowTextController(
         // neighbour to inherit from, so carry the typing style over as pending
         // (commitEdit -> placeCaret clears it, hence re-armed after).
         val leavingHeading = para != null && para.headingLevel > 0 && r.start.offset >= para.length
-        val carry = if (text.endsWith("\n") && !leavingHeading) {
+        val carry = if (typedText.endsWith("\n") && !leavingHeading) {
             effStyle ?: FlowEditor(flow()).charStyleAt(r.start)
         } else {
             null
         }
-        val (cmd, caret) = FlowEditor(flow()).replaceRange(r, text, effStyle)
+        val (cmd, caret) = FlowEditor(flow()).replaceRange(r, typedText, effStyle)
         commitEdit(cmd, caret)
         if (carry != null && carry != CharStyle.DEFAULT) pendingStyle = carry
         return caret
+    }
+
+    /**
+     * The fork's auto-continue: the marker the paragraph's plain text starts with, carried onto
+     * the line Enter is about to make — or dropped, when the marker is the whole line. Only
+     * typed markers apply (the model's own list continuation is the paragraph's ListKind split,
+     * which markdown conversion and the list toolbar own), so a paragraph carrying a model list
+     * or living in a table is left to them. Returns the caret after the edit, or null when the
+     * plain Enter should go through as it is.
+     */
+    private fun autoContinueList(at: FlowPos): FlowPos? {
+        val para = flow().paragraphs.getOrNull(at.para) ?: return null
+        if (para.table != null || para.list != ListKind.NONE || para.codeLang != null) return null
+        val line = para.plainText()
+        val cont = ListMarkers.continuation(line) ?: return null
+        flushBurst()
+        mirrorStale = true // the model is about to diverge from what the IME sent
+        if (cont.isEmpty()) {
+            // A bare marker: Enter removes it rather than making another empty item.
+            val marker = ListMarkers.detect(line) ?: return null
+            val (cmd, caret) = FlowEditor(flow()).replaceRange(FlowRange(FlowPos(at.para, 0), FlowPos(at.para, marker.text.length)), "")
+            commitEdit(cmd, caret)
+            return caret
+        }
+        val (cmd, caret) = FlowEditor(flow()).replaceRange(FlowRange.caret(at), "\n$cont")
+        commitEdit(cmd, caret)
+        return caret
+    }
+
+    /** The character just before [pos], or null at a paragraph start. */
+    private fun charBefore(pos: FlowPos): Char? {
+        val para = flow().paragraphs.getOrNull(pos.para) ?: return null
+        if (pos.offset <= 0) return null
+        val text = para.plainText()
+        return text.getOrNull(pos.offset - 1)
+    }
+
+    /** Whether the text around [pos] reads Arabic (for the quotes' guillemet variant). */
+    private fun arabicAround(pos: FlowPos, typed: String): Boolean {
+        if (typed.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.ARABIC }) return true
+        return charBefore(pos)?.let { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.ARABIC } ?: false
+    }
+
+    /** Whitespace-separated words in a typed run, for the daily goal. */
+    private fun countWordsTyped(typed: String) {
+        val n = typed.split(WORD_BREAK).count { it.isNotEmpty() }
+        if (n > 0) onWordsTyped(n)
     }
 
     /**
@@ -644,6 +724,13 @@ class FlowTextController(
         val bottom = state.viewportH - state.insetBottom - margin
         if (bottom <= top) return
         val dy = when {
+            // The fork's typewriter scrolling: the caret's line is held at the viewport's middle
+            // while typing, so the eye never chases the text down the screen.
+            typewriterScrolling -> {
+                val middle = (topV + bottomV) / 2.0
+                val centre = state.insetTop + (state.viewportH - state.insetTop - state.insetBottom) / 2.0
+                middle - centre
+            }
             bottomV > bottom -> bottomV - bottom
             topV < top -> topV - top
             else -> 0.0
@@ -743,5 +830,8 @@ class FlowTextController(
 
         /** A long press this close to a table rule holds the table, even over text. */
         const val TABLE_RULE_SLOP_DP = 6.0
+
+        /** What separates the words of a typed run (the daily goal's counter). */
+        private val WORD_BREAK = Regex("\\s+")
     }
 }

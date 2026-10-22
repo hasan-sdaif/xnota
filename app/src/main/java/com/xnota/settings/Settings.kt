@@ -106,6 +106,15 @@ data class Settings(
     val brushPresets: List<BrushPreset> = emptyList(),
     /** One-shot flag: the first-run stylus check (which may auto-enable finger-draw) has run. */
     val fingerDrawAutoChecked: Boolean = false,
+    // ── Reading, focus & Arabic wiring (the fork) ────────────────────────────────
+    /** Seconds each note has been open for reading, by document uri, most-recent last; capped. */
+    val readingSeconds: Map<String, Long> = emptyMap(),
+    /** Where each note was last scrolled to (x, y), by document uri; capped at [com.xnota.core.util.ScrollMemory.CAP]. */
+    val scrollOffsets: Map<String, LongArray> = emptyMap(),
+    /** Words written per day ("2026-09-16" → count), for the daily goal; capped at 90 days. */
+    val dailyWords: Map<String, Long> = emptyMap(),
+    /** Days ("2026-09-16") with at least one note edit, newest last; drives the streak. */
+    val editDays: List<String> = emptyList(),
 ) {
     fun configFor(tool: Tool): ToolConfig = tools[tool] ?: ToolDefaults.configFor(tool)
 
@@ -166,6 +175,10 @@ data class Settings(
             .apply { if (brushPresets.isNotEmpty()) put("brush_presets", BrushPresets.toJson(brushPresets)) }
             .put("view_defaults", com.xnota.platform.ViewSettingsJson.write(JSONObject(), viewDefaults))
             .put("finger_draw_auto_checked", fingerDrawAutoChecked)
+            .apply { if (readingSeconds.isNotEmpty()) put("reading_seconds", JSONObject().apply { readingSeconds.forEach { (k, v) -> put(k, v) } }) }
+            .apply { if (scrollOffsets.isNotEmpty()) put("scroll_offsets", JSONObject().apply { scrollOffsets.forEach { (k, v) -> put(k, JSONArray().put(v[0]).put(v.getOrElse(1) { 0L })) } }) }
+            .apply { if (dailyWords.isNotEmpty()) put("daily_words", JSONObject().apply { dailyWords.forEach { (k, v) -> put(k, v) } }) }
+            .apply { if (editDays.isNotEmpty()) put("edit_days", JSONArray(editDays)) }
     }
 
     companion object {
@@ -236,7 +249,39 @@ data class Settings(
                 prefs = Preferences.fromJson(o.optJSONObject("prefs")),
                 brushPresets = BrushPresets.of(o.optJSONArray("brush_presets")),
                 fingerDrawAutoChecked = o.optBoolean("finger_draw_auto_checked", false),
+                readingSeconds = longMap(o.optJSONObject("reading_seconds"), com.xnota.core.util.ReadingTime.CAP),
+                scrollOffsets = scrollOffsets(o.optJSONObject("scroll_offsets")),
+                dailyWords = longMap(o.optJSONObject("daily_words"), com.xnota.core.util.DailyWords.CAP),
+                editDays = stringList(o.optJSONArray("edit_days")).takeLast(EDIT_DAYS_CAP),
             )
+        }
+
+        /** Days of edit history kept (the streak needs 2). */
+        private const val EDIT_DAYS_CAP = 120
+
+        /** A JSON object of string keys to long values, newest-entry-last by insertion order, capped. */
+        private fun longMap(o: JSONObject?, cap: Int): Map<String, Long> {
+            if (o == null) return emptyMap()
+            val out = LinkedHashMap<String, Long>(o.length())
+            for (k in o.keys()) {
+                val v = o.opt(k)
+                if (v is Long || v is Int || v is Number) out[k] = o.optLong(k)
+            }
+            while (out.size > cap) out.remove(out.keys.first())
+            return out
+        }
+
+        /** A JSON object of uri keys to [x, y] pairs, capped at the scroll memory's cap. */
+        private fun scrollOffsets(o: JSONObject?): Map<String, LongArray> {
+            if (o == null) return emptyMap()
+            val out = LinkedHashMap<String, LongArray>(o.length())
+            for (k in o.keys()) {
+                val a = o.optJSONArray(k) ?: continue
+                if (a.length() < 2) continue
+                out[k] = longArrayOf(a.optLong(0), a.optLong(1))
+            }
+            while (out.size > com.xnota.core.util.ScrollMemory.CAP) out.remove(out.keys.first())
+            return out
         }
 
         /** Each saved role padded or cut to [SwatchRole.COUNT], filling gaps from its defaults. */
