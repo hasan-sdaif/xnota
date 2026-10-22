@@ -626,6 +626,31 @@ fun PreferencesPane(
                     fontSize = 13.sp,
                 )
             }
+            // The fork's writing pulse: words written today (against the daily goal when one is
+            // set) and the writing streak over the recorded edit days.
+            editor.prefsVersion
+            val goal = prefs.dailyWordGoal
+            val todayWords = editor.wordsToday()
+            val streak = editor.writingStreak()
+            FieldLabel(stringResource(R.string.pref_writing_pulse))
+            Text(
+                if (goal > 0) stringResource(R.string.words_today_goal, todayWords, goal, streak)
+                else stringResource(R.string.words_today_plain, todayWords, streak),
+                color = palette.textDim.toComposeColor(),
+                fontSize = 13.sp,
+            )
+            // The daily goal: 0 turns the chip into the plain reading; 250..5000 words covers the
+            // serious writing habits without a spinner to mistype.
+            FieldLabel(
+                if (prefs.dailyWordGoal == 0) stringResource(R.string.pref_daily_word_goal) + " · " + stringResource(R.string.pref_daily_word_goal_off)
+                else stringResource(R.string.pref_daily_word_goal),
+            )
+            Slider(
+                value = prefs.dailyWordGoal.toFloat(),
+                onValueChange = { updateHome(prefs.copy(dailyWordGoal = (Math.round(it / 50.0) * 50).toInt().coerceIn(0, 5000))) },
+                valueRange = 0f..2000f,
+                modifier = Modifier.width(280.dp),
+            )
 
             HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_backup))

@@ -1164,6 +1164,10 @@
     <string name="empty_folder_actions">ابدأ بشيء جديد</string>
     <string name="pref_storage">التخزين</string>
     <string name="storage_scan">جارٍ الفحص…</string>
+    <string name="pref_writing_pulse">نبض الكتابة</string>
+    <string name="words_today_goal">%1$d كلمة اليوم · الهدف %2$d · سلسلة %3$d يوم</string>
+    <string name="words_today_plain">%1$d كلمة اليوم · سلسلة %2$d يوم</string>
+    <string name="pref_daily_word_goal_off">معطّل</string>
     <string name="err_tag_write">تعذّر حفظ الوسوم</string>
     <string name="err_duplicate">تعذّر نسخ هذه الملاحظة</string>
     <string name="smart_folder_empty">لا توجد ملاحظات تطابق «%1$s».</string>

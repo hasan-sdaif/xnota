@@ -1079,6 +1079,10 @@
     <string name="empty_folder_actions">Start something new</string>
     <string name="pref_storage">Storage</string>
     <string name="storage_scan">Scanning…</string>
+    <string name="pref_writing_pulse">Writing pulse</string>
+    <string name="words_today_goal">%1$d words today · goal %2$d · %3$d-day streak</string>
+    <string name="words_today_plain">%1$d words today · %2$d-day streak</string>
+    <string name="pref_daily_word_goal_off">Off</string>
     <string name="err_tag_write">Couldn\'t save those tags</string>
     <string name="err_duplicate">Couldn\'t duplicate that note</string>
     <string name="smart_folder_empty">No notes match “%1$s”.</string>
