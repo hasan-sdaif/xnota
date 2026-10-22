@@ -19,6 +19,7 @@ import com.xnota.core.history.CompositeCommand
 import com.xnota.core.history.EraseItems
 import com.xnota.core.history.History
 import com.xnota.core.history.TransformItems
+import com.xnota.core.history.HideItems
 import com.xnota.core.history.LockItems
 import com.xnota.core.history.EditLabel
 import com.xnota.core.history.EditText
@@ -1958,7 +1959,7 @@ class InteractionController(
         val pageIndex = state.pageIndexAtContent(content)
         if (pageIndex != null) {
             val local = state.toPageSpace(pageIndex, content)
-            val hit = state.document.pages[pageIndex].items.lastOrNull { !it.locked && it.contains(local) }
+            val hit = state.document.pages[pageIndex].items.lastOrNull { !it.locked && !it.hidden && it.contains(local) }
             if (hit != null) {
                 if (selection.none { it.item === hit }) setSelection(listOf(Selected(pageIndex, hit)))
                 beginMove(content)
@@ -3362,7 +3363,7 @@ class InteractionController(
         val pi = state.pageIndexAtContent(content) ?: return
         val local = state.toPageSpace(pi, content)
         val reach = OUTLINE_GRAB / state.zoom
-        val shape = state.document.pages[pi].items.lastOrNull { !it.locked && labelTargetHit(it, local, reach) } as? Labelled ?: return
+        val shape = state.document.pages[pi].items.lastOrNull { !it.locked && !it.hidden && labelTargetHit(it, local, reach) } as? Labelled ?: return
         if (shape in selectedBefore) return
         startLabelEdit(shape, pi)
     }
@@ -3648,6 +3649,51 @@ class InteractionController(
         setSelection(all)
     }
 
+    /**
+     * Push a layers-panel command (hide/lock) the way every item edit is pushed, with the page
+     * repaint the view needs after it (the fork's layers panel).
+     */
+    fun pushLayerCommand(command: Command, page: Page) {
+        history.push(command)
+        state.document.dirty = true
+        state.invalidatePage(page)
+        onContentChanged()
+        requestRender()
+    }
+
+    /**
+     * Move [item] one step in z on its page ([delta] +1 towards the viewer, -1 away), as one undo
+     * step — the layers panel's raise/sink arrows. The page's item list swaps two neighbours.
+     */
+    fun stepItemInZ(item: CanvasItem, delta: Int) {
+        val pageIndex = state.document.pages.indexOfFirst { page -> page.items.any { it === item } }
+        if (pageIndex < 0) return
+        val page = state.document.pages[pageIndex]
+        val i = page.items.indexOfFirst { it === item }
+        val j = i + delta
+        if (i < 0 || j < 0 || j >= page.items.size) return
+        val old = page.items.toList()
+        val new = old.toMutableList()
+        val tmp = new[j]
+        new[j] = new[i]
+        new[i] = tmp
+        history.push(ReorderItems(page, old, new))
+        page.items.clear()
+        page.items.addAll(new)
+        state.document.dirty = true
+        state.invalidatePage(page)
+        onContentChanged()
+        requestRender()
+    }
+
+    /** Select exactly [item] on its page, replacing whatever the selection held (a layers-panel pick). */
+    fun selectItemAlone(item: CanvasItem) {
+        val pi = state.document.pages.indexOfFirst { page -> page.items.any { it === item } }
+        if (pi < 0) return
+        setSelection(listOf(Selected(pi, item)))
+        refreshSelectionMenu()
+    }
+
     fun bringToFront() {
         if (selection.isEmpty()) return
         val byPage = selection.groupBy { it.pageIndex }
@@ -3801,6 +3847,19 @@ class InteractionController(
         val items = selection.map { it.item }
         for (item in items) item.locked = true
         history.push(LockItems(items, true))
+        clearSelection()
+        maybeSwitchBackAfterSelect()
+        onContentChanged()
+        requestRender()
+    }
+
+    /** Hide the selection (the fork's layers work): out of the render and out of every
+     *  hit-test, one undo step, the layers panel the way back. */
+    fun hideSelection() {
+        if (selection.isEmpty()) return
+        val items = selection.map { it.item }
+        for (item in items) item.hidden = true
+        history.push(HideItems(items, true))
         clearSelection()
         maybeSwitchBackAfterSelect()
         onContentChanged()

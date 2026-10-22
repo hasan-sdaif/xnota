@@ -1047,11 +1047,18 @@ class InfiniteInteraction(
         val pad = TAP_SLOP_PX / viewport.zoom
         val near = Rect(content.x - pad, content.y - pad, pad * 2, pad * 2)
         // Last, not first: the index comes back in z-order, so the topmost item is the one hit.
-        return itemsIn(near).lastOrNull { it.contains(content) }
+        // Hidden items are skipped: hidden means untouchable until unhidden from the layers panel.
+        return itemsIn(near).lastOrNull { !it.hidden && it.contains(content) }
     }
 
     /** [itemAt] but skipping anything pinned, which is what a tap or a drag may actually grab. */
     private fun grabbableAt(content: Pt): CanvasItem? = itemAt(content)?.takeUnless { it.locked }
+
+    /** Select exactly [item], replacing whatever the selection held (a layers-panel pick). */
+    fun selectAlone(item: CanvasItem) {
+        selection()?.select(listOf(item))
+        requestRender()
+    }
 
     private fun extendBand(vx: Double, vy: Double) {
         val at = viewport.viewportToContent(Pt(vx, vy))

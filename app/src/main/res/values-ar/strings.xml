@@ -120,6 +120,12 @@
     <string name="symmetry_radial">شعاعي</string>
     <string name="symmetry_segments">القطاعات</string>
     <string name="eraser_object">كائن</string>
+    <string name="hide_selection">إخفاء</string>
+    <string name="layers_title">الطبقات</string>
+    <string name="layers_empty">هذه الصفحة لا تحوي شيئًا بعد.</string>
+    <string name="raise_layer">رفع</string>
+    <string name="sink_layer">خفض</string>
+    <string name="layer_stroke">خط</string>
     <string name="title_styles">الأنماط</string>
     <string name="all_pages">جميع الصفحات</string>
     <string name="current_page">الصفحة الحالية</string>

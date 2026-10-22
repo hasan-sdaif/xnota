@@ -58,7 +58,7 @@ class EraseSession(private val doc: InfiniteDocument) {
         val box = Rect(cx - radius, cy - radius, radius * 2, radius * 2)
         var dirty: Rect? = null
         for (item in doc.itemsIn(box)) {
-            if (item.locked || item is ImageItem || item is TextItem) continue
+            if (item.locked || item.hidden || item is ImageItem || item is TextItem) continue
             val fragments: List<CanvasItem> = if (area) {
                 when (item) {
                     is Stroke -> item.erasedBy(cx, cy, radius) ?: continue
@@ -99,7 +99,7 @@ class EraseSession(private val doc: InfiniteDocument) {
         var chosen: CanvasItem? = null
         var chosenZ = -1
         for (item in doc.itemsIn(box)) {
-            if (item.locked || !item.intersectsCircle(cx, cy, radius)) continue
+            if (item.locked || item.hidden || !item.intersectsCircle(cx, cy, radius)) continue
             val z = doc.indexOfRef(item)
             if (z > chosenZ) {
                 chosenZ = z

@@ -133,6 +133,15 @@ interface SelectionMenuHost : SwatchHost {
     /** True when the selection holds enough items to distribute: equal gaps need three at least. */
     fun canDistributeSelection(): Boolean
 
+    /** Hide the selection from view and from hit-testing; the layers panel brings it back. */
+    fun hideSelection()
+
+    /** True when the current surface's layers panel can open: it has a page or a canvas. */
+    val canOpenLayers: Boolean get() = true
+
+    /** Open the layers panel over the current page/canvas. */
+    fun openLayersPanel() {}
+
     /** Spread the selection so the gaps between neighbours come out even along one axis, as one undo step. */
     fun distributeSelection(vertical: Boolean)
 }
@@ -225,6 +234,14 @@ fun SelectionMenu(host: SelectionMenuHost) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.lock)) },
                         onClick = { overflowOpen = false; host.lockSelection() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.hide_selection)) },
+                        onClick = { overflowOpen = false; host.hideSelection() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.layers_title)) },
+                        onClick = { overflowOpen = false; host.openLayersPanel() },
                     )
                 }
                 if (styleOpen) {

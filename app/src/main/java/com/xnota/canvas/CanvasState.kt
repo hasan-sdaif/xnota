@@ -1079,7 +1079,7 @@ class CanvasState(
         r.scale(res, res)
         r.translate(-cover.left, -cover.top) // the surface covers the margins, so page space starts inset
         if (includeFlow) paintFlow?.invoke(page, r, cover)
-        for (item in items) item.paint(r)
+        for (item in items) if (!item.hidden) item.paint(r)
         noteGeometryBuilt(page)
         return CacheEntry(surface, res, cover)
     }
@@ -1309,7 +1309,7 @@ class CanvasState(
         r.clear()
         if (!flowLifted) paintFlow?.invoke(page, r, dirtyRect)
         for (item in page.items) {
-            if (!isLiftedItem(item) && !item.isHighlighterInk() && item.paintBounds().intersects(dirtyRect)) item.paint(r)
+            if (!item.hidden && !isLiftedItem(item) && !item.isHighlighterInk() && item.paintBounds().intersects(dirtyRect)) item.paint(r)
         }
         r.restore()
         return true
@@ -1697,7 +1697,7 @@ class CanvasState(
             if (withFlow && d.region.w > 0.0 && d.region.h > 0.0) {
                 paintFlow?.invoke(d.page, ri, d.region)
             }
-            for (item in d.items) item.paint(ri)
+            for (item in d.items) if (!item.hidden) item.paint(ri)
             ri.restore()
         }
     }
@@ -1736,7 +1736,7 @@ class CanvasState(
         r.clear()
         if (!flowLifted) paintFlow?.invoke(page, r, dirtyRect)
         for (item in page.items) {
-            if (!isLiftedItem(item) && !item.isHighlighterInk() && item.paintBounds().intersects(dirtyRect)) item.paint(r)
+            if (!item.hidden && !isLiftedItem(item) && !item.isHighlighterInk() && item.paintBounds().intersects(dirtyRect)) item.paint(r)
         }
         r.restore()
     }

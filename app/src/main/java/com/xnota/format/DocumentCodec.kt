@@ -379,6 +379,8 @@ class DocumentCodec(
         // Straight-line strokes must reload un-smoothed, else the EMA pulls their far end inward.
         if (s.straight) j.name("straight").value(true)
         if (s.locked) j.name("locked").value(true)
+        if (s.hidden) j.name("hidden").value(true)
+        if (s.hidden) j.name("hidden").value(true)
         j.endObject()
     }
 
@@ -396,6 +398,7 @@ class DocumentCodec(
         if (item.angle != 0.0) j.name("angle").value(item.angle)
         if (item.flip != Flip.NONE) j.name("flip").value(item.flip.id)
         if (item.locked) j.name("locked").value(true)
+        if (item.hidden) j.name("hidden").value(true)
         j.endObject()
     }
 
@@ -414,6 +417,7 @@ class DocumentCodec(
         if (t.height > 0.0) j.name("height").value(t.height)
         if (t.face != TextItem.DEFAULT_FACE) j.name("font_face").value(t.face.id)
         if (t.locked) j.name("locked").value(true)
+        if (t.hidden) j.name("hidden").value(true)
         j.endObject()
     }
 
@@ -480,6 +484,7 @@ class DocumentCodec(
             j.endObject()
         }
         if (s.locked) j.name("locked").value(true)
+        if (s.hidden) j.name("hidden").value(true)
         j.endObject()
     }
 
@@ -543,6 +548,7 @@ class DocumentCodec(
             j.endObject()
         }
         if (c.locked) j.name("locked").value(true)
+        if (c.hidden) j.name("hidden").value(true)
         j.endObject()
     }
 
@@ -798,6 +804,7 @@ class DocumentCodec(
         val flip: Flip,
         val locked: Boolean,
         val id: Int?,
+        val hidden: Boolean = false,
     )
 
     /**
@@ -955,6 +962,7 @@ class DocumentCodec(
     /** Union of every kind's fields, so an item parses in one pass whatever its key order. */
     private class ItemScratch {
         var locked = false
+        var hidden = false
         var kind: String? = null
         var id: Int? = null
         var connector: ConnectorScratch? = null
@@ -1072,6 +1080,7 @@ class DocumentCodec(
                 "dash_length" -> s.dashLength = doubleOr(p, 10.0)
                 "dash_gap" -> s.dashGap = doubleOr(p, 8.0)
                 "locked" -> s.locked = boolOr(p, false)
+                "hidden" -> s.hidden = boolOr(p, false)
                 else -> p.skipValue()
             }
         }
@@ -1085,7 +1094,7 @@ class DocumentCodec(
                     pending.add(
                         PendingImage(
                             items.size + pending.size, asset, s.rect, s.srcW, s.srcH,
-                            s.orientation, s.angle, Flip.fromId(s.flip), s.locked, s.id,
+                            s.orientation, s.angle, Flip.fromId(s.flip), s.locked, s.id, s.hidden,
                         ),
                     )
                 }
@@ -1111,6 +1120,7 @@ class DocumentCodec(
         if (items.size > before) glue.named(items[before], s.id)
         // Absent on every note written before locking existed, which reads back as unlocked.
         if (s.locked && items.size > before) items[before].locked = true
+        if (s.hidden && items.size > before) items[before].hidden = true
     }
 
     private fun buildStroke(s: ItemScratch): Stroke {
@@ -1489,7 +1499,7 @@ class DocumentCodec(
         }
         val rect = spec.rect ?: Rect(0.0, 0.0, w.toDouble(), h.toDouble())
         return ImageItem(ImageData(file, w, h), rect, spec.orientation, spec.angle, spec.flip)
-            .also { it.locked = spec.locked }
+            .also { it.locked = spec.locked; it.hidden = spec.hidden }
     }
 
     // --- streaming value helpers (mirroring org.json's forgiving opt* coercions) ---

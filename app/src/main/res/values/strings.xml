@@ -119,6 +119,12 @@
     <string name="symmetry_radial">Radial</string>
     <string name="symmetry_segments">Segments</string>
     <string name="eraser_object">Object</string>
+    <string name="hide_selection">Hide</string>
+    <string name="layers_title">Layers</string>
+    <string name="layers_empty">This page has nothing on it yet.</string>
+    <string name="raise_layer">Raise</string>
+    <string name="sink_layer">Sink</string>
+    <string name="layer_stroke">Stroke</string>
     <string name="title_styles">Styles</string>
     <string name="all_pages">All Pages</string>
     <string name="current_page">Current Page</string>

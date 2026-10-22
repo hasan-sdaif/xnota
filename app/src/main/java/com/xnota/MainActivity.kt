@@ -1246,6 +1246,11 @@ private fun EditorPane(
                     com.xnota.ui.TextStyleBar(canvas)
                     com.xnota.ui.LongPressMenu(canvas, onInsertImageAt = { c -> actions.onInsertCanvasImage(editor, c) })
                     com.xnota.ui.CanvasDebugOverlay(canvas)
+                    if (canvas.layersOpen) {
+                        androidx.compose.ui.window.Dialog(onDismissRequest = { canvas.layersOpen = false }) {
+                            com.xnota.ui.LayersPanel(canvas) { canvas.layersOpen = false }
+                        }
+                    }
                 }
             }
         } else {
@@ -1284,6 +1289,11 @@ private fun EditorPane(
                         }
                         floatingBar()
                         com.xnota.ui.SelectionMenu(editor)
+                        if (editor.layersOpen) {
+                            androidx.compose.ui.window.Dialog(onDismissRequest = { editor.layersOpen = false }) {
+                                com.xnota.ui.LayersPanel(editor) { editor.layersOpen = false }
+                            }
+                        }
                         com.xnota.ui.ScreenshotMenu(editor)
                         com.xnota.ui.TextStyleBar(editor)
                         com.xnota.ui.LongPressMenu(editor, onInsertImageAt = { c -> actions.onInsertImage(editor, c) })

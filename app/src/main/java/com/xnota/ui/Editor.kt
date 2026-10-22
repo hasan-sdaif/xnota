@@ -47,6 +47,9 @@ import com.xnota.core.model.MarkupType
 import com.xnota.core.model.Orientation
 import com.xnota.core.model.Page
 import com.xnota.core.model.PaperInkTransform
+import com.xnota.core.model.ShapeItem
+import com.xnota.core.model.Stroke
+import com.xnota.core.model.TextItem
 import com.xnota.core.model.PageMargins
 import com.xnota.core.model.PageSizeChoice
 import com.xnota.core.model.PagePattern
@@ -247,7 +250,7 @@ private val sharedRecents = androidx.compose.runtime.mutableStateOf<List<com.xno
 enum class Pane { PRIMARY, SECONDARY }
 
 @Stable
-class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, SelectionMenuHost, LongPressMenuHost, TextEditHost, SwatchStore {
+class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, SelectionMenuHost, LongPressMenuHost, TextEditHost, SwatchStore, LayersHost {
 
     private val appContext = context.applicationContext
 
@@ -636,6 +639,9 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     /** Viewport rect to anchor the on-selection menu, or null when hidden. */
     var selectionMenu by mutableStateOf<com.xnota.core.geometry.Rect?>(null)
         private set
+
+    /** The layers panel (the fork): open over the current page, closing on any pick. */
+    var layersOpen by mutableStateOf(false)
 
     override val selectionMenuRect: com.xnota.core.geometry.Rect? get() = selectionMenu
 
@@ -1618,6 +1624,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     override fun cutSelection() = controller.cutSelection()
     override fun duplicateSelection() = controller.duplicateSelection()
     override fun lockSelection() = controller.lockSelection()
+    override fun hideSelection() = controller.hideSelection()
     override fun unlockItem(item: com.xnota.core.model.CanvasItem) = controller.unlockItem(item)
     override fun dismissSelectionMenu() { selectionMenu = null }
     override fun dismissContextMenu() { contextMenu = null }
@@ -6360,6 +6367,57 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     override fun canDistributeSelection() = controller.canDistributeSelection()
 
     override fun distributeSelection(vertical: Boolean) = controller.distributeSelection(vertical)
+
+    // ── LayersHost (the fork's layers panel) ─────────────────────────────────────
+
+    override fun openLayersPanel() {
+        layersOpen = true
+    }
+
+    override val canOpenLayers: Boolean get() = state.document.pages.isNotEmpty()
+
+    override fun layersRows(): List<LayerRow> {
+        val page = state.document.pages.getOrNull(state.currentPageIndex()) ?: return emptyList()
+        return page.items.asReversed().map { item ->
+            LayerRow(
+                item = item,
+                summary = layerSummary(item),
+                hidden = item.hidden,
+                locked = item.locked,
+            )
+        }
+    }
+
+    override fun setLayerHidden(item: CanvasItem, hidden: Boolean) {
+        if (item.hidden == hidden) return
+        item.hidden = hidden
+        val page = state.document.pages.getOrNull(state.currentPageIndex()) ?: return
+        controller.pushLayerCommand(com.xnota.core.history.HideItems(listOf(item), hidden), page)
+    }
+
+    override fun setLayerLocked(item: CanvasItem, locked: Boolean) {
+        if (item.locked == locked) return
+        item.locked = locked
+        val page = state.document.pages.getOrNull(state.currentPageIndex()) ?: return
+        controller.pushLayerCommand(com.xnota.core.history.LockItems(listOf(item), locked), page)
+    }
+
+    override fun moveLayerUp(item: CanvasItem) = controller.stepItemInZ(item, +1)
+
+    override fun moveLayerDown(item: CanvasItem) = controller.stepItemInZ(item, -1)
+
+    override fun pickLayerItem(item: CanvasItem) {
+        controller.selectItemAlone(item)
+    }
+
+    /** One line about what the item is, as the layers panel's row text. */
+    private fun layerSummary(item: CanvasItem): String = when (item) {
+        is Stroke -> "${appContext.getString(R.string.layer_stroke)} · ${item.sampleCount}"
+        is TextItem -> item.text.lineSequence().firstOrNull()?.take(40)?.ifEmpty { null } ?: appContext.getString(R.string.tool_text)
+        is ImageItem -> appContext.getString(R.string.tool_image)
+        is ShapeItem -> appContext.getString(R.string.tool_shape)
+        else -> appContext.getString(R.string.tool_shape)
+    }
 
     override fun restyleSelection(color: Rgba?, width: Double?, preview: Boolean) {
         controller.restyleSelection(color, width, preview)

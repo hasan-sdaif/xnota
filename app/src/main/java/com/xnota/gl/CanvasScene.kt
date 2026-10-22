@@ -1132,14 +1132,16 @@ class CanvasScene(private val store: GeometryStore = GeometryStore()) : GlScene 
     private fun collectVisible(frame: FrameState) {
         visible.clear()
         val view = viewRect(frame)
-        for (record in oversized) if (record.bounds.intersects(view)) visible.add(record)
+        // Hidden items keep their geometry but never reach the draw list (the layers panel can
+        // bring them back at no meshing cost). Lifted items are selected, so never hidden.
+        for (record in oversized) if (!record.item.hidden && record.bounds.intersects(view)) visible.add(record)
         val x0 = chunkOf(view.left)
         val y0 = chunkOf(view.top)
         val x1 = chunkOf(view.right)
         val y1 = chunkOf(view.bottom)
         if ((x1 - x0 + 1).toLong() * (y1 - y0 + 1).toLong() > MAX_QUERY_CELLS) {
             // Zoomed so far out that walking cells costs more than testing everything.
-            for (record in records.values) if (record.bounds.intersects(view)) visible.add(record)
+            for (record in records.values) if (!record.item.hidden && record.bounds.intersects(view)) visible.add(record)
             visible.sortBy { it.z }
             dedupeSorted()
             return
@@ -1147,7 +1149,7 @@ class CanvasScene(private val store: GeometryStore = GeometryStore()) : GlScene 
         for (cy in y0..y1) {
             for (cx in x0..x1) {
                 val bucket = buckets[key(cx, cy)] ?: continue
-                for (record in bucket) if (record.bounds.intersects(view)) visible.add(record)
+                for (record in bucket) if (!record.item.hidden && record.bounds.intersects(view)) visible.add(record)
             }
         }
         visible.sortBy { it.z }
@@ -1247,6 +1249,7 @@ class CanvasScene(private val store: GeometryStore = GeometryStore()) : GlScene 
             override val kind = "wet"
             override val resizable = false
             override var locked = false
+            override var hidden = false
             override fun paint(r: com.xnota.core.pal.Renderer) = Unit
             override fun bounds() = Rect(0.0, 0.0, 0.0, 0.0)
             override fun translate(dx: Double, dy: Double) = Unit

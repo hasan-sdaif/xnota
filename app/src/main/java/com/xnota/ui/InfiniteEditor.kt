@@ -1,5 +1,7 @@
 package com.xnota.ui
 
+import com.xnota.R
+
 import android.content.Context
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -69,7 +71,7 @@ import com.xnota.ui.theme.Palette
  * ones, so a second object doing the same would delete the open note's live files.
  */
 @Stable
-class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongPressMenuHost, TextEditHost {
+class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongPressMenuHost, TextEditHost, LayersHost {
 
     private val appContext = context.applicationContext
 
@@ -209,6 +211,9 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
 
     /** Whether the debug HUD is up; toggled by a four-finger tap, as on the paged canvas. */
     var debugVisible by mutableStateOf(false)
+
+    /** The layers panel (the fork): open over the canvas, closing on any pick. */
+    var layersOpen by mutableStateOf(false)
 
     /** The last committed stroke's statistics, for the debug HUD (the fork's telemetry). */
     var lastStrokeStats by mutableStateOf<com.xnota.core.stroke.StrokeStats.Summary?>(null)
@@ -554,6 +559,15 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         history.push(LockItems(items, true))
         interaction.clearSelection()
         markDirty()
+    }
+
+    override fun hideSelection() {
+        if (selection.isEmpty) return
+        val items = selection.items.toList()
+        for (item in items) item.hidden = true
+        history.push(com.xnota.core.history.HideItems(items, true))
+        interaction.clearSelection()
+        markDirty()
         refresh()
         publishOverlay()
         maybeSwitchBackAfterSelect()
@@ -722,6 +736,68 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         markDirty()
         refresh()
         publishOverlay()
+    }
+
+    // ── LayersHost (the fork's layers panel) ─────────────────────────────────────
+
+    override fun openLayersPanel() {
+        layersOpen = true
+    }
+
+    override fun layersRows(): List<LayerRow> = document.items.asReversed().map { item ->
+        LayerRow(
+            item = item,
+            summary = layerSummary(item),
+            hidden = item.hidden,
+            locked = item.locked,
+        )
+    }
+
+    override fun setLayerHidden(item: CanvasItem, hidden: Boolean) {
+        if (item.hidden == hidden) return
+        item.hidden = hidden
+        history.push(com.xnota.core.history.HideItems(listOf(item), hidden))
+        markDirty()
+        refresh()
+    }
+
+    override fun setLayerLocked(item: CanvasItem, locked: Boolean) {
+        if (item.locked == locked) return
+        item.locked = locked
+        history.push(LockItems(listOf(item), locked))
+        markDirty()
+        refresh()
+    }
+
+    override fun moveLayerUp(item: CanvasItem) = stepItemInZ(item, +1)
+
+    override fun moveLayerDown(item: CanvasItem) = stepItemInZ(item, -1)
+
+    override fun pickLayerItem(item: CanvasItem) {
+        interaction.selectAlone(item)
+    }
+
+    private fun stepItemInZ(item: CanvasItem, delta: Int) {
+        val before = document.items.toList()
+        val i = before.indexOfFirst { it === item }
+        val j = i + delta
+        if (i < 0 || j < 0 || j >= before.size) return
+        val after = before.toMutableList()
+        val tmp = after[j]
+        after[j] = after[i]
+        after[i] = tmp
+        document.replaceAll(after)
+        history.push(ReplaceCanvasItems(document, before, after))
+        markDirty()
+        refresh()
+    }
+
+    private fun layerSummary(item: CanvasItem): String = when (item) {
+        is Stroke -> "${appContext.getString(R.string.layer_stroke)} · ${item.sampleCount}"
+        is TextItem -> item.text.lineSequence().firstOrNull()?.take(40)?.ifEmpty { null } ?: appContext.getString(R.string.tool_text)
+        is ImageItem -> appContext.getString(R.string.tool_image)
+        is ShapeItem -> appContext.getString(R.string.tool_shape)
+        else -> appContext.getString(R.string.tool_shape)
     }
 
     override fun labelSelection() {

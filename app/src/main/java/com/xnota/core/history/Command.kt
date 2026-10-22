@@ -277,6 +277,23 @@ class RefillShapes(private val entries: List<Entry>) : Command {
 }
 
 /**
+ * Hide or reveal items (the fork's layers work). One command for the whole set, so a hide and its
+ * undo are a single step however much was held. Renderers and hit-tests skip hidden items; the
+ * layers panel is the way back.
+ */
+class HideItems(private val items: List<CanvasItem>, private val hidden: Boolean) : Command {
+    override fun redo() {
+        for (item in items) item.hidden = hidden
+    }
+
+    override fun undo() {
+        for (item in items) item.hidden = !hidden
+    }
+
+    override fun touched(locate: (CanvasItem) -> Page?) = pagedItems(items, locate)
+}
+
+/**
  * Pin items in place, or release them. One command for the whole selection, so a lock and its undo
  * are a single step however much was held.
  */

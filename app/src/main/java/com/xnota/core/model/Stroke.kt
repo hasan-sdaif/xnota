@@ -57,6 +57,7 @@ class Stroke(
     override val kind = KIND
     override val resizable = false
     override var locked = false
+    override var hidden = false
 
     /**
      * The samples, frozen (see [Samples]). Volatile, and every edit publishes a whole new tuple in

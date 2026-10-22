@@ -32,6 +32,15 @@ interface CanvasItem {
      */
     var locked: Boolean
 
+    /**
+     * Hidden (the fork's layers work): skipped by the renderers and by hit-testing, but still
+     * saved, still counted, and still reversible through [com.xnota.core.history.HideItems].
+     * A property of the item so it survives selection changes, saves and reloads, exactly like
+     * [locked]; the layers panel is the way back.
+     */
+    var hidden: Boolean
+
+
     /** Draw the item; [r] is already translated to the page origin and scaled. */
     fun paint(r: Renderer)
 
