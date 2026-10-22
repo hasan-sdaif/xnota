@@ -229,7 +229,11 @@ class ShapeItem(
     fun fillPatternRuns(): FillPatternRuns? {
         val fill = fillRgba ?: return null
         val pattern = FillPattern.fromId(fillPattern)
-        if (!pattern.drawsArea) return null
+        // Only the drawn patterns go through the runs path: SOLID is the flat colour wash
+        // (which is also what a null id — every file written before patterns — means), and
+        // BLANK is no fill at all. Either way the classic fill path decides, so a plain
+        // filled shape keeps painting exactly as it always did.
+        if (pattern != FillPattern.HATCH && pattern != FillPattern.CROSS_HATCH && pattern != FillPattern.DOTS) return null
         val rings = ArrayList<List<Pt>>(2)
         var bounds: Rect? = null
         for (p in localPaths()) {

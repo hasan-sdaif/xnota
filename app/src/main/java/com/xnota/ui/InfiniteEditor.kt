@@ -116,6 +116,7 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         detectShapes = { detectShapes },
         selection = { selection },
         itemsIn = { rect -> document.itemsIn(rect) },
+        gridStep = { document.background.clampedSpacing },
         onSelectionChanged = { publishOverlay() },
         onCommitSelection = { commitSelection(it) },
         onLiftSelection = { items, at -> scene.setLift(items, at) },

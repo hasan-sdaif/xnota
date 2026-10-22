@@ -962,13 +962,26 @@ fun EraserConfigPopup(editor: ToolPopupHost, onDismiss: () -> Unit) {
     }
 }
 
-/** Select-tool configuration popup: just a SWITCH BACK toggle, mirroring the eraser's. */
+/** Select-tool configuration popup: the SWITCH BACK toggle, mirroring the eraser's, and the fork's
+ *  three snap toggles — the same rows on both canvases, because both drag through the same
+ *  [com.xnota.core.canvas.SnapEngine] at their commit points. */
 @Composable
 fun SelectConfigPopup(editor: ToolPopupHost, onDismiss: () -> Unit) {
     val base = remember { editor.toolConfig(Tool.SELECT) }
     var switchBack by remember { mutableStateOf(base.switchBackAfterSelect) }
+    var snapGrid by remember { mutableStateOf(base.snapGrid) }
+    var snapShapes by remember { mutableStateOf(base.snapShapes) }
+    var snapRotate by remember { mutableStateOf(base.snapRotate) }
 
-    fun emit() = editor.updateToolConfig(Tool.SELECT, base.copy(switchBackAfterSelect = switchBack))
+    fun emit() = editor.updateToolConfig(
+        Tool.SELECT,
+        base.copy(
+            switchBackAfterSelect = switchBack,
+            snapGrid = snapGrid,
+            snapShapes = snapShapes,
+            snapRotate = snapRotate,
+        ),
+    )
 
     DropdownMenu(expanded = true, onDismissRequest = onDismiss) {
         Column(Modifier.width(250.dp).padding(horizontal = 14.dp, vertical = 8.dp)) {
@@ -976,6 +989,10 @@ fun SelectConfigPopup(editor: ToolPopupHost, onDismiss: () -> Unit) {
             // Re-arm the previous pen/highlighter once a selection action (move, resize, delete,
             // cut, copy, duplicate) finishes, so a quick edit doesn't strand you in select.
             ToggleRow(stringResource(R.string.caption_switch_back), switchBack) { switchBack = it; emit() }
+            // The fork's magnetic snapping, one toggle per SnapEngine call site.
+            ToggleRow(stringResource(R.string.caption_snap_grid), snapGrid) { snapGrid = it; emit() }
+            ToggleRow(stringResource(R.string.caption_snap_shapes), snapShapes) { snapShapes = it; emit() }
+            ToggleRow(stringResource(R.string.caption_snap_rotate), snapRotate) { snapRotate = it; emit() }
         }
     }
 }

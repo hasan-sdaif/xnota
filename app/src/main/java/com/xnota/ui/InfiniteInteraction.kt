@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import com.xnota.canvas.InteractionController
 import com.xnota.canvas.StylusButtonLatch
 import com.xnota.core.geometry.Affine
+import com.xnota.core.canvas.SnapEngine
 import com.xnota.core.geometry.Pt
 import com.xnota.core.infinite.CanvasViewport
 import com.xnota.canvas.HandleId
@@ -95,6 +96,9 @@ class InfiniteInteraction(
     private val selection: () -> CanvasSelection? = { null },
     /** Items the selection may be drawn from, culled to a rect. */
     private val itemsIn: (Rect) -> List<CanvasItem> = { emptyList() },
+    /** The ruling lattice the fork's snap-to-grid settle uses: the open canvas's spacing, or null
+     *  when the host has none (the grid toggle then simply finds nothing to snap to). */
+    private val gridStep: () -> Double? = { null },
     /** The selection or its overlay changed: rebuild the chrome geometry. */
     private val onSelectionChanged: () -> Unit = {},
     /** A finished selection drag: push its single undo command. */
@@ -127,6 +131,12 @@ class InfiniteInteraction(
     companion object {
         /** How near a handle a press has to land to grab it, in device pixels. */
         const val HANDLE_TOUCH_PX = 22.0
+
+        /** The fork's magnetic-snap pull radius, content px — the same feel as the paged canvas. */
+        const val SNAP_THRESHOLD_PX = 8.0
+
+        /** How far past the moving box the shape magnet looks for other items, content px. */
+        const val SNAP_REACH_PX = 64.0
 
         /** Least on-screen distance between lasso vertices, so a slow drag stays cheap. */
         const val LASSO_MIN_STEP_PX = 3.0
@@ -1132,12 +1142,39 @@ class InfiniteInteraction(
     /** Finger up: apply the whole move to the model once, then hand the drawing back to it. */
     private fun endMove() {
         val sel = selection() ?: return
-        sel.moveLive(movedBy.x, movedBy.y)
-        if (movedBy != Pt.ZERO) sel.loneConnector?.letGo()
+        // The fork's magnetic settle, advisory as SnapEngine's contract wants: the drag stayed
+        // free, the release lands on the ruling lattice and the other items' edges it found.
+        val snap = moveSnapDelta(sel)
+        val dx = movedBy.x + snap.x
+        val dy = movedBy.y + snap.y
+        sel.moveLive(dx, dy)
+        if (Pt(dx, dy) != Pt.ZERO) sel.loneConnector?.letGo()
         onLiftSelection(emptyList(), LiftTransform.NONE)
-        onCommitSelection(sel.buildCommand(movedOnly = true, dx = movedBy.x, dy = movedBy.y))
+        onCommitSelection(sel.buildCommand(movedOnly = true, dx = dx, dy = dy))
         onSelectionChanged()
         requestRender()
+    }
+
+    /** The fork's magnetic move settle on the infinite canvas: the box's landing centre snaps
+     *  onto the ruling lattice, and its landing bounds magnetize onto the other items nearby —
+     *  the box has already preview-moved, so it carries the landing position itself. */
+    private fun moveSnapDelta(sel: CanvasSelection): Pt {
+        val cfg = configFor(Tool.SELECT)
+        if (!cfg.snapGrid && !cfg.snapShapes) return Pt.ZERO
+        val box = sel.box ?: return Pt.ZERO
+        var delta = Pt.ZERO
+        if (cfg.snapGrid) {
+            val step = gridStep()
+            if (step != null && step > 0.0) delta += SnapEngine.gridDelta(box.center, step)
+        }
+        if (cfg.snapShapes) {
+            val moving = Rect(box.center.x - box.halfW, box.center.y - box.halfH, box.halfW * 2.0, box.halfH * 2.0)
+            val reach = moving.copy(w = moving.w + SNAP_REACH_PX * 2.0, h = moving.h + SNAP_REACH_PX * 2.0)
+            val selItems = sel.items.toHashSet()
+            val others = itemsIn(reach).filter { it !in selItems && !it.hidden }.map { it.bounds() }
+            if (others.isNotEmpty()) delta += SnapEngine.shapeDelta(moving, others, SNAP_THRESHOLD_PX)
+        }
+        return delta
     }
 
     /**
@@ -1192,16 +1229,20 @@ class InfiniteInteraction(
         val at = viewport.viewportToContent(Pt(vx, vy))
         transformPointer = at
         if (liftedTransform) {
-            val swept = sel.previewRotate(at)
+            val swept = sel.previewRotate(at, rotateSnap())
             val turn = Affine.rotateAbout(sel.transformPivot ?: Pt.ZERO, swept)
             sel.followShown(turn, turn)
             onLiftSelection(liftItems, LiftTransform.turn(sel.transformPivot ?: Pt.ZERO, swept))
         } else {
-            sel.rotateLive(at)
+            sel.rotateLive(at, rotateSnap())
         }
         onSelectionChanged()
         requestRender()
     }
+
+    /** The fork's quarter-turn settle for the rotate grip, or null when the toggle is off. */
+    private fun rotateSnap(): ((Double) -> Double)? =
+        if (configFor(Tool.SELECT).snapRotate) { a -> SnapEngine.snapAngle(a) } else null
 
     private fun endTransform() {
         val sel = selection() ?: return
@@ -1212,7 +1253,7 @@ class InfiniteInteraction(
         // back to it.
         if (liftedTransform) {
             if (handle != null) sel.resizeLive(handle, transformPointer, transformMargin)
-            else sel.rotateLive(transformPointer)
+            else sel.rotateLive(transformPointer, rotateSnap())
             onLiftSelection(emptyList(), LiftTransform.NONE)
             endLift()
         }

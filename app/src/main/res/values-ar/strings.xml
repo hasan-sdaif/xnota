@@ -181,6 +181,10 @@
     <string name="eraser_area">منطقة</string>
     <string name="caption_size">الحجم</string>
     <string name="caption_switch_back">العودة إلى الأداة السابقة</string>
+    <!-- الالتقاط المغناطيسي (أداة التحديد) -->
+    <string name="caption_snap_grid">الالتقاط إلى الشبكة</string>
+    <string name="caption_snap_shapes">الالتقاط إلى الأشكال</string>
+    <string name="caption_snap_rotate">التقاط التدوير</string>
     <string name="caption_erase_markups">محو تمييز نص PDF</string>
     <string name="caption_scribble_erase">المحو بالخربشة</string>
     <string name="title_select">التحديد</string>

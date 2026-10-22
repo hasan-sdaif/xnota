@@ -236,10 +236,14 @@ class CanvasSelection(private val doc: InfiniteDocument) {
      * Swept, not absolute: pointing the box's local up straight at the pointer means a press that
      * lands anywhere but the grip's exact centre jerks the selection round before the finger has
      * moved, and the grip is a 22 device pixel target 34 pixels out from the box.
+     *
+     * [snap], when given, maps the box's final angle to the angle it settles on — the fork's
+     * quarter-turn lattice, so the grip clicks onto 15° steps while it is close.
      */
-    fun rotateLive(pointer: Pt) {
+    fun rotateLive(pointer: Pt, snap: ((Double) -> Double)? = null) {
         val from = startBox ?: return
-        val swept = sweptAngle(from, pointer)
+        var swept = sweptAngle(from, pointer)
+        if (snap != null) swept = snap(from.angle + swept) - from.angle
         box = from.copy(angle = from.angle + swept)
         applyLive(Affine.rotateAbout(from.center, swept))
     }
@@ -247,11 +251,13 @@ class CanvasSelection(private val doc: InfiniteDocument) {
     /**
      * Turn the box alone and report the angle, for a drag the renderer is turning rather than the
      * model. The counterpart of [previewMove]: the model stays put until the finger lifts, and
-     * [rotateLive] then applies the whole turn once.
+     * [rotateLive] then applies the whole turn once. [snap] is the fork's optional settle of the
+     * final angle onto a lattice, so the preview clicks exactly as the commit will.
      */
-    fun previewRotate(pointer: Pt): Double {
+    fun previewRotate(pointer: Pt, snap: ((Double) -> Double)? = null): Double {
         val from = startBox ?: return 0.0
-        val swept = sweptAngle(from, pointer)
+        var swept = sweptAngle(from, pointer)
+        if (snap != null) swept = snap(from.angle + swept) - from.angle
         box = from.copy(angle = from.angle + swept)
         return swept
     }

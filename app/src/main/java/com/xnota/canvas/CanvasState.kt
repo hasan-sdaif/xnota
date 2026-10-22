@@ -257,6 +257,14 @@ class CanvasState(
         else -> v
     }
 
+    /** The inverse of [vectorToPageSpace]: a page-space vector back into content space. */
+    fun pageSpaceToVector(v: Pt): Pt = when (rotationDeg) {
+        90 -> Pt(-v.y, v.x)
+        180 -> Pt(-v.x, -v.y)
+        270 -> Pt(v.y, -v.x)
+        else -> v
+    }
+
     /**
      * Take [r] — already translated to a page rect's top-left — into page space: the view rotation,
      * then the page's margins, so page-space painting lands inside the paper's display footprint.

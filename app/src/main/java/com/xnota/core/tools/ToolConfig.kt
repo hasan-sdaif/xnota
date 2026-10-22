@@ -120,6 +120,16 @@ data class ToolConfig(
      *  highlighter's translucency is — [com.xnota.core.model.Stroke.renderColor] — so the paged
      *  painter, the GL mesher and PDF export all honour it without a format change. */
     val opacity: Double = 1.0,
+    /** Select (the fork's canvas power): a move about to commit snaps onto the grid/ruling
+     *  lattice ([com.xnota.core.canvas.SnapEngine.gridDelta]). Off by default — a free drag is
+     *  the feel a page of prose wants. Only [Tool.SELECT]. */
+    val snapGrid: Boolean = false,
+    /** Select: a move about to commit magnetizes onto other items' edges and centres
+     *  ([com.xnota.core.canvas.SnapEngine.shapeDelta]). Only [Tool.SELECT]. */
+    val snapShapes: Boolean = true,
+    /** Select: the rotate grip pulls onto quarter-turn steps
+     *  ([com.xnota.core.canvas.SnapEngine.snapAngle]). Only [Tool.SELECT]. */
+    val snapRotate: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_MARKUP_INTENSITY = 0.5

@@ -5,6 +5,7 @@ import android.os.Looper
 import android.view.Choreographer
 import android.view.KeyEvent
 import android.view.MotionEvent
+import com.xnota.core.canvas.SnapEngine
 import com.xnota.core.geometry.Affine
 import com.xnota.core.geometry.AlignMode
 import com.xnota.core.geometry.AlignOps
@@ -42,6 +43,7 @@ import com.xnota.core.model.deepCopyAll
 import com.xnota.core.model.GeoHandle
 import com.xnota.core.model.ImageItem
 import com.xnota.core.model.Page
+import com.xnota.core.model.resolvedSpacing
 import com.xnota.core.model.RectHandle
 import com.xnota.core.model.Resizable
 import com.xnota.core.model.Rgba
@@ -2110,20 +2112,62 @@ class InteractionController(
         requestRender()
     }
 
+    /**
+     * The fork's magnetic move settle, advisory exactly as [SnapEngine]'s contract wants: with
+     * [com.xnota.core.tools.ToolConfig.snapGrid] the landing centre snaps onto the page's ruling
+     * lattice (a plain [SNAP_GRID_FALLBACK_PX] grid when the page carries none), and with
+     * [com.xnota.core.tools.ToolConfig.snapShapes] the landing bounds magnetize onto the other
+     * items' edges and centres on the selection's own page. The drag itself stays free — only
+     * the release settles, so the pull never fights the finger.
+     */
+    private fun moveSnapDelta(local: Pt): Pt {
+        val cfg = configFor(Tool.SELECT)
+        if (!cfg.snapGrid && !cfg.snapShapes) return Pt.ZERO
+        val obb = selObb ?: return Pt.ZERO
+        val page = selection.firstOrNull()?.pageIndex ?: return Pt.ZERO
+        val doc = state.document
+        var delta = Pt.ZERO
+        if (cfg.snapGrid) {
+            val step = doc.pages.getOrNull(page)?.resolvedSpacing(doc) ?: SNAP_GRID_FALLBACK_PX
+            val centre = state.toPageSpace(page, obb.center) + local
+            delta += SnapEngine.gridDelta(centre, step)
+        }
+        if (cfg.snapShapes) {
+            val selItems = selection.map { it.item }.toSet()
+            val moved = obb.corners().map { state.toPageSpace(page, it) + local }
+            val x0 = moved.minOf { it.x }; val y0 = moved.minOf { it.y }
+            val moving = Rect(x0, y0, moved.maxOf { it.x } - x0, moved.maxOf { it.y } - y0)
+            val others = doc.pages.getOrNull(page)?.items
+                ?.filter { it !in selItems && !it.hidden }
+                ?.map { it.bounds() }
+                .orEmpty()
+            if (others.isNotEmpty()) delta += SnapEngine.shapeDelta(moving, others, SNAP_THRESHOLD_PX)
+        }
+        return delta
+    }
+
     private fun endMove(content: Pt) {
         moveOffset = content - moveOrigin
         val moved = abs(moveOffset.x) > MOVE_EPS || abs(moveOffset.y) > MOVE_EPS
         if (moved) {
             val items = selection.map { it.item }
             // Items hold page-space geometry: rotate the on-screen offset into page space.
-            val local = state.vectorToPageSpace(moveOffset)
+            // The fork's magnetic snapping is applied here, at the commit point, exactly as
+            // SnapEngine's advisory contract wants — the drag itself stays free, the release
+            // settles onto the grid/edges it found.
+            val raw = state.vectorToPageSpace(moveOffset)
+            val snap = moveSnapDelta(raw)
+            val local = raw + snap
             for (item in items) item.translate(local.x, local.y)
             val shift = Affine.translateBy(local.x, local.y)
             for ((_, f) in follows) {
                 f.follow(shift)
                 f.settle()
             }
-            selObb = selObb?.translate(moveOffset.x, moveOffset.y)
+            // The box follows the same settle: the snap's page-space delta rotated back into
+            // the content space the obb lives in (identity when the view is not rotated).
+            val snapInContent = state.pageSpaceToVector(snap)
+            selObb = selObb?.translate(moveOffset.x + snapInContent.x, moveOffset.y + snapInContent.y)
             // A lone connector let go: recorded whole, so undo glues it back.
             val loose = loneConnector()?.item as? ConnectorItem
             val looseWas = looseBefore
@@ -2401,7 +2445,10 @@ class InteractionController(
             selObb = res.obb
             world = res.transform
         } else {
-            val theta = atan2(content.y - txCenter.y, content.x - txCenter.x) - txGrabAngle
+            var theta = atan2(content.y - txCenter.y, content.x - txCenter.x) - txGrabAngle
+            // The fork's rotation snap: the grip pulls onto the quarter-turn lattice while it is
+            // close, so the settle is seen as it happens — the release simply keeps it.
+            if (configFor(Tool.SELECT).snapRotate) theta = SnapEngine.snapAngle(txStartAngle + theta) - txStartAngle
             selObb = obb0.copy(angle = txStartAngle + theta)
             world = Affine.rotateAbout(txCenter, theta)
         }
@@ -4823,6 +4870,13 @@ class InteractionController(
             if (zoom.isFinite() && zoom > 0.0) (1.0 / zoom).coerceAtMost(1.0) else 1.0
 
         const val MOVE_EPS = 0.01
+
+        /** The fork's magnetic-snap pull radius, content px: close enough to feel, far enough to find. */
+        const val SNAP_THRESHOLD_PX = 8.0
+
+        /** The fork's grid-snap lattice for a page with no ruling of its own — the ruling floor
+         *  the infinite canvas coarsens to, so both canvases snap to the same-sized grid. */
+        const val SNAP_GRID_FALLBACK_PX = 32.0
 
         /** Vendor key some pens send for a genuinely held side button (OnePlus Pad Go 2 Stylo,
          *  which reports a real down/up pair with auto-repeat rather than a momentary click). */

@@ -472,6 +472,9 @@ data class Settings(
             .put("erase_markups", c.eraseMarkups)
             .put("scribble_erase", c.scribbleErase)
             .put("switch_back_after_select", c.switchBackAfterSelect)
+            .put("snap_grid", c.snapGrid)
+            .put("snap_shapes", c.snapShapes)
+            .put("snap_rotate", c.snapRotate)
             .put("straight_line", c.straightLine)
             .put("scale", c.scale)
             .put("highlighter_alpha", c.highlighterAlpha)
@@ -505,6 +508,9 @@ data class Settings(
                 eraseMarkups = o.optBoolean("erase_markups", d.eraseMarkups),
                 scribbleErase = o.optBoolean("scribble_erase", d.scribbleErase),
                 switchBackAfterSelect = o.optBoolean("switch_back_after_select", d.switchBackAfterSelect),
+                snapGrid = o.optBoolean("snap_grid", d.snapGrid),
+                snapShapes = o.optBoolean("snap_shapes", d.snapShapes),
+                snapRotate = o.optBoolean("snap_rotate", d.snapRotate),
                 straightLine = o.optBoolean("straight_line", d.straightLine),
                 scale = o.optBoolean("scale", d.scale),
                 highlighterAlpha = o.optDouble("highlighter_alpha", d.highlighterAlpha),
