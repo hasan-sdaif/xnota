@@ -5,6 +5,7 @@ import android.os.Looper
 import android.view.Choreographer
 import android.view.KeyEvent
 import android.view.MotionEvent
+import com.xnota.core.canvas.DuplicateArrays
 import com.xnota.core.canvas.SnapEngine
 import com.xnota.core.geometry.Affine
 import com.xnota.core.geometry.AlignMode
@@ -39,6 +40,7 @@ import com.xnota.core.model.ConnectorEdit
 import com.xnota.core.model.ConnectorItem
 import com.xnota.core.model.Document
 import com.xnota.core.model.DrawStyle
+import com.xnota.core.model.deepCopy
 import com.xnota.core.model.deepCopyAll
 import com.xnota.core.model.GeoHandle
 import com.xnota.core.model.ImageItem
@@ -558,6 +560,9 @@ class InteractionController(
     }
 
     val hasSelection: Boolean get() = selection.isNotEmpty()
+
+    /** How many items the selection holds, for the array popup's live count line. */
+    val selectionCount: Int get() = selection.size
 
     fun configFor(t: Tool): ToolConfig = toolConfigs[t] ?: ToolDefaults.configFor(t)
 
@@ -3219,6 +3224,71 @@ class InteractionController(
         val members = selection.toList()
         val bounds = members.map { state.fromPageSpaceRect(it.pageIndex, it.item.bounds()) }
         shiftSelectedBy(members, AlignOps.distributeDeltas(bounds, vertical) ?: return)
+    }
+
+    // --- duplicate array (the fork's "Duplicate array…") ---
+
+    /**
+     * Copy the selection around itself, rotated: every member's clones fanned over [spanDegrees]
+     * about the selection box's centre in content space — mapped into each member's own page space
+     * before the pure layer's rotation bakes into the copy, which a rigid page placement makes exact.
+     * One undo step however many copies landed, and the copies arrive selected.
+     */
+    fun duplicateRadialArray(copies: Int, spanDegrees: Double) {
+        if (selection.isEmpty()) return
+        val centre = selectionBoundsContent()?.center ?: return
+        val landed = ArrayList<Pair<Int, CanvasItem>>()
+        for (sel in selection.toList()) {
+            if (state.pageRects.getOrNull(sel.pageIndex) == null) continue
+            val local = state.toPageSpace(sel.pageIndex, centre)
+            for (copy in DuplicateArrays.radial(sel.item, local, copies, spanDegrees) { it.deepCopy(textMeasurer) }) {
+                landed += sel.pageIndex to copy
+            }
+        }
+        landArrayClones(landed)
+    }
+
+    /**
+     * Copy the selection out in a [rows] × [cols] grid: each member's clones step the member's own
+     * size plus [gapPx] content px down and right from where it sits, in its own page space (a page
+     * placement is rigid, so a page px is a content px). One undo step, the copies selected.
+     */
+    fun duplicateGridArray(rows: Int, cols: Int, gapPx: Double) {
+        if (selection.isEmpty()) return
+        val landed = ArrayList<Pair<Int, CanvasItem>>()
+        for (sel in selection.toList()) {
+            if (state.pageRects.getOrNull(sel.pageIndex) == null) continue
+            for (copy in DuplicateArrays.grid(sel.item, rows, cols, gapPx, gapPx) { it.deepCopy(textMeasurer) }) {
+                landed += sel.pageIndex to copy
+            }
+        }
+        landArrayClones(landed)
+    }
+
+    /**
+     * What both arrays land: the copies onto their pages, one [AddItems] per page folded into a
+     * single undo step, then the copies selected where the originals were — same lift plain
+     * duplicate's copy gets, so the result can be judged and moved as a unit.
+     */
+    private fun landArrayClones(landed: List<Pair<Int, CanvasItem>>) {
+        if (landed.isEmpty()) return
+        val perPage = LinkedHashMap<Int, MutableList<CanvasItem>>()
+        for ((pageIndex, copy) in landed) perPage.getOrPut(pageIndex) { mutableListOf() }.add(copy)
+        val cmds = ArrayList<Command>(perPage.size)
+        for ((pageIndex, clones) in perPage) {
+            val page = state.document.pages.getOrNull(pageIndex) ?: continue
+            page.items.addAll(clones)
+            cmds += AddItems(page, clones)
+        }
+        if (cmds.isEmpty()) return
+        history.push(cmds.singleOrNull() ?: CompositeCommand(cmds))
+        state.document.dirty = true
+        // The clones are immediately selected (lifted) below; setSelection repairs their region
+        // in place, so no separate page rebuild is needed here.
+        setSelection(landed.map { (pageIndex, copy) -> Selected(pageIndex, copy) })
+        refreshSelectionMenu()
+        onContentChanged()
+        maybeSwitchBackAfterSelect()
     }
 
     /**

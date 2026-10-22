@@ -118,6 +118,9 @@ interface SelectionMenuHost : SwatchHost {
     /** Plan that connector's route afresh round what is in its way, as one undo step. */
     fun rerouteSelection()
 
+    /** How many items the selection holds, so the array popup can count the copies it will make. */
+    val selectionItemCount: Int get() = 0
+
     /** True when the selection can be mirrored: it holds no text, which would read backwards. */
     fun canMirrorSelection(): Boolean
 
@@ -144,6 +147,19 @@ interface SelectionMenuHost : SwatchHost {
 
     /** Spread the selection so the gaps between neighbours come out even along one axis, as one undo step. */
     fun distributeSelection(vertical: Boolean)
+
+    /**
+     * Copy the selection around itself — [copies] rotated clones fanned over [spanDegrees] about the
+     * selection box's centre — as one undo step, whatever the selection holds, leaving the copies
+     * selected so the result can be judged and moved as a unit.
+     */
+    fun duplicateRadialArray(copies: Int, spanDegrees: Double)
+
+    /**
+     * Copy the selection out in a [rows] × [cols] grid stepping its own size plus [gapPx] content px,
+     * as one undo step, leaving the copies selected.
+     */
+    fun duplicateGridArray(rows: Int, cols: Int, gapPx: Double)
 }
 
 /**
@@ -160,6 +176,7 @@ fun SelectionMenu(host: SelectionMenuHost) {
     var overflowOpen by remember { mutableStateOf(false) }
     var styleOpen by remember { mutableStateOf(false) }
     var alignOpen by remember { mutableStateOf(false) }
+    var arrayOpen by remember { mutableStateOf(false) }
 
     val barHeightPx = with(density) { 48.dp.toPx() }
     val barWidthPx = with(density) { (6 * 46).dp.toPx() }
@@ -232,6 +249,10 @@ fun SelectionMenu(host: SelectionMenuHost) {
                         onClick = { overflowOpen = false; alignOpen = true },
                     )
                     DropdownMenuItem(
+                        text = { Text(stringResource(R.string.duplicate_array)) },
+                        onClick = { overflowOpen = false; arrayOpen = true },
+                    )
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.lock)) },
                         onClick = { overflowOpen = false; host.lockSelection() },
                     )
@@ -250,6 +271,9 @@ fun SelectionMenu(host: SelectionMenuHost) {
                 }
                 if (alignOpen) {
                     AlignPopup(host) { alignOpen = false }
+                }
+                if (arrayOpen) {
+                    DuplicateArrayPopup(host) { arrayOpen = false }
                 }
             }
         }

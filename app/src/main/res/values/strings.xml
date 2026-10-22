@@ -1427,4 +1427,19 @@
     <string name="pin_confirm_field">Confirm PIN</string>
     <string name="pin_digits_help">4–6 digits.</string>
     <string name="pin_mismatch">The two PINs don\'t match</string>
+
+    <!-- XNota: duplicate array, measure, image corners (the fork) -->
+    <string name="duplicate_array">Duplicate array…</string>
+    <string name="array_apply">Apply</string>
+    <string name="array_radial">Radial</string>
+    <string name="array_grid">Grid</string>
+    <string name="array_copies">Copies</string>
+    <string name="array_span">Span</string>
+    <string name="array_rows">Rows</string>
+    <string name="array_cols">Columns</string>
+    <string name="array_gap">Gap</string>
+    <plurals name="array_count_n">
+        <item quantity="one">%d copy</item>
+        <item quantity="other">%d copies</item>
+    </plurals>
 </resources>

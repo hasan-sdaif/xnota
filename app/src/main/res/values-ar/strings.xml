@@ -1558,4 +1558,23 @@
     <string name="pin_confirm_field">تأكيد الرمز</string>
     <string name="pin_digits_help">من 4 إلى 6 أرقام.</string>
     <string name="pin_mismatch">الرمزان غير متطابقين</string>
+
+    <!-- XNota: duplicate array, measure, image corners (the fork) -->
+    <string name="duplicate_array">تكرار في نمط…</string>
+    <string name="array_apply">تطبيق</string>
+    <string name="array_radial">دائري</string>
+    <string name="array_grid">شبكي</string>
+    <string name="array_copies">النسخ</string>
+    <string name="array_span">الامتداد</string>
+    <string name="array_rows">الصفوف</string>
+    <string name="array_cols">الأعمدة</string>
+    <string name="array_gap">التباعد</string>
+    <plurals name="array_count_n">
+        <item quantity="zero">%d نسخة</item>
+        <item quantity="one">%d نسخة</item>
+        <item quantity="two">%d نسختين</item>
+        <item quantity="few">%d نسخ</item>
+        <item quantity="many">%d نسخة</item>
+        <item quantity="other">%d نسخة</item>
+    </plurals>
 </resources>

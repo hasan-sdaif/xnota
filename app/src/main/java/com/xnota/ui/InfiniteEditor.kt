@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.xnota.canvas.InteractionController
+import com.xnota.core.canvas.DuplicateArrays
 import com.xnota.core.geometry.AlignMode
 import com.xnota.core.geometry.AlignOps
 import com.xnota.core.geometry.Pt
@@ -39,6 +40,7 @@ import com.xnota.core.model.CanvasItem
 import com.xnota.core.model.DrawStyle
 import com.xnota.core.model.ImageData
 import com.xnota.core.model.ImageItem
+import com.xnota.core.model.deepCopy
 import com.xnota.core.model.deepCopyAll
 import com.xnota.core.model.Rgba
 import com.xnota.core.model.Labelled
@@ -737,6 +739,43 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         markDirty()
         refresh()
         publishOverlay()
+    }
+
+    override val selectionItemCount: Int get() = selection.items.size
+
+    /**
+     * The canvas has no pages to cross, so the array is one content-space plan: every member's
+     * clones fanned over [spanDegrees] about the selection box's own centre, one undo step, the
+     * copies selected where they land.
+     */
+    override fun duplicateRadialArray(copies: Int, spanDegrees: Double) {
+        if (selection.isEmpty) return
+        val centre = selection.box?.center ?: return
+        val clones = selection.items.toList().flatMap { item ->
+            DuplicateArrays.radial(item, centre, copies, spanDegrees) { it.deepCopy(textMeasurer) }
+        }
+        landArrayClones(clones)
+    }
+
+    override fun duplicateGridArray(rows: Int, cols: Int, gapPx: Double) {
+        if (selection.isEmpty) return
+        val clones = selection.items.toList().flatMap { item ->
+            DuplicateArrays.grid(item, rows, cols, gapPx, gapPx) { it.deepCopy(textMeasurer) }
+        }
+        landArrayClones(clones)
+    }
+
+    /** What both arrays land: the copies onto the document as one [AddCanvasItems] step, then
+     *  selected — the same lift plain duplicate's copy gets, so the array can be judged and moved. */
+    private fun landArrayClones(clones: List<CanvasItem>) {
+        if (clones.isEmpty()) return
+        document.addAll(clones)
+        history.push(AddCanvasItems(document, clones))
+        selection.select(clones)
+        markDirty()
+        refresh()
+        publishOverlay()
+        maybeSwitchBackAfterSelect()
     }
 
     // ── LayersHost (the fork's layers panel) ─────────────────────────────────────

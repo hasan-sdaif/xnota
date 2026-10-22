@@ -7173,6 +7173,14 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
     override fun distributeSelection(vertical: Boolean) = controller.distributeSelection(vertical)
 
+    override val selectionItemCount: Int get() = controller.selectionCount
+
+    override fun duplicateRadialArray(copies: Int, spanDegrees: Double) =
+        controller.duplicateRadialArray(copies, spanDegrees)
+
+    override fun duplicateGridArray(rows: Int, cols: Int, gapPx: Double) =
+        controller.duplicateGridArray(rows, cols, gapPx)
+
     // ── LayersHost (the fork's layers panel) ─────────────────────────────────────
 
     override fun openLayersPanel() {
