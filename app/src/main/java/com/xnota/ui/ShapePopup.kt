@@ -231,11 +231,20 @@ private fun Swatch(color: Rgba, selected: Boolean, label: String?, mark: Boolean
     if (label != null) Tooltip(label) { body() } else body()
 }
 
-/** One end's head: a chip for each, drawn on a short line. */
+/**
+ * One end's head: a chip for each kind, drawn on a short line. The fork's five classic styles
+ * (no head/arrow/dot/cross, filled arrow included) sit beside the UML hollows and diamonds —
+ * the [Head.arrowhead] mapping is the code-side statement of which classic name each is.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HeadRow(caption: String, chosen: Head, atStart: Boolean, onPick: (Head) -> Unit) {
     Text(caption, color = LocalPalette.current.text.toComposeColor(), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-    Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
+    FlowRow(
+        Modifier.padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(GAP.dp),
+        verticalArrangement = Arrangement.spacedBy(GAP.dp),
+    ) {
         for (h in Head.entries) KindChip(ShapeIcons.head(h, atStart), stringResource(headLabel(h)), selected = h == chosen) { onPick(h) }
     }
 }
@@ -503,6 +512,8 @@ private fun headLabel(head: Head): Int = when (head) {
     Head.HOLLOW_TRIANGLE -> R.string.head_hollow_triangle
     Head.FILLED_DIAMOND -> R.string.head_filled_diamond
     Head.HOLLOW_DIAMOND -> R.string.head_hollow_diamond
+    Head.DOT -> R.string.head_dot
+    Head.CROSS -> R.string.head_cross
 }
 
 /** A chip is 38 dp across; six of them and their gaps fill the popup's 256 dp. */

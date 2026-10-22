@@ -2,6 +2,7 @@ package com.xnota.core.shapes
 
 import com.xnota.core.FakeRenderer
 import com.xnota.core.geometry.Pt
+import com.xnota.core.model.Arrowhead
 import com.xnota.core.model.Rgba
 import com.xnota.core.model.ShapeItem
 import com.xnota.core.stroke.CubicFit
@@ -85,5 +86,37 @@ class HeadTest {
     @Test fun headsReadBackByTheirIds() {
         for (h in Head.entries) assertEquals(h, Head.fromId(h.id))
         assertEquals(Head.NONE, Head.fromId("trident"))
+    }
+
+    // --- the fork's classic five (Arrowheads wiring) ---
+
+    @Test fun dotAndCrossBuildFromArrowheadsOutlines() {
+        val end = Pt(50.0, 12.0)
+        val dir = Pt(1.0, 0.0)
+        val width = 4.0
+        // DOT: one closed 16-gon whose outline IS Arrowheads' disc.
+        val dot = Head.DOT.paths(end, dir, width)
+        assertEquals(1, dot.size)
+        val disc = Arrowhead.DOT.outline(end, dir, width).single()
+        assertEquals(disc.points, dot[0].contours[0].let { pts(it) })
+        assertEquals(PathRole.HEAD_FILLED, dot[0].role)
+        // CROSS: two open strokes whose outlines ARE Arrowheads' × (unit diagonals, len arms).
+        val cross = Head.CROSS.paths(end, dir, width)
+        assertEquals(2, cross.size)
+        val arms = Arrowhead.CROSS.outline(end, dir, width)
+        assertEquals(arms[0].points, pts(cross[0].contours[0]))
+        assertEquals(arms[1].points, pts(cross[1].contours[0]))
+        for (p in cross) assertEquals(PathRole.HEAD, p.role)
+    }
+
+    @Test fun theClassicFiveMapOntoTheirArrowheads() {
+        assertEquals(Arrowhead.NONE, Head.NONE.arrowhead)
+        assertEquals(Arrowhead.ARROW, Head.OPEN.arrowhead)
+        assertEquals(Arrowhead.TRIANGLE, Head.FILLED.arrowhead)
+        assertEquals(Arrowhead.DOT, Head.DOT.arrowhead)
+        assertEquals(Arrowhead.CROSS, Head.CROSS.arrowhead)
+        // The inset the pure table gives is the inset the head takes.
+        assertEquals(Arrowhead.DOT.inset(4.0), Head.DOT.inset(4.0), 1e-12)
+        assertEquals(0.0, Head.CROSS.inset(4.0), 1e-12)
     }
 }

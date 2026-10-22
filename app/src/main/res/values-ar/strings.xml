@@ -293,6 +293,8 @@
     <string name="head_hollow_triangle">مثلث مجوّف</string>
     <string name="head_filled_diamond">معيّن ممتلئ</string>
     <string name="head_hollow_diamond">معيّن مجوّف</string>
+    <string name="head_dot">نقطة</string>
+    <string name="head_cross">متقاطع</string>
     <string name="conn_page_connectors">الموصلات</string>
     <string name="conn_page_uml">UML</string>
     <string name="conn_straight">موصل مستقيم</string>

@@ -1,24 +1,40 @@
 package com.xnota.core.shapes
 
 import com.xnota.core.geometry.Pt
+import com.xnota.core.model.Arrowhead
+import com.xnota.core.model.HeadOutline
 import com.xnota.core.vector.VectorContour
 import com.xnota.core.vector.VectorSeg
 import kotlin.math.max
 
-/** What the end of an open shape or a connector carries: nothing, a chevron, or a UML head. */
+/**
+ * What the end of an open shape or a connector carries: nothing, a chevron, or a UML head. The
+ * fork's five classic endpoint styles ([Arrowhead] — none/arrow/triangle/dot/cross) all live here
+ * too: [Arrowhead.ARROW] *is* [OPEN], [Arrowhead.TRIANGLE] *is* [FILLED], and [DOT]/[CROSS] are
+ * these entries, whose paths build straight from Arrowheads' outlines so the pure table stays the
+ * one home of the geometry (same length rule, same dot radius and sides, same unit-diagonal cross
+ * arms). The hollow and diamond UML heads stay this enum's own richer set beyond the five.
+ */
 enum class Head(val id: String) {
     NONE("none"),
     OPEN("open"),
     FILLED("filled"),
     HOLLOW_TRIANGLE("hollow_triangle"),
     FILLED_DIAMOND("filled_diamond"),
-    HOLLOW_DIAMOND("hollow_diamond");
+    HOLLOW_DIAMOND("hollow_diamond"),
+
+    /** The fork's dot head: a filled disc on the line's end ([Arrowhead.DOT]). */
+    DOT("dot"),
+
+    /** The fork's cross head: an × across the line's end ([Arrowhead.CROSS]). */
+    CROSS("cross");
 
     /** How far short of the end the line stops, so it never shows through a head with a body. */
     fun inset(width: Double): Double = when (this) {
-        NONE, OPEN -> 0.0
+        NONE, OPEN, CROSS -> 0.0
         FILLED, HOLLOW_TRIANGLE -> length(width)
         FILLED_DIAMOND, HOLLOW_DIAMOND -> length(width) * DIAMOND_STRETCH
+        DOT -> length(width) * (0.5 - Arrowhead.DOT_RADIUS_FRACTION)
     }
 
     /**
@@ -32,6 +48,7 @@ enum class Head(val id: String) {
         val perp = dir.perp()
         return when (this) {
             NONE -> emptyList()
+            DOT, CROSS -> fromArrowhead(outline(end, dir, width))
             OPEN -> {
                 val tip = end + dir * (width * 0.5)
                 val back = tip - dir * len
@@ -50,6 +67,28 @@ enum class Head(val id: String) {
                 listOf(ShapePath.polygon(diamond, if (this == FILLED_DIAMOND) PathRole.HEAD_FILLED else PathRole.HEAD))
             }
         }
+    }
+
+    /** The [Arrowhead] this head answers to on the five-name table every note app knows. */
+    val arrowhead: Arrowhead
+        get() = when (this) {
+            NONE -> Arrowhead.NONE
+            OPEN -> Arrowhead.ARROW
+            FILLED -> Arrowhead.TRIANGLE
+            DOT -> Arrowhead.DOT
+            CROSS -> Arrowhead.CROSS
+            // The UML heads have no classic name; the chevron is the nearest everyday kin.
+            else -> Arrowhead.ARROW
+        }
+
+    /** [Arrowhead]'s outline for this head's classic kind, at the same end/direction/width. */
+    private fun outline(end: Pt, dir: Pt, width: Double): List<HeadOutline> =
+        arrowhead.outline(end, dir, width)
+
+    /** One [HeadOutline] run as the ShapePath the renderer draws: a polygon or a polyline. */
+    private fun fromArrowhead(runs: List<HeadOutline>): List<ShapePath> = runs.map { r ->
+        if (r.closed) ShapePath.polygon(r.points, PathRole.HEAD_FILLED)
+        else ShapePath.polyline(r.points, PathRole.HEAD)
     }
 
     companion object {

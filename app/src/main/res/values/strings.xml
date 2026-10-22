@@ -292,6 +292,8 @@
     <string name="head_hollow_triangle">Hollow triangle</string>
     <string name="head_filled_diamond">Filled diamond</string>
     <string name="head_hollow_diamond">Hollow diamond</string>
+    <string name="head_dot">Dot</string>
+    <string name="head_cross">Cross</string>
     <string name="conn_page_connectors">Connectors</string>
     <string name="conn_page_uml">UML</string>
     <string name="conn_straight">Straight connector</string>
