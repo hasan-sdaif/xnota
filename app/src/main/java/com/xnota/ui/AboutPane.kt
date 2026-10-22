@@ -176,8 +176,91 @@ fun AboutPane() {
                     onClose = { openLicenses = false; shownLicense = null },
                 )
             }
+
+            // The fork's own release ledger: what each wave brought, newest first.
+            Spacer(Modifier.height(6.dp))
+            var openChangelog by remember { mutableStateOf(false) }
+            Text(
+                stringResource(R.string.whats_new),
+                color = palette.textDim.toComposeColor(), fontSize = 11.sp,
+                modifier = Modifier.clickable { openChangelog = true },
+            )
+            if (openChangelog) {
+                WhatsNewDialog(onClose = { openChangelog = false })
+            }
         }
     }
+}
+
+/** The changelog entry ids the ledger holds, onto the string resources that word them. */
+private val CHANGELOG_TEXT = mapOf(
+    "rounded_image_corners" to R.string.changelog_rounded_image_corners,
+    "prefs_search" to R.string.changelog_prefs_search,
+    "reader_brightness" to R.string.changelog_reader_brightness,
+    "page_number_stamps" to R.string.changelog_page_number_stamps,
+    "sticky_preset" to R.string.changelog_sticky_preset,
+    "search_history" to R.string.changelog_search_history,
+    "pin_lock" to R.string.changelog_pin_lock,
+    "encrypted_backups" to R.string.changelog_encrypted_backups,
+    "app_imports" to R.string.changelog_app_imports,
+    "text_exports" to R.string.changelog_text_exports,
+    "version_history" to R.string.changelog_version_history,
+    "duplicate_arrays" to R.string.changelog_duplicate_arrays,
+    "measure_tool" to R.string.changelog_measure_tool,
+    "ink_engine" to R.string.changelog_ink_engine,
+    "brush_studio" to R.string.changelog_brush_studio,
+    "layers_panel" to R.string.changelog_layers_panel,
+    "align_mirror" to R.string.changelog_align_mirror,
+    "arrowheads_patterns" to R.string.changelog_arrowheads_patterns,
+    "reading_mode" to R.string.changelog_reading_mode,
+    "focus_timer" to R.string.changelog_focus_timer,
+    "find_replace" to R.string.changelog_find_replace,
+    "organization" to R.string.changelog_organization,
+    "smart_folders" to R.string.changelog_smart_folders,
+    "calligraphy_rulings" to R.string.changelog_calligraphy_rulings,
+    "hijri_dates" to R.string.changelog_hijri_dates,
+    "arabic_digits" to R.string.changelog_arabic_digits,
+    "loose_arabic_search" to R.string.changelog_loose_arabic_search,
+    "arabic_first" to R.string.changelog_arabic_first,
+    "any_folder_backups" to R.string.changelog_any_folder_backups,
+    "no_accounts" to R.string.changelog_no_accounts,
+)
+
+/**
+ * "What's new": the fork's releases, newest first, each under its version header with its headline
+ * lines — the pure [com.xnota.core.util.ForkChangelog] ledger rendered straight through the string
+ * table above, so a missing word is a compile error rather than a blank line.
+ */
+@Composable
+private fun WhatsNewDialog(onClose: () -> Unit) {
+    val palette = LocalPalette.current
+    val ctx = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(stringResource(R.string.whats_new)) },
+        text = {
+            Column(Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+                for (release in com.xnota.core.util.ForkChangelog.releases) {
+                    Text(
+                        stringResource(R.string.changelog_version, release.version),
+                        color = palette.accent.toComposeColor(), fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+                    )
+                    for (entry in release.entries) {
+                        val res = CHANGELOG_TEXT[entry.id]
+                        if (res != null) {
+                            Text(
+                                "•  " + ctx.getString(res),
+                                color = palette.text.toComposeColor(), fontSize = 12.sp, lineHeight = 17.sp,
+                                modifier = Modifier.padding(vertical = 1.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.done)) } },
+    )
 }
 
 /** xnota: the bundled fonts' license notices, read straight from the assets. */

@@ -1582,4 +1582,37 @@
         <item quantity="many">%d نسخة</item>
         <item quantity="other">%d نسخة</item>
     </plurals>
+
+    <!-- The fork's release ledger (About → What's new) -->
+    <string name="whats_new">ما الجديد</string>
+    <string name="changelog_rounded_image_corners">زوايا دائرية للصور المُدرجة</string>
+    <string name="changelog_prefs_search">البحث داخل التفضيلات</string>
+    <string name="changelog_reader_brightness">تحكم بسطوع القراءة</string>
+    <string name="changelog_page_number_stamps">أرقام الصفحات</string>
+    <string name="changelog_sticky_preset">قالب الملاحظة اللاصقة السريعة</string>
+    <string name="changelog_search_history">عمليات البحث الأخيرة</string>
+    <string name="changelog_pin_lock">قفل التطبيق برمز PIN</string>
+    <string name="changelog_encrypted_backups">نسخ احتياطية مشفّرة بعبارة مرور</string>
+    <string name="changelog_app_imports">استيراد من Evernote وKeep وJoplin</string>
+    <string name="changelog_text_exports">تصدير الملاحظات Markdown ونص وHTML</string>
+    <string name="changelog_version_history">سجل إصدارات لكل ملاحظة مع الاستعادة</string>
+    <string name="changelog_duplicate_arrays">تكرار مصفوفي شعاعي وشبكي</string>
+    <string name="changelog_measure_tool">أداة القياس</string>
+    <string name="changelog_ink_engine">محرك الحبر 2.0 — مرشّح One-Euro وتشكيل الضغط وأقلام جديدة</string>
+    <string name="changelog_brush_studio">استوديو الفرش — التناظر والإعدادات والتعبئة</string>
+    <string name="changelog_layers_panel">لوحة الطبقات مع الإخفاء والقفل</string>
+    <string name="changelog_align_mirror">محاذاة وتوزيع وانعكاس</string>
+    <string name="changelog_arrowheads_patterns">رؤوس السهوم وأنماط الشرطات والتعبئة</string>
+    <string name="changelog_reading_mode">وضع القراءة بتايبوغرافيا مريحة</string>
+    <string name="changelog_focus_timer">مؤقّت التركيز</string>
+    <string name="changelog_find_replace">البحث والاستبدال بتجاهل التشكيل</string>
+    <string name="changelog_organization">المفضلة والوسوم والإحصاءات</string>
+    <string name="changelog_smart_folders">المجلدات الذكية</string>
+    <string name="changelog_calligraphy_rulings">مساطر الخط: خط ونسخ ورقعة</string>
+    <string name="changelog_hijri_dates">التواريخ والأختام الهجرية</string>
+    <string name="changelog_arabic_digits">الأرقام العربية الهندية في كل مكان</string>
+    <string name="changelog_loose_arabic_search">بحث عربي مرن — طيّ الهمزة والتشكيل</string>
+    <string name="changelog_arabic_first">واجهة وخطوط وقوالب عربية أولاً</string>
+    <string name="changelog_any_folder_backups">نسخ احتياطية لأي مجلد بما فيه Drive</string>
+    <string name="changelog_no_accounts">بلا حسابات وبلا تتبّع</string>
 </resources>
