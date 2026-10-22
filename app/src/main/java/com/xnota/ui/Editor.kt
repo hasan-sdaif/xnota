@@ -3867,6 +3867,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         if (next == settings.smartFolders) return
         settings = settings.copy(smartFolders = next)
         saveSettingsSoon()
+        prefsVersion++ // the sidebar recomposes off this
     }
 
     /** Removes the smart folder named [name]; main thread. */
@@ -3875,6 +3876,37 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         if (next == settings.smartFolders) return
         settings = settings.copy(smartFolders = next)
         saveSettingsSoon()
+        prefsVersion++
+    }
+
+    /**
+     * What tapping the smart folder [folder] shows under [treeUri]: every note in the tree whose
+     * name matches its query and whose tags carry its tag. Tags come from the meta cache when it
+     * is current; a note the cache has nothing for is peeked once (the same read the explorer's
+     * background fill does), so the first run of a tag-filtered folder pays for the rest. IO.
+     */
+    fun smartFolderEntries(treeUri: String, folder: com.xnota.settings.SmartFolder): List<BrowseEntry> {
+        val out = ArrayList<BrowseEntry>()
+        val seen = HashSet<String>()
+        val stack = ArrayDeque<String>().apply { addLast(browseRootDocId(treeUri)) }
+        while (stack.isNotEmpty()) {
+            val docId = stack.removeLast()
+            if (!seen.add(docId)) continue // guard against any cyclic SAF links
+            for (e in browseChildren(treeUri, docId)) {
+                if (e.isDir) {
+                    stack.addLast(browseDocId(e.documentUri))
+                } else {
+                    val name = com.xnota.core.util.DocumentKind.stripSuffix(e.name)
+                    val tags = if (folder.tag == null) emptyList() else {
+                        docMeta.get(documentKey(e.documentUri), e.modified)?.tags
+                            ?: docMetaFor(e)?.tags
+                            ?: emptyList()
+                    }
+                    if (com.xnota.settings.SmartFolders.matches(folder, name, tags)) out.add(e)
+                }
+            }
+        }
+        return out.sortedWith(explorerComparator(explorerView.sortKey, explorerView.descending) { it.created })
     }
 
     /**

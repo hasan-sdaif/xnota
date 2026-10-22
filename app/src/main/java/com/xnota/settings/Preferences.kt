@@ -102,12 +102,23 @@ data class Preferences(
     val markdownInput: Boolean = true,
     /** Whether typing "/" at a word start opens the command menu. */
     val slashCommands: Boolean = true,
+    // ── Text & typing power (the fork) ──────────────────────────────────────────
+    /** Typewriter scrolling: keep the caret's line vertically centred while typing. */
+    val typewriterScrolling: Boolean = false,
+    /** A soft key click on every typed character. Off by default — silence is the default. */
+    val typingSounds: Boolean = false,
+    /** Enter after a list item carries the list marker onto the new line. */
+    val autoLists: Boolean = true,
+    /** Straight quotes become curly ones (Latin) or « » (Arabic) as they are typed. */
+    val smartQuotes: Boolean = true,
     /** Layouts the explorer header's switcher offers, in switcher order. */
     val switcherLayouts: List<ExplorerLayout> = ExplorerLayout.entries,
     val sidebarRecent: Boolean = true,
     val sidebarPinned: Boolean = true,
     val sidebarColours: Boolean = true,
     val sidebarTrash: Boolean = true,
+    /** Whether the sidebar lists the user's smart folders (saved searches, the fork). */
+    val sidebarSmartFolders: Boolean = true,
     /** Where Home opens: "top" (the notes folder), "last" (the folder last shown) or "shelves" (the notes folder under Recent and Pinned). */
     val homeOpensTo: String = "top",
     /** How the explorer writes dates: "relative" (2 days ago), "day" (Wed 17:30) or "date" (16 Sep 2026). */
@@ -242,12 +253,17 @@ data class Preferences(
             lastCodeLanguage.takeIf { it.isNotEmpty() }?.let { put("last_code_language", it) }
             put("markdown_input", markdownInput)
             put("slash_commands", slashCommands)
+            put("typewriter_scrolling", typewriterScrolling)
+            put("typing_sounds", typingSounds)
+            put("auto_lists", autoLists)
+            put("smart_quotes", smartQuotes)
         }
         .put("switcher_layouts", org.json.JSONArray().apply { switcherLayouts.forEach { put(it.id) } })
         .put("sidebar_recent", sidebarRecent)
         .put("sidebar_pinned", sidebarPinned)
         .put("sidebar_colours", sidebarColours)
         .put("sidebar_trash", sidebarTrash)
+        .put("sidebar_smart_folders", sidebarSmartFolders)
         .put("home_opens_to", homeOpensTo)
         .put("date_style", dateStyle)
         .put("date_system", dateSystem)
@@ -374,6 +390,10 @@ data class Preferences(
                 lastCodeLanguage = o.optString("last_code_language").lowercase().trim(),
                 markdownInput = o.optBoolean("markdown_input", true),
                 slashCommands = o.optBoolean("slash_commands", true),
+                typewriterScrolling = o.optBoolean("typewriter_scrolling", false),
+                typingSounds = o.optBoolean("typing_sounds", false),
+                autoLists = o.optBoolean("auto_lists", true),
+                smartQuotes = o.optBoolean("smart_quotes", true),
                 switcherLayouts = o.optJSONArray("switcher_layouts")?.let { a ->
                     (0 until a.length()).mapNotNull { ExplorerLayout.fromId(a.optString(it)) }.distinct()
                 } ?: ExplorerLayout.entries,
@@ -381,6 +401,7 @@ data class Preferences(
                 sidebarPinned = o.optBoolean("sidebar_pinned", true),
                 sidebarColours = o.optBoolean("sidebar_colours", true),
                 sidebarTrash = o.optBoolean("sidebar_trash", true),
+                sidebarSmartFolders = o.optBoolean("sidebar_smart_folders", true),
                 homeOpensTo = o.optString("home_opens_to", "top").let { if (it == "last" || it == "shelves") it else "top" },
                 dateStyle = o.optString("date_style", "day").let { if (it == "relative" || it == "date") it else "day" },
                 dateSystem = o.optString("date_system", "gregorian").let { if (it == "hijri") it else "gregorian" },

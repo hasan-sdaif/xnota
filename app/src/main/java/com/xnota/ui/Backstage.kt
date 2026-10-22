@@ -285,13 +285,17 @@ private fun BackstageContent(
         animateClose = false
         drawerOpen = false
     }
-    // A sidebar pick the explorer has yet to act on, and the folder or colour filter it is showing.
+    // A sidebar pick the explorer has yet to act on, and the folder, colour, smart folder or
+    // Recent view it is showing.
     var explorerNav by remember { mutableStateOf<ExplorerNav?>(null) }
     var explorerFolder by remember { mutableStateOf<String?>(null) }
     var explorerColor by remember { mutableStateOf<Rgba?>(null) }
     var explorerRecent by remember { mutableStateOf(false) }
+    var explorerSmart by remember { mutableStateOf<String?>(null) }
     val link = remember(explorerNav) {
-        ExplorerLink(explorerNav, { explorerNav = null }) { folder, color, recent -> explorerFolder = folder; explorerColor = color; explorerRecent = recent }
+        ExplorerLink(explorerNav, { explorerNav = null }) { folder, color, recent, smart ->
+            explorerFolder = folder; explorerColor = color; explorerRecent = recent; explorerSmart = smart
+        }
     }
     val scope = rememberCoroutineScope()
     var renamingColor by remember { mutableStateOf<Rgba?>(null) }
@@ -300,8 +304,9 @@ private fun BackstageContent(
     val colors = editor.colorNames.entries.sortedBy { it.value.lowercase() }.map { it.key to it.value }
     val activeColor = if (view == BackstageView.HOME) explorerColor else null
     val recentActive = view == BackstageView.HOME && explorerRecent
+    val smartActive = if (view == BackstageView.HOME) explorerSmart else null
     val pins = if (prefs.sidebarPinned) editor.sidebarPins else emptyList()
-    val activePin = if (view != BackstageView.HOME || explorerFolder == null || activeColor != null || recentActive) -1
+    val activePin = if (view != BackstageView.HOME || explorerFolder == null || activeColor != null || recentActive || smartActive != null) -1
     else pins.indexOfFirst { runCatching { editor.browseDocId(it.uri) }.getOrNull() == explorerFolder }
     val shownColors = if (prefs.sidebarColours) colors else emptyList()
     // With Trash off it leaves the sidebar, once whatever was already in it is restored or emptied.
@@ -309,16 +314,22 @@ private fun BackstageContent(
     LaunchedEffect(editor.browseRoot) { editor.browseRoot?.let { r -> withContext(Dispatchers.IO) { editor.purgeExpiredTrash(r, prefs.trashDays) } } }
     // Kept while its inputs hold, so folding the sidebar never recomposes the rail or the sidebar.
     val showRecent = prefs.sidebarRecent && editor.browseRoot != null
-    val nav = remember(view, shownColors, activeColor, pins, activePin, trashCount, showRecent, recentActive) {
+    val showSmart = prefs.sidebarSmartFolders && editor.browseRoot != null
+    val smartList = if (showSmart) editor.smartFolders else emptyList()
+    val nav = remember(view, shownColors, activeColor, pins, activePin, trashCount, showRecent, recentActive, smartList, smartActive, editor.prefsVersion) {
         SidebarNav(
             view = view,
-            homeSelected = view == BackstageView.HOME && activePin < 0 && activeColor == null && !recentActive,
+            homeSelected = view == BackstageView.HOME && activePin < 0 && activeColor == null && !recentActive && smartActive == null,
             recent = if (!showRecent) null else recentActive,
             onRecent = { selectView(BackstageView.HOME); explorerNav = ExplorerNav(null, recent = true) },
             colors = shownColors,
             activeColor = activeColor,
             pins = pins,
             activePin = activePin,
+            smartFolders = smartList,
+            activeSmart = smartActive,
+            onOpenSmart = { f -> selectView(BackstageView.HOME); explorerNav = ExplorerNav(null, smart = f.name) },
+            onDeleteSmart = { f -> editor.deleteSmartFolder(f.name) },
             trashCount = trashCount,
             onHome = { selectView(BackstageView.HOME); explorerNav = ExplorerNav(null) },
             onSelectView = selectView,
@@ -473,14 +484,15 @@ private fun BackstageContent(
     }
 }
 
-/** A sidebar pick for the explorer: a pinned folder, a colour to filter the whole tree by, or neither for the root. */
-private class ExplorerNav(val folderUri: String?, val color: Rgba? = null, val recent: Boolean = false)
+/** A sidebar pick for the explorer: a pinned folder, a colour to filter the whole tree by, a
+ *  smart folder's saved search, or neither for the root. */
+private class ExplorerNav(val folderUri: String?, val color: Rgba? = null, val recent: Boolean = false, val smart: String? = null)
 
 /** The sidebar's line into the explorer: a pick to act on, and where the explorer reports what it shows. */
 private class ExplorerLink(
     val nav: ExplorerNav?,
     val onNavHandled: () -> Unit,
-    val onPlace: (folderDocId: String?, color: Rgba?, recent: Boolean) -> Unit,
+    val onPlace: (folderDocId: String?, color: Rgba?, recent: Boolean, smart: String?) -> Unit,
 )
 
 /** What the sidebar and its rail show and do, shared so the two never drift apart. */
@@ -496,6 +508,12 @@ private class SidebarNav(
     val pins: List<PinnedFolder>,
     /** Index into [pins] of the folder the explorer is showing, or -1. */
     val activePin: Int,
+    /** The user's saved searches (the fork), listed under their own heading. */
+    val smartFolders: List<com.xnota.settings.SmartFolder>,
+    /** The name of the smart folder the explorer is showing, or null. */
+    val activeSmart: String?,
+    val onOpenSmart: (com.xnota.settings.SmartFolder) -> Unit,
+    val onDeleteSmart: (com.xnota.settings.SmartFolder) -> Unit,
     /** How many items wait in Trash, or -1 to leave Trash out of the sidebar. */
     val trashCount: Int,
     val onHome: () -> Unit,
@@ -539,6 +557,17 @@ private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: ()
                     }
                 }
             }
+            if (nav.smartFolders.isNotEmpty()) {
+                SidebarLabel(stringResource(R.string.smart_folders))
+                nav.smartFolders.forEach { f ->
+                    key(f.name) {
+                        SmartFolderCommand(
+                            f, selected = f.name == nav.activeSmart,
+                            onClick = { nav.onOpenSmart(f) }, onDelete = { nav.onDeleteSmart(f) },
+                        )
+                    }
+                }
+            }
             if (nav.pins.isNotEmpty()) {
                 SidebarLabel(stringResource(R.string.pinned))
                 nav.pins.forEachIndexed { i, pin ->
@@ -576,6 +605,17 @@ private fun BackstageRail(modifier: Modifier, nav: SidebarNav, onExpand: () -> U
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
             RailItem(NotaIcons.home, stringResource(R.string.home), selected = nav.homeSelected) { nav.onHome() }
             nav.recent?.let { on -> RailItem(NotaIcons.clock, stringResource(R.string.recent), selected = on) { nav.onRecent() } }
+            nav.smartFolders.forEach { f ->
+                key(f.name) {
+                    var menuOpen by remember { mutableStateOf(false) }
+                    Box {
+                        RailItem(NotaIcons.magicWand, f.name, selected = f.name == nav.activeSmart, onLongClick = { menuOpen = true }) { nav.onOpenSmart(f) }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.delete_smart_folder)) }, onClick = { menuOpen = false; nav.onDeleteSmart(f) })
+                        }
+                    }
+                }
+            }
             if (nav.pins.isNotEmpty()) Spacer(Modifier.height(8.dp))
             nav.pins.forEachIndexed { i, pin ->
                 key(pin.uri) {
@@ -616,6 +656,17 @@ private fun BackstageBottomBar(modifier: Modifier, nav: SidebarNav, onOpenDrawer
         Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
             RailItem(NotaIcons.home, stringResource(R.string.home), selected = nav.homeSelected) { nav.onHome() }
             nav.recent?.let { on -> RailItem(NotaIcons.clock, stringResource(R.string.recent), selected = on) { nav.onRecent() } }
+            nav.smartFolders.forEach { f ->
+                key(f.name) {
+                    var menuOpen by remember { mutableStateOf(false) }
+                    Box {
+                        RailItem(NotaIcons.magicWand, f.name, selected = f.name == nav.activeSmart, onLongClick = { menuOpen = true }) { nav.onOpenSmart(f) }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.delete_smart_folder)) }, onClick = { menuOpen = false; nav.onDeleteSmart(f) })
+                        }
+                    }
+                }
+            }
             nav.pins.forEachIndexed { i, pin ->
                 key(pin.uri) {
                     var menuOpen by remember { mutableStateOf(false) }
@@ -810,6 +861,60 @@ internal fun ColorNameDialog(editor: Editor, color: Rgba, onDone: () -> Unit) {
             { scope.launch { withContext(Dispatchers.IO) { editor.setColorName(color, null) }; onDone() } }
         },
     )
+}
+
+/** A saved search in the sidebar (the fork): tap to run it, long-press to delete it. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SmartFolderCommand(
+    folder: com.xnota.settings.SmartFolder,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val palette = LocalPalette.current
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
+                .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
+                .padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                NotaIcons.magicWand, null,
+                tint = (if (selected) palette.selectionForeground else palette.accent).toComposeColor(),
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    folder.name,
+                    color = (if (selected) palette.selectionForeground else palette.text).toComposeColor(),
+                    fontSize = 15.sp,
+                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (folder.query.isNotEmpty() || folder.tag != null) {
+                    Text(
+                        listOfNotNull(folder.query.ifBlank { null }, folder.tag?.let { "#$it" }).joinToString(" · ")
+                            .ifEmpty { stringResource(R.string.smart_query) },
+                        color = (if (selected) palette.selectionForeground else palette.textDim).toComposeColor(),
+                        fontSize = 11.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.delete_smart_folder)) }, onClick = { menuOpen = false; onDelete() })
+        }
+    }
 }
 
 /** A pinned folder in the sidebar; long-press offers to unpin it. */
@@ -1038,6 +1143,8 @@ private fun ExplorerSection(
     // The tag editor and the statistics panel (the fork): one entry at a time.
     var tagEditing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     var statsShowing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
+    // The fork's "save this search as a smart folder" prompt.
+    var savingSmart by remember(root) { mutableStateOf(false) }
     var fieldError by remember(root) { mutableStateOf<String?>(null) }
     var renaming by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     val selection = remember(root) { mutableStateListOf<BrowseEntry>() }
@@ -1052,21 +1159,31 @@ private fun ExplorerSection(
     var kindFilter by remember(root) { mutableStateOf<EntryKind?>(null) }
     // Set from the sidebar: what was opened lately, from every folder, in place of the folder.
     var showRecent by remember(root) { mutableStateOf(false) }
+    // Set from the sidebar: the saved search a smart folder stands for, run over the whole tree.
+    var smartFolder by remember(root) { mutableStateOf<String?>(null) }
     var includeSubfolders by remember(root) { mutableStateOf(true) }
     var timelineMonth by remember(root) { mutableStateOf<YearMonth?>(null) }
     var columnsPick by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     var namingColor by remember(root) { mutableStateOf<Rgba?>(null) }
     var metaTick by remember(root) { mutableIntStateOf(0) }
     fun clearUp() { selection.clear(); opError = null; columnsPick = null }
-    // A sidebar pick either filters by a colour or replaces the path with a folder's chain from the root.
+    // A sidebar pick either filters by a colour, runs a smart folder's saved search, or replaces
+    // the path with a folder's chain from the root.
     LaunchedEffect(nav) {
         val target = nav ?: return@LaunchedEffect
         val color = target.color
+        val smart = target.smart
         if (target.recent) {
             showRecent = true
             colorFilter = null
+            smartFolder = null
         } else if (color != null) {
             colorFilter = color
+            showRecent = false
+            smartFolder = null
+        } else if (smart != null) {
+            smartFolder = smart
+            colorFilter = null
             showRecent = false
         } else {
             val folderUri = target.folderUri
@@ -1080,14 +1197,17 @@ private fun ExplorerSection(
             }
             colorFilter = null
             showRecent = false
+            smartFolder = null
         }
         selection.clear()
         columnsPick = null
         query = ""
         link.onNavHandled()
     }
-    LaunchedEffect(currentDocId, colorFilter, showRecent) { link.onPlace(if (stack.isEmpty()) null else currentDocId, colorFilter, showRecent) }
-    LaunchedEffect(query) { if (query.isNotBlank()) { colorFilter = null; showRecent = false } }
+    LaunchedEffect(currentDocId, colorFilter, showRecent, smartFolder) {
+        link.onPlace(if (stack.isEmpty()) null else currentDocId, colorFilter, showRecent, smartFolder)
+    }
+    LaunchedEffect(query) { if (query.isNotBlank()) { colorFilter = null; showRecent = false; smartFolder = null } }
     // Home opens on the folder last shown when set to; until that's settled, nothing is saved over it.
     var settled by remember(root) { mutableStateOf(false) }
     LaunchedEffect(root) {
@@ -1116,6 +1236,10 @@ private fun ExplorerSection(
         showRecent = false
         selection.clear()
     }
+    BackHandler(enabled = smartFolder != null) {
+        smartFolder = null
+        selection.clear()
+    }
     BackHandler(enabled = selection.isNotEmpty()) { selection.clear() }
 
     val folderKey = editor.folderKey(root, currentDocId)
@@ -1123,7 +1247,7 @@ private fun ExplorerSection(
     val setView: (ExplorerView) -> Unit = { editor.setView(folderKey, it) }
     val setViewNow = rememberUpdatedState(setView)
     val searching = query.isNotBlank()
-    val flat = searching || colorFilter != null || showRecent
+    val flat = searching || colorFilter != null || showRecent || smartFolder != null
     val layout = when {
         flat && (view.layout == ExplorerLayout.COLUMNS || view.layout == ExplorerLayout.TIMELINE) -> ExplorerLayout.GRID
         compactScreen && view.layout == ExplorerLayout.COLUMNS -> ExplorerLayout.LIST
@@ -1150,6 +1274,13 @@ private fun ExplorerSection(
         value = null
         value = withContext(Dispatchers.IO) { editor.findByColor(root, c) }
     }
+    // The saved search a tapped smart folder runs, over the whole tree (the fork).
+    val smartPick = smartFolder?.let { name -> editor.smartFolders.firstOrNull { it.name == name } }
+    val smartResults by produceState<List<BrowseEntry>?>(null, root, smartPick, refreshKey, editor.noteOpen, editor.treeVersion) {
+        val f = smartPick ?: run { value = emptyList(); return@produceState }
+        value = null
+        value = withContext(Dispatchers.IO) { editor.smartFolderEntries(root, f) }
+    }
     val timeline by produceState<TreeFiles?>(null, root, currentDocId, includeSubfolders, refreshKey, editor.noteOpen, editor.treeVersion, layout == ExplorerLayout.TIMELINE) {
         if (layout != ExplorerLayout.TIMELINE) return@produceState
         value = withContext(Dispatchers.IO) { editor.filesUnder(root, currentDocId, includeSubfolders) }
@@ -1163,6 +1294,7 @@ private fun ExplorerSection(
     val source: List<BrowseEntry>? = when {
         showRecent -> recents?.map { it.entry }
         colorFilter != null -> colorResults
+        smartPick != null -> smartResults
         searching -> results
         layout == ExplorerLayout.TIMELINE -> timeline?.files
         else -> entries
@@ -1178,21 +1310,27 @@ private fun ExplorerSection(
     }
     val kindOf: (BrowseEntry) -> EntryKind = { entryKind(it, editor.cachedMeta(it)) }
     val withCreated: (BrowseEntry) -> BrowseEntry = { e -> editor.createdOf(e).let { if (it == e.created) e else e.copy(created = it) } }
-    val arrange: (List<BrowseEntry>) -> List<BrowseEntry> = remember(view.sortKey, view.descending, view.folders, kindFilter, metaTick) {
+    // The tag the view filters the listing to (the fork): notes carrying it stay, folders do as the
+    // placement says. Tags come from the meta cache, so the view key rides [metaTick].
+    val tagFilterOn = view.tagFilter.isNotEmpty()
+    val carriesTag: (BrowseEntry) -> Boolean = { e ->
+        !tagFilterOn || e.isDir || editor.tagsOf(e).any { it.equals(view.tagFilter, ignoreCase = true) }
+    }
+    val arrange: (List<BrowseEntry>) -> List<BrowseEntry> = remember(view.sortKey, view.descending, view.folders, view.tagFilter, kindFilter, metaTick) {
         { list ->
-            list.filter { e -> if (e.isDir) view.folders != FolderPlacement.HIDDEN && kindFilter == null else kindFilter == null || kindOf(e) == kindFilter }
+            list.filter { e -> (if (e.isDir) view.folders != FolderPlacement.HIDDEN && kindFilter == null else kindFilter == null || kindOf(e) == kindFilter) && carriesTag(e) }
                 .map(withCreated)
                 .sortedWith(explorerComparator(view.sortKey, view.descending, foldersFirst = view.folders != FolderPlacement.MIXED) { it.created })
         }
     }
     // Recent keeps the order things were opened in.
     val arranged = remember(source, arrange, showRecent) {
-        if (showRecent) source?.filter { kindFilter == null || kindOf(it) == kindFilter } else source?.let(arrange)
+        if (showRecent) source?.filter { (kindFilter == null || kindOf(it) == kindFilter) && carriesTag(it) } else source?.let(arrange)
     }
     // Columns are how one gets around in that layout, so their folders stay whatever the placement says.
-    val columnsArrange: (List<BrowseEntry>) -> List<BrowseEntry> = remember(view.sortKey, view.descending, kindFilter, metaTick) {
+    val columnsArrange: (List<BrowseEntry>) -> List<BrowseEntry> = remember(view.sortKey, view.descending, view.tagFilter, kindFilter, metaTick) {
         { list ->
-            list.filter { e -> e.isDir || kindFilter == null || kindOf(e) == kindFilter }
+            list.filter { e -> (e.isDir || kindFilter == null || kindOf(e) == kindFilter) && carriesTag(e) }
                 .map(withCreated)
                 .sortedWith(explorerComparator(view.sortKey, view.descending) { it.created })
         }
@@ -1211,6 +1349,10 @@ private fun ExplorerSection(
         )
     }
     val metas = remember(arranged, metaTick) { arranged.orEmpty().filter { !it.isDir }.associate { it.documentUri to editor.cachedMeta(it) } }
+    // The distinct tags of the listing as it stands (the fork), for the tag filter's menu.
+    val tagsInListing = remember(source, metaTick) {
+        com.xnota.core.util.Tags.normalize(source.orEmpty().filterNot { it.isDir }.flatMap { editor.tagsOf(it) })
+    }
     val counts by produceState(emptyMap<String, Int>(), root, arranged, prefs.showFolderCounts) {
         val folders = arranged.orEmpty().filter { it.isDir }
         value = if (!prefs.showFolderCounts || folders.isEmpty()) emptyMap()
@@ -1427,6 +1569,8 @@ private fun ExplorerSection(
     val empty = when {
         colorFilter != null && colorResults == null -> EmptyState(stringResource(R.string.finding))
         colorFilter != null && colorResults!!.isEmpty() -> EmptyState(stringResource(R.string.nothing_this_colour), EmptyArt.SEARCH)
+        smartPick != null && smartResults == null -> EmptyState(stringResource(R.string.finding))
+        smartPick != null && smartResults!!.isEmpty() -> EmptyState(stringResource(R.string.smart_folder_empty, smartPick.name), EmptyArt.SEARCH)
         searching && results == null -> EmptyState(stringResource(R.string.searching))
         searching && results!!.isEmpty() -> EmptyState(stringResource(R.string.no_notes_match, trimmed), EmptyArt.SEARCH)
         showRecent && recents == null -> EmptyState(stringResource(R.string.loading))
@@ -1512,6 +1656,36 @@ private fun ExplorerSection(
                                     }
                                 }
                             }
+                        }
+                        // The fork's tag filter: tags collected from the listing's own metas, kept per
+                        // folder with the rest of the view. Shown wherever files are listed flat or
+                        // deep, the same places the kind filter is.
+                        if (!showRecent && layout != ExplorerLayout.TIMELINE && layout != ExplorerLayout.COLUMNS) {
+                            var tagOpen by remember { mutableStateOf(false) }
+                            Box {
+                                val tag = view.tagFilter
+                                ExplorerChip(
+                                    tag.ifEmpty { stringResource(R.string.filter_by_tag) },
+                                    tag.isNotEmpty(), icon = NotaIcons.tag, trailing = NotaIcons.chevronDown, labelled = labelled,
+                                ) { tagOpen = true }
+                                DropdownMenu(expanded = tagOpen, onDismissRequest = { tagOpen = false }) {
+                                    ChoiceMenuItem(tag.isEmpty(), onClick = { tagOpen = false; setView(view.copy(tagFilter = "")) }) { fg ->
+                                        Text(stringResource(R.string.all_tags), color = fg)
+                                    }
+                                    tagsInListing.forEach { t ->
+                                        ChoiceMenuItem(t == tag, onClick = { tagOpen = false; setView(view.copy(tagFilter = t)) }) { fg ->
+                                            Text("#" + t, color = fg)
+                                        }
+                                    }
+                                    if (tagsInListing.isEmpty()) {
+                                        DropdownMenuItem(text = { Text(stringResource(R.string.tags_hint)) }, enabled = false, onClick = {})
+                                    }
+                                }
+                            }
+                        }
+                        // A search worth keeping becomes a smart folder: the query plus the tag filter.
+                        if (searching) {
+                            ExplorerChip(stringResource(R.string.save_smart_folder), false, icon = NotaIcons.magicWand, labelled = labelled) { savingSmart = true }
                         }
                         clipboard?.let { clip ->
                             ExplorerChip(pluralStringResource(R.plurals.paste_items, clip.entries.size, clip.entries.size), true, icon = NotaIcons.paste) { paste(clip) }
@@ -1767,6 +1941,13 @@ private fun ExplorerSection(
                                 Spacer(Modifier.width(6.dp))
                                 Text(stringResource(R.string.in_every_folder), color = palette.textDim.toComposeColor(), fontSize = 14.sp, maxLines = 1)
                                 ExplorerIcon(NotaIcons.close, stringResource(R.string.clear_colour_filter), palette.textDim.toComposeColor()) { colorFilter = null; selection.clear() }
+                            } else if (smartPick != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(NotaIcons.magicWand, null, tint = palette.accent.toComposeColor(), modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(smartPick.name, color = palette.text.toComposeColor(), fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.in_every_folder), color = palette.textDim.toComposeColor(), fontSize = 14.sp, maxLines = 1)
+                                ExplorerIcon(NotaIcons.close, stringResource(R.string.close_smart_folder), palette.textDim.toComposeColor()) { smartFolder = null; selection.clear() }
                             } else Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     NotaIcons.home, stringResource(R.string.top_folder),
@@ -1834,6 +2015,15 @@ private fun ExplorerSection(
                     val pair = files.map { it.documentUri }.distinct().takeIf { it.size == 2 && files.size == selection.size }
                     if (pair != null) ExplorerIcon(NotaIcons.split, stringResource(R.string.open_side_by_side), fg) { selection.clear(); calls.openSplit(pair[0], pair[1]) }
                     ExplorerIcon(NotaIcons.moveToFolder, stringResource(R.string.move_to_folder), fg) { moving = selection.toList() }
+                    // The fork's batch favorite: star everything picked, or clear the stars of what
+                    // already carries one. The listing refreshes so the tiles' stars follow at once.
+                    val starred = selection.any { editor.isFavorite(it.documentUri) }
+                    ExplorerIcon(NotaIcons.star, stringResource(if (starred) R.string.unfavorite else R.string.favorite), fg) {
+                        val picked = selection.toList()
+                        val star = !starred
+                        picked.forEach { if (editor.isFavorite(it.documentUri) != star) editor.toggleFavorite(it.documentUri) }
+                        refreshSoon()
+                    }
                     ExplorerIcon(NotaIcons.copy, stringResource(R.string.copy), fg) { clipboard = ClipItem(selection.toList(), false); selection.clear() }
                     ExplorerIcon(NotaIcons.cut, stringResource(R.string.cut), fg) { clipboard = ClipItem(selection.toList(), true); selection.clear() }
                     var colorsOpen by remember { mutableStateOf(false) }
@@ -1986,6 +2176,22 @@ private fun ExplorerSection(
                 }
             },
             onDismiss = { tagEditing = null },
+        )
+    }
+
+    // The fork's smart-folder save: the search as it stands (query + tag filter) under a name.
+    if (savingSmart) {
+        NameDialog(
+            title = stringResource(R.string.new_smart_folder),
+            initial = trimmed,
+            confirmLabel = stringResource(R.string.save),
+            placeholder = stringResource(R.string.smart_query),
+            allowEmpty = false,
+            onConfirm = { name ->
+                editor.saveSmartFolder(com.xnota.settings.SmartFolder(name, trimmed, view.tagFilter.ifEmpty { null }))
+                savingSmart = false
+            },
+            onDismiss = { savingSmart = false },
         )
     }
 

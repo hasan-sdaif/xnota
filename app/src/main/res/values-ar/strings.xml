@@ -1163,6 +1163,68 @@
     <string name="storage_scan">جارٍ الفحص…</string>
     <string name="err_tag_write">تعذّر حفظ الوسوم</string>
     <string name="err_duplicate">تعذّر نسخ هذه الملاحظة</string>
+    <string name="smart_folder_empty">لا توجد ملاحظات تطابق «%1$s».</string>
+    <string name="close_smart_folder">إغلاق المجلد الذكي</string>
+    <string name="save_smart_folder">حفظ كمجلد ذكي</string>
+    <string name="filter_by_tag">تصفية حسب الوسم</string>
+    <string name="batch_actions">إجراءات جماعية</string>
+    <string name="opt_density">الكثافة</string>
+    <string name="density_comfortable">مريحة</string>
+    <string name="density_compact">مضغوطة</string>
+
+    <!-- Text & typing power (the fork) -->
+    <string name="find_replace">بحث واستبدال</string>
+    <string name="find_next">التالي</string>
+    <string name="find_prev">السابق</string>
+    <string name="replace">استبدال</string>
+    <string name="replace_all">استبدال الكل</string>
+    <string name="whole_word">كلمة كاملة</string>
+    <string name="ignore_diacritics">تجاهل التشكيل</string>
+    <string name="words_title">عدد الكلمات</string>
+    <string name="style_title">عنوان رئيسي</string>
+    <string name="style_heading">عنوان</string>
+    <string name="style_body">نص عادي</string>
+    <string name="style_caption">تسمية توضيحية</string>
+    <string name="typewriter_mode">تمرير الآلة الكاتبة</string>
+    <string name="pref_typing_sounds">أصوات نقر المفاتيح</string>
+    <string name="pref_auto_lists">متابعة القوائم عند Enter</string>
+    <string name="pref_smart_quotes">علامات اقتباس ذكية</string>
+    <string name="insert_stamp">إدراج التاريخ والوقت</string>
+    <string name="insert_symbol">إدراج رمز</string>
+    <string name="insert_emoji">إدراج رمز تعبيري</string>
+    <string name="reading_time">زمن القراءة: ~%1$d دقيقة</string>
+    <plurals name="matches_n">
+        <item quantity="zero">لا تطابقات</item>
+        <item quantity="one">تطابق واحد</item>
+        <item quantity="two">تطابقان</item>
+        <item quantity="few">%d تطابقات</item>
+        <item quantity="many">%d تطابقًا</item>
+        <item quantity="other">%d تطابق</item>
+    </plurals>
+    <plurals name="words_n">
+        <item quantity="zero">لا كلمات</item>
+        <item quantity="one">كلمة واحدة</item>
+        <item quantity="two">كلمتان</item>
+        <item quantity="few">%d كلمات</item>
+        <item quantity="many">%d كلمةً</item>
+        <item quantity="other">%d كلمة</item>
+    </plurals>
+    <plurals name="chars_n">
+        <item quantity="zero">لا أحرف</item>
+        <item quantity="one">حرف واحد</item>
+        <item quantity="two">حرفان</item>
+        <item quantity="few">%d أحرف</item>
+        <item quantity="many">%d حرفًا</item>
+        <item quantity="other">%d حرف</item>
+    </plurals>
+    <plurals name="paragraphs_n">
+        <item quantity="zero">لا فقرات</item>
+        <item quantity="one">فقرة واحدة</item>
+        <item quantity="two">فقرتان</item>
+        <item quantity="few">%d فقرات</item>
+        <item quantity="many">%d فقرةً</item>
+        <item quantity="other">%d فقرة</item>
+    </plurals>
     <plurals name="pages_count">
         <item quantity="zero">لا صفحات</item>
         <item quantity="one">صفحة واحدة</item>

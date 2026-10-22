@@ -1078,6 +1078,52 @@
     <string name="storage_scan">Scanning…</string>
     <string name="err_tag_write">Couldn\'t save those tags</string>
     <string name="err_duplicate">Couldn\'t duplicate that note</string>
+    <string name="smart_folder_empty">No notes match “%1$s”.</string>
+    <string name="close_smart_folder">Close smart folder</string>
+    <string name="save_smart_folder">Save as smart folder</string>
+    <string name="filter_by_tag">Filter by tag</string>
+    <string name="batch_actions">Batch actions</string>
+    <string name="opt_density">Density</string>
+    <string name="density_comfortable">Comfortable</string>
+    <string name="density_compact">Compact</string>
+
+    <!-- Text & typing power (the fork) -->
+    <string name="find_replace">Find &amp; replace</string>
+    <string name="find_next">Next match</string>
+    <string name="find_prev">Previous match</string>
+    <string name="replace">Replace</string>
+    <string name="replace_all">Replace all</string>
+    <string name="whole_word">Whole word</string>
+    <string name="ignore_diacritics">Ignore diacritics</string>
+    <string name="words_title">Word count</string>
+    <string name="style_title">Title</string>
+    <string name="style_heading">Heading</string>
+    <string name="style_body">Body</string>
+    <string name="style_caption">Caption</string>
+    <string name="typewriter_mode">Typewriter scrolling</string>
+    <string name="pref_typing_sounds">Key click sounds</string>
+    <string name="pref_auto_lists">Continue lists on Enter</string>
+    <string name="pref_smart_quotes">Smart quotes</string>
+    <string name="insert_stamp">Insert date &amp; time</string>
+    <string name="insert_symbol">Insert symbol</string>
+    <string name="insert_emoji">Insert emoji</string>
+    <string name="reading_time">Reading time: ~%1$d min</string>
+    <plurals name="matches_n">
+        <item quantity="one">%d match</item>
+        <item quantity="other">%d matches</item>
+    </plurals>
+    <plurals name="words_n">
+        <item quantity="one">%d word</item>
+        <item quantity="other">%d words</item>
+    </plurals>
+    <plurals name="chars_n">
+        <item quantity="one">%d character</item>
+        <item quantity="other">%d characters</item>
+    </plurals>
+    <plurals name="paragraphs_n">
+        <item quantity="one">%d paragraph</item>
+        <item quantity="other">%d paragraphs</item>
+    </plurals>
     <plurals name="pages_count">
         <item quantity="one">%d page</item>
         <item quantity="other">%d pages</item>

@@ -520,6 +520,7 @@ fun PreferencesPane(
                 section(stringResource(R.string.recent), prefs.sidebarRecent) { prefs.copy(sidebarRecent = !prefs.sidebarRecent) }
                 section(stringResource(R.string.pinned), prefs.sidebarPinned) { prefs.copy(sidebarPinned = !prefs.sidebarPinned) }
                 section(stringResource(R.string.toolbar_colours), prefs.sidebarColours) { prefs.copy(sidebarColours = !prefs.sidebarColours) }
+                section(stringResource(R.string.smart_folders), prefs.sidebarSmartFolders) { prefs.copy(sidebarSmartFolders = !prefs.sidebarSmartFolders) }
                 if (prefs.trashDays != 0) section(stringResource(R.string.trash), prefs.sidebarTrash) { prefs.copy(sidebarTrash = !prefs.sidebarTrash) }
             }
             FieldLabel(stringResource(R.string.pref_home_opens_to))
