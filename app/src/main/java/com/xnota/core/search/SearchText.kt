@@ -2,10 +2,18 @@ package com.xnota.core.search
 
 import com.xnota.core.pdf.PageText
 
-/** What to look for, as typed, and the two toggles. */
-data class SearchQuery(val text: String, val matchCase: Boolean = false, val wholeWords: Boolean = false) {
+/** What to look for, as typed, and the three toggles. */
+data class SearchQuery(
+    val text: String,
+    val matchCase: Boolean = false,
+    val wholeWords: Boolean = false,
+    /** The fork's loose Arabic matching (default on): tashkeel stepped over, hamza alefs, ta-marbuta
+     *  and Arabic-Indic numerals folded — see [SearchFold]. Off, diacritics and letter choices match
+     *  exactly as written. */
+    val ignoreDiacritics: Boolean = true,
+) {
     /** The query as [SearchText.find] compares it: built like a text, then folded. */
-    internal val pattern: String = SearchText.pattern(text, matchCase)
+    internal val pattern: String = SearchText.pattern(text, matchCase, ignoreDiacritics)
 
     val isEmpty: Boolean get() = pattern.isEmpty()
 }
@@ -52,13 +60,14 @@ class SearchText private constructor(
         val p = query.pattern
         if (p.isEmpty()) return EMPTY
         val matchCase = query.matchCase
+        val loose = query.ignoreDiacritics
         var out = IntArray(8)
         var count = 0
         val n = text.length
         var i = 0
         while (i < n) {
-            if (SearchFold.fold(text[i], matchCase) == p[0]) {
-                val end = matchAt(i, p, matchCase)
+            if (SearchFold.fold(text[i], matchCase, loose) == p[0]) {
+                val end = matchAt(i, p, matchCase, loose)
                 if (end > 0 && (!query.wholeWords || !touchesWord(i, end))) {
                     if (count + 2 > out.size) out = out.copyOf(2 * out.size)
                     out[count++] = i
@@ -73,19 +82,19 @@ class SearchText private constructor(
     }
 
     /** The end of a match of [p] whose first char is at [start], or -1. */
-    private fun matchAt(start: Int, p: String, matchCase: Boolean): Int {
+    private fun matchAt(start: Int, p: String, matchCase: Boolean, loose: Boolean): Int {
         val n = text.length
         var j = start + 1
         var k = 1
         while (k < p.length) {
             if (j >= n) return -1
-            val f = SearchFold.fold(text[j], matchCase)
+            val f = SearchFold.fold(text[j], matchCase, loose)
             j++
             if (f == SearchFold.IGNORE) continue
             if (f != p[k]) return -1
             k++
         }
-        while (j < n && SearchFold.fold(text[j], matchCase) == SearchFold.IGNORE) j++
+        while (j < n && SearchFold.fold(text[j], matchCase, loose) == SearchFold.IGNORE) j++
         return j
     }
 
@@ -176,11 +185,11 @@ class SearchText private constructor(
             return b.build()
         }
 
-        internal fun pattern(query: String, matchCase: Boolean): String {
+        internal fun pattern(query: String, matchCase: Boolean, ignoreDiacritics: Boolean = true): String {
             val built = of(query).text
             val sb = StringBuilder(built.length)
             for (c in built) {
-                val f = SearchFold.fold(c, matchCase)
+                val f = SearchFold.fold(c, matchCase, ignoreDiacritics)
                 if (f != SearchFold.IGNORE) sb.append(f)
             }
             return sb.toString().trim(' ')

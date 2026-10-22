@@ -10,6 +10,12 @@ import java.util.concurrent.ConcurrentHashMap
  * Hebrew or Arabic letter, curly quotes, hyphens and slashes straightened, and case unless it
  * matters. Accents are only stripped where a reader would call them accents: Indic vowel signs,
  * Thai marks, kana voicing and Cyrillic letters such as й stay as they are.
+ *
+ * The fork's loose Arabic matching (the default, [SearchQuery.ignoreDiacritics]) also folds what
+ * an Arabic reader writes either way from one note to the next: tashkeel are stepped over, the
+ * hamza-carrying alefs (أ إ آ ٱ) and the ta-marbuta (ة) fold to their bare partners (ا, ه), and
+ * Arabic-Indic numerals (٠-٩, ۰-۹) fold to Latin so "١٢" and "12" find each other. With the fold
+ * off, marks and letter choices compare exactly as written — diacritics then *matter*.
  */
 internal object SearchFold {
     const val KEEP = 1
@@ -28,6 +34,10 @@ internal object SearchFold {
     private val expansions = ConcurrentHashMap<Int, String>()
     private val exact = CharArray(0x10000) { UNSET }
     private val caseless = CharArray(0x10000) { UNSET }
+
+    // The strict (diacritics-matter) twins of the two fold caches above.
+    private val exactStrict = CharArray(0x10000) { UNSET }
+    private val caselessStrict = CharArray(0x10000) { UNSET }
 
     private val strokes = mapOf(
         'ø' to 'o', 'Ø' to 'O', 'ł' to 'l', 'Ł' to 'L', 'đ' to 'd', 'Đ' to 'D',
@@ -53,11 +63,20 @@ internal object SearchFold {
     /** The letters an [EXPAND] character is spelt out as. */
     fun expansion(cp: Int): String = expansions[cp] ?: nfkc(String(Character.toChars(cp)))
 
-    fun fold(c: Char, matchCase: Boolean): Char {
-        val table = if (matchCase) exact else caseless
+    /**
+     * What [c] compares as. With [ignoreDiacritics] (the default) accents are stepped over and the
+     * fork's Arabic folds apply; without it, marks and letter choices compare as written.
+     */
+    fun fold(c: Char, matchCase: Boolean, ignoreDiacritics: Boolean = true): Char {
+        val table = when {
+            ignoreDiacritics && matchCase -> exact
+            ignoreDiacritics -> caseless
+            matchCase -> exactStrict
+            else -> caselessStrict
+        }
         val f = table[c.code]
         if (f != UNSET) return f
-        return computeFold(c, matchCase).also { table[c.code] = it }
+        return computeFold(c, matchCase, ignoreDiacritics).also { table[c.code] = it }
     }
 
     /** A letter, digit or mark: what a whole word may not touch. */
@@ -86,17 +105,33 @@ internal object SearchFold {
         return EXPAND
     }
 
-    private fun computeFold(c: Char, matchCase: Boolean): Char {
+    private fun computeFold(c: Char, matchCase: Boolean, ignoreDiacritics: Boolean): Char {
         if (c.isSurrogate()) return c
-        if (isAccent(c.code)) return IGNORE
+        // With diacritics ignored a lone accent is nothing at all, so matching steps over it;
+        // with them mattering it stays itself, and the decomposition below is skipped too, so
+        // an é, an آ or an أ compares exactly as written.
+        if (ignoreDiacritics && isAccent(c.code)) return IGNORE
         var k = nfkc(c.toString())
         if (k.length != 1) k = c.toString()
         var f = k[0]
-        val d = Normalizer.normalize(k, Normalizer.Form.NFD)
-        if (d.length > 1 && takesAccents(d[0])) {
-            val bare = buildString { for (ch in d) if (!isAccent(ch.code)) append(ch) }
-            val r = Normalizer.normalize(bare, Normalizer.Form.NFC)
-            if (r.length == 1) f = r[0]
+        if (ignoreDiacritics) {
+            val d = Normalizer.normalize(k, Normalizer.Form.NFD)
+            if (d.length > 1 && takesAccents(d[0])) {
+                val bare = buildString { for (ch in d) if (!isAccent(ch.code)) append(ch) }
+                val r = Normalizer.normalize(bare, Normalizer.Form.NFC)
+                if (r.length == 1) f = r[0]
+            }
+            // What an Arabic reader spells either way: the ta-marbuta folds to a plain ha, the
+            // alef wasla (which carries no decomposition of its own) to the bare alef, and
+            // Arabic-Indic (and the extended, Persian) numerals to Latin digits so either
+            // spelling of a number finds the other.
+            f = when (f) {
+                TAA_MARBUTA -> HA
+                ALEF_WASLA -> ALEF
+                in ARABIC_INDIC_ZERO..ARABIC_INDIC_NINE -> LATIN_ZERO + (f - ARABIC_INDIC_ZERO)
+                in EXTENDED_ARABIC_INDIC_ZERO..EXTENDED_ARABIC_INDIC_NINE -> LATIN_ZERO + (f - EXTENDED_ARABIC_INDIC_ZERO)
+                else -> f
+            }
         }
         f = strokes[f] ?: f
         f = when (f) {
@@ -139,4 +174,17 @@ internal object SearchFold {
 
     private const val NEXT_LINE = 0x85
     private const val TATWEEL = 0x640
+
+    // The fork's Arabic folds: ta-marbuta to ha, the alef wasla to the bare alef, and both
+    // Arabic-Indic digit rows to Latin. (The hamza-carrying alefs أ إ آ need no entry: their
+    // canonical decompositions already carry them to ا through the accent path above.)
+    private const val TAA_MARBUTA = '\u0629'
+    private const val HA = '\u0647'
+    private const val ALEF_WASLA = '\u0671'
+    private const val ALEF = '\u0627'
+    private const val LATIN_ZERO = '0'
+    private const val ARABIC_INDIC_ZERO = '\u0660'
+    private const val ARABIC_INDIC_NINE = '\u0669'
+    private const val EXTENDED_ARABIC_INDIC_ZERO = '\u06F0'
+    private const val EXTENDED_ARABIC_INDIC_NINE = '\u06F9'
 }

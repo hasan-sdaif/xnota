@@ -11,9 +11,15 @@ import kotlin.random.Random
 class SearchTextTest {
 
     /** The source text of each match of [query] in [source], traced back through the map. */
-    private fun found(source: String, query: String, matchCase: Boolean = false, wholeWords: Boolean = false): List<String> {
+    private fun found(
+        source: String,
+        query: String,
+        matchCase: Boolean = false,
+        wholeWords: Boolean = false,
+        ignoreDiacritics: Boolean = true,
+    ): List<String> {
         val t = SearchText.of(source)
-        val m = t.find(SearchQuery(query, matchCase, wholeWords))
+        val m = t.find(SearchQuery(query, matchCase, wholeWords, ignoreDiacritics))
         return (m.indices step 2).map { source.substring(t.sourceStart(m[it]), t.sourceEnd(m[it + 1])) }
     }
 
@@ -60,6 +66,42 @@ class SearchTextTest {
         assertEquals(listOf("مُحَمَّد"), found("مُحَمَّد", "محمد"))
         assertEquals(listOf("آمن"), found("آمن", "امن"))
         assertEquals(listOf("كتـــاب"), found("كتـــاب", "كتاب"))
+    }
+
+    // --- the fork's loose Arabic matching (SearchQuery.ignoreDiacritics, default on) ---
+
+    @Test
+    fun hamzaAlefVariantsFoldToTheBareAlef() {
+        assertEquals(listOf("الكتاب", "ألكتاب", "إلكتاب"), found("الكتاب ألكتاب إلكتاب", "الكتاب"))
+        assertEquals(listOf("الكتاب", "ألكتاب", "إلكتاب"), found("الكتاب ألكتاب إلكتاب", "ألكتاب"))
+        // The alef wasla of a fully vocalized basmala spelling finds the plain one too.
+        assertEquals(listOf("ٱلرَّحْمَٰن"), found("ٱلرَّحْمَٰن", "الرحمن"))
+    }
+
+    @Test
+    fun taMarbutaFoldsToHa() {
+        assertEquals(listOf("مدرسة"), found("مدرسة", "مدرسه"))
+        assertEquals(listOf("مدرسه"), found("مدرسه", "مدرسة"))
+        assertEquals(listOf("مدرسة", "مدرسه"), found("مدرسة ومدرسه", "مدرسه"))
+    }
+
+    @Test
+    fun arabicIndicDigitsFoldToLatinBothWays() {
+        assertEquals(listOf("١٢", "12"), found("الصفحة ١٢ والصفحة 12", "١٢"))
+        assertEquals(listOf("١٢", "12"), found("الصفحة ١٢ والصفحة 12", "12"))
+        // The extended (Persian) row folds the same way.
+        assertEquals(listOf("۱۲۳", "123"), found("۱۲۳ و 123", "123"))
+    }
+
+    @Test
+    fun strictMatchingComparesMarksAndHamzaAsWritten() {
+        // Diacritics off: only the same spelling matches.
+        assertEquals(listOf("محمد"), found("مُحَمَّد محمد", "محمد", ignoreDiacritics = false))
+        assertEquals(listOf("مُحَمَّد"), found("مُحَمَّد محمد", "مُحَمَّد", ignoreDiacritics = false))
+        assertEquals(listOf("أحمد"), found("أحمد فقط", "أحمد", ignoreDiacritics = false))
+        assertTrue(found("أحمد فقط", "احمد", ignoreDiacritics = false).isEmpty())
+        // And the ta-marbuta is its own letter again.
+        assertTrue(found("مدرسة فقط", "مدرسه", ignoreDiacritics = false).isEmpty())
     }
 
     @Test

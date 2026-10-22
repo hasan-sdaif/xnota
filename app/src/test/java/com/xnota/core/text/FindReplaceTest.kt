@@ -51,6 +51,29 @@ class FindReplaceTest {
         assertEquals("1..5", ranges("ُكتاب", "كتاب", wholeWord = true, ignoreDiacritics = true))
     }
 
+    // --- the fork's loose Arabic folds (mirroring SearchFold) ---
+
+    @Test fun hamzaAlefVariantsFoldWhenDiacriticsAreIgnored() {
+        assertEquals("0..4,5..9", ranges("أحمد احمد", "احمد", ignoreDiacritics = true))
+        assertEquals("0..4,5..9", ranges("أحمد احمد", "أحمد", ignoreDiacritics = true))
+        assertEquals("5..9", ranges("أحمد احمد", "احمد", ignoreDiacritics = false))
+    }
+
+    @Test fun taMarbutaFoldsToHaWhenDiacriticsAreIgnored() {
+        assertEquals("0..5,6..11", ranges("مدرسة مدرسه", "مدرسه", ignoreDiacritics = true))
+        assertEquals("6..11", ranges("مدرسة مدرسه", "مدرسه", ignoreDiacritics = false))
+    }
+
+    @Test fun arabicIndicDigitsFoldToLatinWhenDiacriticsAreIgnored() {
+        assertEquals("5..7,12..14", ranges("سورة ١٢ آية 12", "١٢", ignoreDiacritics = true))
+        assertEquals("5..7,12..14", ranges("سورة ١٢ آية 12", "12", ignoreDiacritics = true))
+        assertEquals("12..14", ranges("سورة ١٢ آية 12", "12", ignoreDiacritics = false))
+    }
+
+    @Test fun replaceAllThroughTheArabicFolds() {
+        assertEquals("قراءة القراءة", FindReplace.replaceAll("قرأة القرأه", "قرأه", "قراءة", ignoreDiacritics = true))
+    }
+
     @Test fun blankNeedleMatchesNothing() {
         assertEquals("", ranges("anything", ""))
     }

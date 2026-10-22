@@ -5,11 +5,13 @@ package com.xnota.core.text
  * what replacing them leaves behind. Pure, so the flow editor's find bar and any other caller share
  * exactly one set of rules.
  *
- * Matching runs over a normalized view of the haystack — case folded (unless it matters), Arabic
- * tashkeel (U+064B–U+0652) stepped over when diacritics are ignored — while the results keep the
- * original string's indices, so a caller can select or replace without re-deriving anything. The
- * same normalization is what the note search folds characters through ([com.xnota.core.search.SearchFold]
- * steps over the same vowel marks), so a search that ignores diacritics there and a find bar that
+ * Matching runs over a normalized view of the haystack — case folded (unless it matters), and with
+ * the fork's loose Arabic matching when diacritics are ignored: tashkeel (U+064B–U+0652) stepped
+ * over, the hamza-carrying alefs (أ إ آ ٱ) and the ta-marbuta (ة) folded to their bare partners
+ * (ا, ه), Arabic-Indic numerals (٠–٩) folded to Latin — while the results keep the original
+ * string's indices, so a caller can select or replace without re-deriving anything. The same
+ * normalization is what the note search folds characters through ([com.xnota.core.search.SearchFold]
+ * folds the same marks and letters), so a search that ignores diacritics there and a find bar that
  * ignores them here agree on what matches.
  */
 object FindReplace {
@@ -23,9 +25,10 @@ object FindReplace {
 
     /**
      * Every match of [needle] in [haystack], in order, as ranges of [haystack] itself. A blank
-     * needle matches nothing. [wholeWord] drops matches that touch a letter or digit; diacritics
-     * are ignored when [ignoreDiacritics], which never breaks the ranges because tashkeel are
-     * marks skipped by both sides, not characters mapped away.
+     * needle matches nothing. [wholeWord] drops matches that touch a letter or digit; with
+     * [ignoreDiacritics] the loose Arabic folds apply (see the object doc), which never breaks the
+     * ranges because a folded pair is one char mapped to one char and a mark skipped by both
+     * sides is not a character mapped away.
      */
     fun findAll(
         haystack: String,
@@ -85,13 +88,13 @@ object FindReplace {
     /** A normalized string plus, for each of its characters, the index it came from in the source. */
     private class Folded(val text: String, val index: IntArray)
 
-    /** Case-fold [s], and step over tashkeel when the caller wants them ignored. */
+    /** Case-fold [s], and apply the loose Arabic folds when the caller wants them. */
     private fun normalize(s: String, caseSensitive: Boolean, ignoreDiacritics: Boolean): Folded {
         if (caseSensitive && !ignoreDiacritics) return Folded(s, IntArray(s.length + 1) { it })
         val text = StringBuilder(s.length)
         val index = IntArray(s.length + 1)
         for (i in s.indices) {
-            val c = s[i]
+            val c = if (ignoreDiacritics) looseFold(s[i]) else s[i]
             if (ignoreDiacritics && isTashkeel(c)) continue
             text.append(if (caseSensitive) c else Character.toLowerCase(c))
             index[text.length - 1] = i
@@ -99,6 +102,17 @@ object FindReplace {
         // One past the end maps to one past the source's end, so the last match's end rounds off.
         index[text.length] = s.length
         return Folded(text.toString(), index)
+    }
+
+    /** The loose Arabic folds: hamza-carrying alefs and ta-marbuta to their bare partners,
+     *  Arabic-Indic (and extended) numerals to Latin — the spelling variants one note writes one
+     *  way and the next another. Mirrors [com.xnota.core.search.SearchFold]. */
+    private fun looseFold(c: Char): Char = when (c) {
+        '\u0623', '\u0625', '\u0622', '\u0671' -> '\u0627' // أ إ آ ٱ -> ا
+        '\u0629' -> '\u0647'                           // ة -> ه
+        in '\u0660'..'\u0669' -> '0' + (c - '\u0660')  // ٠-٩ -> 0-9
+        in '\u06F0'..'\u06F9' -> '0' + (c - '\u06F0')  // ۰-۹ -> 0-9
+        else -> c
     }
 
     /** The Arabic vowel marks U+064B–U+0652 (fatha, damma, kasra and friends). */
