@@ -1602,6 +1602,9 @@
     <!-- The fork's release ledger (About → What's new) -->
         <string name="changelog_version">الإصدار %1$s</string>
     <string name="whats_new">ما الجديد</string>
+    <string name="changelog_joined_stroke_fix">إصلاح انهيار وصل الخطوط المتلاصقة (خطأ الطول ١٤٢)</string>
+    <string name="changelog_settings_hub">مركز الإعدادات — خمس فئات مصوّرة للتصفّح</string>
+    <string name="changelog_menu_icons">أيقونات خطّية في كل القوائم وعناوين الأقسام</string>
     <string name="changelog_rounded_image_corners">زوايا دائرية للصور المُدرجة</string>
     <string name="changelog_prefs_search">البحث داخل التفضيلات</string>
     <string name="changelog_reader_brightness">تحكم بسطوع القراءة</string>

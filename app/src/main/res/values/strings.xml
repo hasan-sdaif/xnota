@@ -1467,6 +1467,9 @@
     <!-- The fork's release ledger (About → What's new) -->
         <string name="changelog_version">Version %1$s</string>
     <string name="whats_new">What\'s new</string>
+    <string name="changelog_joined_stroke_fix">Fix: the crash when strokes join (length=142)</string>
+    <string name="changelog_settings_hub">The settings hub — five browsable categories with icons</string>
+    <string name="changelog_menu_icons">SVG line-icons across every menu and section title</string>
     <string name="changelog_rounded_image_corners">Rounded corners on placed pictures</string>
     <string name="changelog_prefs_search">Search inside preferences</string>
     <string name="changelog_reader_brightness">Reading brightness control</string>
