@@ -2692,6 +2692,18 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         prefsVersion++
     }
 
+    /** The persisted moment (wall-clock ms) the app was last backgrounded, for the app lock's
+     *  re-arm clock; 0 when it was never recorded. */
+    val appLockLastArmed: Long get() = settings.appLockLastArmed
+
+    /** Record that the app went to the background at [at] (wall-clock ms) and persist it, so the
+     *  app lock's re-arm clock keeps running across a process death while backgrounded. */
+    fun appLockStopped(at: Long) {
+        if (settings.appLockLastArmed == at) return
+        settings = settings.copy(appLockLastArmed = at)
+        settingsRepo.save(settings)
+    }
+
     /** Apply an edited toolbar layout live and persist (used by the toolbar customiser). */
     fun applyToolbarLayout(layout: ToolbarLayout) {
         toolbarLayout = layout

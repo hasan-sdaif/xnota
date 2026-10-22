@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -69,6 +70,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -82,6 +84,7 @@ import com.xnota.core.tools.InkPalette
 import com.xnota.core.tools.ToolbarItem
 import com.xnota.core.tools.ToolbarLayout
 import com.xnota.core.util.NameTemplate
+import com.xnota.core.util.PinHash
 import com.xnota.settings.Preferences
 import com.xnota.settings.MaterialStyle
 import com.xnota.settings.CornerStyle
@@ -295,6 +298,12 @@ fun PreferencesPane(
                 }
             }
             CheckRow(stringResource(R.string.pref_start_fullscreen), editor.fullscreen) { editor.setFullscreenPref(it) }
+
+            // xnota: the app lock — a PIN gate over the whole app, armed on cold start and, with
+            // a delay chosen, after long enough in the background.
+            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.pref_app_lock))
+            AppLockSection(prefs, ::updateHome)
 
             HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_input))
@@ -1162,6 +1171,113 @@ private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Uni
         Spacer(Modifier.width(2.dp))
         Text(label, color = LocalPalette.current.text.toComposeColor(), fontSize = 14.sp)
     }
+}
+
+/**
+ * The app lock's own rows: the PIN controls (set, change, remove — the stored value is always
+ * a fresh salted digest, never the PIN) and the re-arm delay. "Cold start only" is the no-delay
+ * mode: the gate arms when the app is recreated from process death, and backgrounding never
+ * re-locks; the other choices re-arm once the app has stayed away that long.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AppLockSection(prefs: Preferences, update: (Preferences) -> Unit) {
+    val palette = LocalPalette.current
+    var editingPin by remember { mutableStateOf(false) }
+
+    Text(
+        stringResource(if (prefs.appLockPin.isEmpty()) R.string.pref_app_lock_help_off else R.string.pref_app_lock_help_on),
+        color = palette.textDim.toComposeColor(),
+        fontSize = 12.sp,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (prefs.appLockPin.isEmpty()) {
+            TextButton(onClick = { editingPin = true }) { Text(stringResource(R.string.pin_set)) }
+        } else {
+            TextButton(onClick = { editingPin = true }) { Text(stringResource(R.string.pin_change)) }
+            // Remove asks nothing and just clears the stored digest — the lock is gone at once.
+            TextButton(onClick = { update(prefs.copy(appLockPin = PinHash.set(prefs.appLockPin, null))) }) {
+                Text(stringResource(R.string.pin_remove))
+            }
+        }
+    }
+
+    FieldLabel(stringResource(R.string.pref_app_lock_delay))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for ((seconds, label) in listOf(
+            0 to R.string.lock_cold_start,
+            30 to R.string.lock_after_30s,
+            60 to R.string.lock_after_60s,
+            300 to R.string.lock_after_5m,
+        )) {
+            Chip(stringResource(label), prefs.appLockDelay == seconds) { update(prefs.copy(appLockDelay = seconds)) }
+        }
+    }
+    Text(stringResource(R.string.pref_app_lock_delay_help), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
+
+    if (editingPin) {
+        PinSetDialog(
+            title = stringResource(if (prefs.appLockPin.isEmpty()) R.string.pin_set else R.string.pin_change),
+            onConfirm = { pin ->
+                editingPin = false
+                update(prefs.copy(appLockPin = PinHash.set(prefs.appLockPin, pin)))
+            },
+            onDismiss = { editingPin = false },
+        )
+    }
+}
+
+/**
+ * The set/change PIN dialog: two masked fields over the number keyboard, digits only. The
+ * confirm button stays disabled until both match and the PIN is 4–6 digits — the same bounds
+ * the gate accepts — and a mismatch shows [R.string.pin_mismatch] on the confirm field.
+ */
+@Composable
+private fun PinSetDialog(title: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var pin by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    val mismatch = pin.isNotEmpty() && confirm.isNotEmpty() && pin != confirm
+    fun digitsOnly(raw: String) = raw.filter { it.isDigit() }.take(6)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.pin_digits_help), color = LocalPalette.current.textDim.toComposeColor(), fontSize = 12.sp)
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { pin = digitsOnly(it) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.pin_field)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                )
+                OutlinedTextField(
+                    value = confirm,
+                    onValueChange = { confirm = digitsOnly(it) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.pin_confirm_field)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    isError = mismatch,
+                    supportingText = if (mismatch) {
+                        { Text(stringResource(R.string.pin_mismatch)) }
+                    } else {
+                        null
+                    },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(pin) },
+                enabled = pin.length in 4..6 && pin == confirm,
+            ) { Text(stringResource(R.string.save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
 }
 
 /**

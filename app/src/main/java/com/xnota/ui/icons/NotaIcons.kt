@@ -160,6 +160,8 @@ object NotaIcons {
     val thumbnails = icon(rect(3.0, 3.0, 7.0, 7.0), rect(14.0, 3.0, 7.0, 7.0), rect(3.0, 14.0, 7.0, 7.0), rect(14.0, 14.0, 7.0, 7.0))
     val lock = icon(rect(3.0, 11.0, 18.0, 11.0), "M7 11V7a5 5 0 0 1 10 0v4")
     val unlock = icon(rect(3.0, 11.0, 18.0, 11.0), "M7 11V7a5 5 0 0 1 9.9-1")
+    // The keypad's erase key: the backed body and the strike-through cross of the app lock gate.
+    val backspace = icon("M21 4H8l-6 8 6 8h13a1.7 1.7 0 0 0 1.7-1.7V5.7A1.7 1.7 0 0 0 21 4Z", "M18 9l-6 6", "M12 9l6 6")
     // The straightedge. The body is wider and the graduations hang from one edge so they read at
     // the 22dp the toolbar draws; they are absolute movetos because icon() concatenates the
     // strings into one path, where a relative "m" would start from the previous subpath.

@@ -115,6 +115,10 @@ data class Settings(
     val dailyWords: Map<String, Long> = emptyMap(),
     /** Days ("2026-09-16") with at least one note edit, newest last; drives the streak. */
     val editDays: List<String> = emptyList(),
+    /** xnota: wall-clock ms when the app was last backgrounded (ON_STOP), feeding the app lock's
+     *  re-arm clock — persisted so time away still counts if the process dies while backgrounded.
+     *  State, not a preference; 0 = never recorded. */
+    val appLockLastArmed: Long = 0L,
 ) {
     fun configFor(tool: Tool): ToolConfig = tools[tool] ?: ToolDefaults.configFor(tool)
 
@@ -179,6 +183,7 @@ data class Settings(
             .apply { if (scrollOffsets.isNotEmpty()) put("scroll_offsets", JSONObject().apply { scrollOffsets.forEach { (k, v) -> put(k, JSONArray().put(v[0]).put(v.getOrElse(1) { 0L })) } }) }
             .apply { if (dailyWords.isNotEmpty()) put("daily_words", JSONObject().apply { dailyWords.forEach { (k, v) -> put(k, v) } }) }
             .apply { if (editDays.isNotEmpty()) put("edit_days", JSONArray(editDays)) }
+            .put("app_lock_last_armed", appLockLastArmed)
     }
 
     companion object {
@@ -253,6 +258,7 @@ data class Settings(
                 scrollOffsets = scrollOffsets(o.optJSONObject("scroll_offsets")),
                 dailyWords = longMap(o.optJSONObject("daily_words"), com.xnota.core.util.DailyWords.CAP),
                 editDays = stringList(o.optJSONArray("edit_days")).takeLast(EDIT_DAYS_CAP),
+                appLockLastArmed = o.optLong("app_lock_last_armed", 0L).let { if (it > 0L) it else 0L },
             )
         }
 

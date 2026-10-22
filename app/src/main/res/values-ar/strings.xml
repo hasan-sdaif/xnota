@@ -1458,4 +1458,26 @@
     <string name="pref_app_language_system">لغة النظام</string>
     <string name="font_licenses">تراخيص الخطوط</string>
     <string name="font_license_loading">جارٍ التحميل…</string>
+
+    <!-- XNota: app lock (the fork) -->
+    <string name="pref_app_lock">قفل التطبيق</string>
+    <string name="pref_app_lock_help_off">لم يُعيَّن رمز بعد. عيِّن واحدًا ليظهر شاشة قفل قبل التطبيق؛ لا يُخزَّن الرمز نفسه أبدًا، بل بصمته المملّحة فقط.</string>
+    <string name="pref_app_lock_help_on">الرمز معيَّن — يتحرَّك القفل عند التشغيل البارد القادم، وبعد المهلة أدناه.</string>
+    <string name="pref_app_lock_delay">إعادة القفل بعد</string>
+    <string name="pref_app_lock_delay_help">كم يُسمح للتطبيق بالبقاء في الخلفية قبل أن يعود القفل. «التشغيل البارد فقط» يقفل عند إعادة إنشاء التطبيق بعد موت العملية فقط — تنقُّلات الخلفية لا تقفل أبدًا.</string>
+    <string name="lock_cold_start">التشغيل البارد فقط</string>
+    <string name="lock_after_30s">بعد 30 ثانية</string>
+    <string name="lock_after_60s">بعد 60 ثانية</string>
+    <string name="lock_after_5m">بعد 5 دقائق</string>
+    <string name="pin_enter">أدخل رمز القفل لفتح التطبيق</string>
+    <string name="pin_unlock">فتح</string>
+    <string name="pin_wrong">الرمز غير صحيح</string>
+    <string name="pin_backspace">محو رقم</string>
+    <string name="pin_set">تعيين رمز القفل</string>
+    <string name="pin_change">تغيير رمز القفل</string>
+    <string name="pin_remove">إزالة رمز القفل</string>
+    <string name="pin_field">الرمز</string>
+    <string name="pin_confirm_field">تأكيد الرمز</string>
+    <string name="pin_digits_help">من 4 إلى 6 أرقام.</string>
+    <string name="pin_mismatch">الرمزان غير متطابقين</string>
 </resources>

@@ -1339,4 +1339,26 @@
     <string name="app_language_name_en" translatable="false">English</string>
     <string name="font_licenses">Font licenses</string>
     <string name="font_license_loading">Loading…</string>
+
+    <!-- XNota: app lock (the fork) -->
+    <string name="pref_app_lock">App lock</string>
+    <string name="pref_app_lock_help_off">No PIN is set. Set one to gate the app behind a lock screen; the PIN itself is never stored, only its salted hash.</string>
+    <string name="pref_app_lock_help_on">A PIN is set — the gate arms on the next cold start, and after the delay below.</string>
+    <string name="pref_app_lock_delay">Re-lock after</string>
+    <string name="pref_app_lock_delay_help">How long the app may stay in the background before the gate re-arms. “Cold start only” locks just when the app is recreated from process death — background switches never re-lock.</string>
+    <string name="lock_cold_start">Cold start only</string>
+    <string name="lock_after_30s">After 30 s</string>
+    <string name="lock_after_60s">After 60 s</string>
+    <string name="lock_after_5m">After 5 min</string>
+    <string name="pin_enter">Enter your PIN to unlock</string>
+    <string name="pin_unlock">Unlock</string>
+    <string name="pin_wrong">Wrong PIN</string>
+    <string name="pin_backspace">Erase digit</string>
+    <string name="pin_set">Set PIN</string>
+    <string name="pin_change">Change PIN</string>
+    <string name="pin_remove">Remove PIN</string>
+    <string name="pin_field">PIN</string>
+    <string name="pin_confirm_field">Confirm PIN</string>
+    <string name="pin_digits_help">4–6 digits.</string>
+    <string name="pin_mismatch">The two PINs don\'t match</string>
 </resources>

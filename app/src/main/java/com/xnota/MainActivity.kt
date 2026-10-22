@@ -140,6 +140,23 @@ private fun standardPenAction(action: Int): Int = when (action) {
 
 class MainActivity : ComponentActivity() {
 
+    // xnota: the app lock's gate state, held at process level on purpose — an in-process
+    // activity recreation (app-language change, config change) must neither bypass an armed
+    // gate nor re-arm one the user already unlocked. Only a fresh process runs the cold-start
+    // decision again (gateDecided reset with it). See coldStartGateLocked below.
+    private companion object {
+        /** Whether the gate is currently armed over the whole app UI. */
+        var gateLocked by mutableStateOf(false)
+
+        /** Whether this process has already made its cold-start gate decision. */
+        var gateDecided = false
+
+        /** Wall-clock ms when the app last went to the background (this activity's lifetime);
+         *  0 until the first ON_STOP. Falls back to the persisted Settings.appLockLastArmed
+         *  when the activity is rebuilt while backgrounded. */
+        var gateStoppedAt = 0L
+    }
+
     // xnota: apply the persisted app language (Settings.appLanguage) before anything
     // resolves a resource, so the UI and its layout direction match from the first frame.
     // "system" (the default) is a no-op, which keeps upstream behaviour intact.
@@ -167,6 +184,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             val ed = remember { Editor(context).also { editor = it } }
+            // xnota: the app lock's cold-start decision — the settings are already loaded by
+            // the editor's construction, so this runs during the first composition, before any
+            // app UI could possibly show. Afterwards the gate only re-arms through ON_START.
+            if (!gateDecided) {
+                gateDecided = true
+                gateLocked = coldStartGateLocked(ed)
+            }
+            // Removing the PIN (or resetting preferences) lowers the gate at once; setting one
+            // never raises it mid-session — the gate arms on the next cold start.
+            LaunchedEffect(ed.prefsVersion) {
+                if (ed.preferences.appLockPin.isEmpty()) gateLocked = false
+            }
             LaunchedEffect(ed.fullscreen, ed.noteOpen, ed.prefsVersion) {
                 // The fork's immersive mode hides the system bars while a note is open, on top of
                 // whatever the fullscreen pref itself says.
@@ -184,19 +213,31 @@ class MainActivity : ComponentActivity() {
             NotaTheme(ed.palette, ed.cornerStyle) {
                 CompositionLocalProvider(com.xnota.ui.LocalToolbarLook provides ed.toolbarLook) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        if (ready) EditorScreen(
-                            ed,
-                            fullscreen = ed.fullscreen,
-                            onToggleFullscreen = ed::toggleFullscreen,
-                            importPdfUri = pendingPdfImport,
-                            onImportConsumed = { pendingPdfImport = null },
-                        )
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = !ready,
-                            enter = androidx.compose.animation.EnterTransition.None,
-                            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(280)),
-                        ) {
-                            com.xnota.ui.NotaLoader()
+                        // xnota: the app lock's gate replaces the whole app UI while armed —
+                        // the editor still restores its session underneath, but nothing of it
+                        // is composed (or visible) until the PIN verifies.
+                        ed.prefsVersion // the gate's preference reads follow live changes
+                        if (gateLocked) {
+                            com.xnota.ui.PinGate(
+                                stored = ed.preferences.appLockPin,
+                                digits = digitShaper(ed),
+                                onUnlocked = { gateLocked = false },
+                            )
+                        } else {
+                            if (ready) EditorScreen(
+                                ed,
+                                fullscreen = ed.fullscreen,
+                                onToggleFullscreen = ed::toggleFullscreen,
+                                importPdfUri = pendingPdfImport,
+                                onImportConsumed = { pendingPdfImport = null },
+                            )
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = !ready,
+                                enter = androidx.compose.animation.EnterTransition.None,
+                                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(280)),
+                            ) {
+                                com.xnota.ui.NotaLoader()
+                            }
                         }
                     }
                 }
@@ -265,6 +306,52 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         editor?.persist()
     }
+
+    // xnota: the app lock's re-arm check. Delay 0 (cold-start only) never re-locks here by
+    // design — backgrounding only counts when a delay was chosen, and the time away measures
+    // from the last ON_STOP (the in-memory moment, or the persisted one if this activity was
+    // rebuilt while backgrounded).
+    override fun onStart() {
+        super.onStart()
+        val ed = editor ?: return
+        val delay = ed.preferences.appLockDelay
+        if (delay <= 0) return
+        val stoppedAt = if (gateStoppedAt > 0) gateStoppedAt else ed.appLockLastArmed
+        if (stoppedAt > 0 && System.currentTimeMillis() - stoppedAt > delay * 1000L) gateLocked = true
+    }
+
+    // xnota: the wall-clock stop moment feeds the re-arm clock and is persisted into
+    // Settings.appLockLastArmed, so time away still counts when the process dies while
+    // backgrounded — the next cold start measures from this same moment.
+    override fun onStop() {
+        super.onStop()
+        gateStoppedAt = System.currentTimeMillis()
+        editor?.let { ed -> if (ed.preferences.appLockPin.isNotEmpty()) ed.appLockStopped(gateStoppedAt) }
+    }
+
+    /**
+     * Whether the app lock's gate arms on a cold start: a set PIN locks, unless the recorded
+     * time away (the persisted [Editor.appLockLastArmed], written at the last ON_STOP) was
+     * shorter than the chosen delay — a quick relaunch after a process death forgives a 30 s
+     * delay exactly like a 30 s app switch would. Delay 0 locks on every cold start, the one
+     * case it covers, since the background/foreground cycle never re-arms it.
+     */
+    private fun coldStartGateLocked(ed: Editor): Boolean {
+        val prefs = ed.preferences
+        if (prefs.appLockPin.isEmpty()) return false
+        val delay = prefs.appLockDelay
+        if (delay <= 0) return true
+        return System.currentTimeMillis() - ed.appLockLastArmed > delay * 1000L
+    }
+
+    /** The digit shaper the gate's keypad renders through: the fork's Arabic-Indic digits when
+     *  the digit pref (and app language) calls for them, identity otherwise. */
+    private fun digitShaper(ed: Editor): (String) -> String =
+        if (com.xnota.settings.DigitSystem.active(ed.preferences.digitSystem, ed.appLanguage)) {
+            com.xnota.settings.DigitSystem::apply
+        } else {
+            { s -> s }
+        }
 
     @Suppress("DEPRECATION") // RUNNING_* still arrive below Android 14
     override fun onTrimMemory(level: Int) {

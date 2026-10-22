@@ -204,6 +204,14 @@ data class Preferences(
     val focusBreak: Int = 5,
     /** Daily word goal; 0 (default) keeps the explorer's progress chip hidden. */
     val dailyWordGoal: Int = 0,
+    // ── App lock (the fork) ──────────────────────────────────────────────────────
+    /** The app lock's PIN as "salt$hash" (8 random salt bytes hex, '$', SHA-256 of salt+PIN hex —
+     *  see [com.xnota.core.util.PinHash]); the PIN itself is never stored. Empty = no lock. */
+    val appLockPin: String = "",
+    /** Seconds the app may stay backgrounded before the gate re-arms. 0 (default) = cold-start
+     *  only: the gate arms when the app is recreated from process death, and the ordinary
+     *  background/foreground cycle never re-locks. One of [APP_LOCK_DELAYS]. */
+    val appLockDelay: Int = 0,
 
     /** Version of the preferences payload, so one-off migrations can tell a stale file from a
      *  fresh one; see [PREF_SCHEMA]. */
@@ -325,6 +333,8 @@ data class Preferences(
         .put("focus_minutes", focusMinutes)
         .put("focus_break", focusBreak)
         .put("daily_word_goal", dailyWordGoal)
+        .put("app_lock_pin", appLockPin)
+        .put("app_lock_delay", appLockDelay)
         .put("pref_schema", prefSchema)
 
     companion object {
@@ -348,6 +358,9 @@ data class Preferences(
         /** Settable range of the min/max zoom limits, in percent (within the hard zoom bounds). */
         const val ZOOM_LIMIT_MIN_PCT = 20
         const val ZOOM_LIMIT_MAX_PCT = 1600
+
+        /** The app lock's re-arm delays the preferences chips offer, in seconds (0 = cold-start only). */
+        val APP_LOCK_DELAYS = setOf(0, 30, 60, 300)
 
         fun fromJson(o: JSONObject?): Preferences {
             if (o == null) return Preferences()
@@ -486,6 +499,10 @@ data class Preferences(
                 focusMinutes = o.optInt("focus_minutes", 25).coerceIn(1, 180),
                 focusBreak = o.optInt("focus_break", 5).coerceIn(1, 60),
                 dailyWordGoal = o.optInt("daily_word_goal", 0).coerceIn(0, 100000),
+                appLockPin = o.optString("app_lock_pin", "")
+                    .let { if (com.xnota.core.util.PinHash.isValidStored(it)) it else "" },
+                appLockDelay = o.optInt("app_lock_delay", 0)
+                    .let { if (it in APP_LOCK_DELAYS) it else 0 },
                 prefSchema = schema.coerceAtLeast(PREF_SCHEMA),
             )
         }
