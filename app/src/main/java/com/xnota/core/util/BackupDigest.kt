@@ -43,17 +43,26 @@ object BackupDigest {
      * Checks [files] against [manifest]. Names are compared as given; a caller that walks
      * with relative paths gets relative-path matching for free.
      */
-    fun verify(files: List<Pair<String, ByteArray>>, manifest: Manifest): Report {
+    fun verify(files: List<Pair<String, ByteArray>>, manifest: Manifest): Report =
+        verifyDigested(files.map { (name, bytes) -> name to digest(bytes) }, manifest)
+
+    /**
+     * Checks pre-computed name -> hex digest pairs against [manifest] — the memory-bounded
+     * counterpart of [verify] for a caller that digests each file as it reads it and so never
+     * holds more than one file's bytes. Same report, same meaning: the digest of the bytes a
+     * restore would give back is what gets compared.
+     */
+    fun verifyDigested(files: List<Pair<String, String>>, manifest: Manifest): Report {
         val mismatched = ArrayList<String>()
         val extra = ArrayList<String>()
         var verified = 0
         val seen = HashSet<String>()
-        for ((name, bytes) in files) {
+        for ((name, hex) in files) {
             if (!seen.add(name)) continue
             val want = manifest[name]
             when {
                 want == null -> extra.add(name)
-                want == digest(bytes) -> verified++
+                want == hex -> verified++
                 else -> mismatched.add(name)
             }
         }

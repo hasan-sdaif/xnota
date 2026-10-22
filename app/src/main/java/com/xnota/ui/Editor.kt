@@ -4173,13 +4173,15 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     }
 
     /** Takes a full snapshot into the backup folder; [onDone] gets the file count or null on
-     *  failure. Runs entirely off the main thread. */
-    fun backupNow(onDone: (Int?) -> Unit) {
+     *  failure. A non-null [passphrase] encrypts the snapshot and its integrity manifest (AES-GCM
+     *  blobs) — the passphrase is only ever the caller's in-memory session value and is never
+     *  stored anywhere. Runs entirely off the main thread. */
+    fun backupNow(passphrase: String? = null, onDone: (Int?) -> Unit) {
         val notesTree = browseRoot ?: return onDone(null)
         val backupTree = settings.backupRoot ?: return onDone(null)
         autosaveScope.launch {
             val entry = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching { com.xnota.platform.BackupManager.backupNow(appContext, notesTree, backupTree) }.getOrNull()
+                runCatching { com.xnota.platform.BackupManager.backupNow(appContext, notesTree, backupTree, passphrase) }.getOrNull()
             }
             if (entry != null) {
                 settings = settings.copy(lastBackupAt = entry.timestampMs)
@@ -4202,20 +4204,41 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     }
 
     /** Merge-restores a snapshot into the notes folder (missing files come back; existing files
-     *  are never overwritten). [onDone] gets the restored count or null on failure. */
-    fun restoreBackup(entry: com.xnota.platform.BackupManager.Entry, onDone: (Int?) -> Unit) {
-        val notesTree = browseRoot ?: return onDone(null)
-        val backupTree = settings.backupRoot ?: return onDone(null)
+     *  are never overwritten). A non-null [passphrase] decrypts an encrypted snapshot — missing
+     *  or wrong, the restore stops clean with everything it wrote rolled back, so nothing
+     *  partial ever lands. [onDone] gets the outcome. */
+    fun restoreBackup(entry: com.xnota.platform.BackupManager.Entry, passphrase: String? = null, onDone: (com.xnota.platform.BackupManager.RestoreOutcome) -> Unit) {
+        val notesTree = browseRoot ?: return onDone(com.xnota.platform.BackupManager.RestoreOutcome.Failed)
+        val backupTree = settings.backupRoot ?: return onDone(com.xnota.platform.BackupManager.RestoreOutcome.Failed)
         autosaveScope.launch {
-            val n = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching { com.xnota.platform.BackupManager.restore(appContext, backupTree, entry, notesTree) }.getOrNull()
+            val outcome = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.xnota.platform.BackupManager.restore(appContext, backupTree, entry, notesTree, passphrase) }
+                    .getOrElse { com.xnota.platform.BackupManager.RestoreOutcome.Failed }
             }
-            if (n != null && n > 0) {
+            val done = outcome as? com.xnota.platform.BackupManager.RestoreOutcome.Done
+            if (done != null && done.count > 0) {
                 browseCache.clear() // the explorer has to re-list the folder to see the files
                 rootNameCache.clear()
                 prefsVersion++
             }
-            onDone(n)
+            onDone(outcome)
+        }
+    }
+
+    /** Verifies the NEWEST snapshot against its integrity manifest on IO; [onDone] gets the
+     *  outcome, or null when there is no backup folder or nothing to verify yet. [passphrase]
+     *  decrypts an encrypted snapshot's files and manifest for the check — without it (or with
+     *  a wrong one) the encrypted files are named as bad. */
+    fun verifyBackup(passphrase: String? = null, onDone: (com.xnota.platform.BackupManager.VerifyOutcome?) -> Unit) {
+        val backupTree = settings.backupRoot ?: return onDone(null)
+        autosaveScope.launch {
+            val outcome = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val newest = runCatching {
+                    com.xnota.platform.BackupManager.listBackups(appContext, backupTree).firstOrNull()
+                }.getOrNull() ?: return@withContext null
+                runCatching { com.xnota.platform.BackupManager.verify(appContext, backupTree, newest, passphrase) }.getOrNull()
+            }
+            onDone(outcome)
         }
     }
 

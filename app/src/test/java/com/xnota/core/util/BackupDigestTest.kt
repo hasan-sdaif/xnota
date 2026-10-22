@@ -66,6 +66,37 @@ class BackupDigestTest {
         assertEquals(m, back)
     }
 
+    @Test fun verifyDigestedMatchesVerifyOnTheSameFiles() {
+        val m = BackupDigest.manifest(files)
+        val preDigested = files.map { (n, b) -> n to BackupDigest.digest(b) }
+        assertEquals(BackupDigest.verify(files, m), BackupDigest.verifyDigested(preDigested, m))
+    }
+
+    @Test fun verifyDigestedNamesACorruptedFileAndAMissingOne() {
+        val m = BackupDigest.manifest(files)
+        val tampered = listOf(
+            files[0].first to BackupDigest.digest(files[0].second),
+            "Notebook/Note 2.xnote" to BackupDigest.digest("TWO!".toByteArray()),
+        )
+        val report = BackupDigest.verifyDigested(tampered, m)
+        assertFalse(report.ok)
+        assertEquals(listOf("Notebook/Note 2.xnote"), report.mismatched)
+        assertEquals(1, report.verified)
+
+        val gone = BackupDigest.verifyDigested(emptyList(), m)
+        assertEquals(files.map { it.first }, gone.missing)
+    }
+
+    @Test fun verifyDigestedNamesAnExtraFile() {
+        val m = BackupDigest.manifest(files)
+        val withExtra = files.map { (n, b) -> n to BackupDigest.digest(b) } +
+            ("Note 3.xnote" to BackupDigest.digest("three".toByteArray()))
+        val report = BackupDigest.verifyDigested(withExtra, m)
+        assertFalse(report.ok)
+        assertEquals(listOf("Note 3.xnote"), report.extra)
+        assertEquals(2, report.verified)
+    }
+
     @Test fun deserializeSkipsGarbageLines() {
         val good = BackupDigest.manifest(files)
         val text = "not a line\n" + BackupDigest.serialize(good) + "\nshort one\n\n"

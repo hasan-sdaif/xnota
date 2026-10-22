@@ -462,6 +462,26 @@
         <item quantity="other">تمت استعادة %d ملاحظة</item>
     </plurals>
 
+    <!-- النسخ الاحتياطي المشفّر والتحقق من سلامته (عبارة مرور للجلسة + بيان بصمات SHA-256) -->
+    <string name="backup_passphrase">عبارة مرور النسخ الاحتياطي</string>
+    <string name="backup_passphrase_help">لا تُحفظ في أي مكان: تبقى في الذاكرة حتى إعادة تشغيل التطبيق فقط، وتشفّر النسخ الاحتياطية المُنشأة أثناء ضبطها فقط. احتفظ بها في مكان آمن — دونها لا يمكن قراءة النسخ المشفّرة واستعادتها.</string>
+    <string name="backup_passphrase_set">تعيين لهذه الجلسة</string>
+    <string name="backup_passphrase_on">عبارة المرور مفعّلة — النسخ الاحتياطية المُنشأة الآن مشفّرة، وتُنسى عند إعادة تشغيل التطبيق.</string>
+    <string name="backup_passphrase_clear">مسح عبارة المرور</string>
+    <string name="backup_verify">التحقق من النسخة الاحتياطية</string>
+    <string name="backup_verify_fail">فشل التحقق من النسخة — أول ملف تالف: %1$s</string>
+    <string name="backup_verify_none">لا نسخ احتياطية للتحقق منها بعد.</string>
+    <string name="backup_verify_no_manifest">لا يوجد بيان بصمات في هذه النسخة للتحقق منه — ربما أُنشئت قبل إضافة التحقق.</string>
+    <string name="backup_decrypt_failed">تعذّر فك التشفير بهذه العبارة — أُوقفت الاستعادة ولم يُكتب أي شيء.</string>
+    <plurals name="backup_verify_ok">
+        <item quantity="zero">لم يُتحقق من أي ملف</item>
+        <item quantity="one">تم التحقق من ملف واحد</item>
+        <item quantity="two">تم التحقق من ملفين</item>
+        <item quantity="few">تم التحقق من %d ملفات</item>
+        <item quantity="many">تم التحقق من %d ملفًا</item>
+        <item quantity="other">تم التحقق من %d ملف</item>
+    </plurals>
+
     <string name="pref_cache_help">تمنحك القيمة الأعلى إحساسًا أكثر سلاسة عند التحريك والتكبير، لكنها تستهلك ذاكرة أكبر. سيبدو حبرك وملفات PDF بالوضوح نفسه في الحالتين.</string>
     <string name="pref_disable_front_buffering">تعطيل التخزين المؤقت الأمامي</string>
     <string name="pref_front_buffering_help">يرسم التخزين المؤقت الأمامي حبر القلم مباشرةً في الإطار الذي تعرضه الشاشة، وهو ما يمنح الرسم إحساس الفورية. بعض الشاشات لا تتعامل مع ذلك بسلاسة، وقد يومض الحبر عليها أو يتأخر عن رأس القلم. أوقف الميزة على تلك الشاشات لتمرّ كل ضربة قلم عبر اللوحة العادية.</string>

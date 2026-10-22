@@ -449,6 +449,22 @@
         <item quantity="other">%d notes restored</item>
     </plurals>
 
+    <!-- Encrypted backups & integrity verification (session passphrase + SHA-256 manifest) -->
+    <string name="backup_passphrase">Backup passphrase</string>
+    <string name="backup_passphrase_help">Never saved anywhere: it lives only until the app restarts, and encrypts only the backups made while it is set. Keep it somewhere safe — without it, an encrypted backup cannot be read back.</string>
+    <string name="backup_passphrase_set">Set for this session</string>
+    <string name="backup_passphrase_on">Passphrase set — backups made now are encrypted. It is forgotten when the app restarts.</string>
+    <string name="backup_passphrase_clear">Clear passphrase</string>
+    <string name="backup_verify">Verify backup</string>
+    <string name="backup_verify_fail">Backup check failed — first bad file: %1$s</string>
+    <string name="backup_verify_none">No backups yet to verify.</string>
+    <string name="backup_verify_no_manifest">No manifest in this backup to check against — it may predate verification.</string>
+    <string name="backup_decrypt_failed">Could not decrypt with this passphrase — the restore was stopped and nothing was written.</string>
+    <plurals name="backup_verify_ok">
+        <item quantity="one">%d file verified</item>
+        <item quantity="other">%d files verified</item>
+    </plurals>
+
     <string name="pref_cache_help">Higher feels smoother when you pan and zoom but uses more memory. Your ink and PDFs look just as crisp either way.</string>
     <string name="pref_disable_front_buffering">Disable front buffering</string>
     <string name="pref_front_buffering_help">Front buffering paints the pen\'s ink straight into the frame the screen is showing, which is what makes it feel instant. A few panels do not hand that over cleanly, and there the ink can flicker or fall behind the nib. Turn it off on those and every stroke goes through the ordinary canvas.</string>

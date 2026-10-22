@@ -1307,6 +1307,11 @@ private fun MillimetreField(label: String, value: Double, onChange: (Double) -> 
  * system provider syncs), choose a cadence, snapshot now, or merge-restore a snapshot. The
  * section is entirely driven by [Editor.backupRoot]/[Editor.backupVersion] and reports progress
  * through the editor's message line, matching how the rest of the pane gives feedback.
+ *
+ * A session passphrase can be armed for encrypted backups: it lives in a plain `remember` pair
+ * below — it survives recomposition but dies with the pane (leaving preferences clears it) and
+ * with the process, and it is never written to Settings or any JSON. While armed, Backup Now
+ * writes AES-GCM blobs, restore decrypts them, and Verify checks them against the manifest.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1325,6 +1330,10 @@ private fun BackupSection(
     var working by remember { mutableStateOf(false) }
     var backups by remember { mutableStateOf<List<com.xnota.platform.BackupManager.Entry>>(emptyList()) }
     var showRestores by remember { mutableStateOf(false) }
+    // The session passphrase — in memory only: it survives recomposition, dies with the pane
+    // (and with the app). It travels solely into BackupManager calls made from this section.
+    var passInput by remember { mutableStateOf("") }
+    var sessionPass by remember { mutableStateOf<String?>(null) }
 
     Row(
         Modifier.fillMaxWidth(),
@@ -1362,10 +1371,50 @@ private fun BackupSection(
         Chip(stringResource(R.string.backup_weekly), prefs.backupEvery == "weekly") { setBackupEvery("weekly") }
     }
     if (backupRoot != null) {
+        FieldLabel(stringResource(R.string.backup_passphrase))
+        if (sessionPass == null) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = passInput,
+                    onValueChange = { passInput = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.backup_passphrase), fontSize = 12.sp) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    modifier = Modifier.weight(1f),
+                )
+                Chip(stringResource(R.string.backup_passphrase_set), passInput.isNotBlank()) {
+                    sessionPass = passInput
+                    passInput = ""
+                }
+            }
+        } else {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.backup_passphrase_on),
+                    color = palette.textDim.toComposeColor(),
+                    fontSize = 12.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                Chip(stringResource(R.string.backup_passphrase_clear), true) {
+                    sessionPass = null
+                    passInput = ""
+                }
+            }
+        }
+        Text(stringResource(R.string.backup_passphrase_help), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip(stringResource(R.string.backup_now), working.not()) {
                 working = true
-                editor.backupNow { n ->
+                editor.backupNow(sessionPass) { n ->
                     working = false
                     editor.message = when (n) {
                         null -> ctx.getString(R.string.backup_failed)
@@ -1379,6 +1428,21 @@ private fun BackupSection(
                     working = false
                     backups = list
                     showRestores = true
+                }
+            }
+            Chip(stringResource(R.string.backup_verify), working.not()) {
+                working = true
+                editor.verifyBackup(sessionPass) { outcome ->
+                    working = false
+                    editor.message = when (outcome) {
+                        null -> ctx.getString(R.string.backup_verify_none)
+                        is com.xnota.platform.BackupManager.VerifyOutcome.Ok ->
+                            ctx.resources.getQuantityString(R.plurals.backup_verify_ok, outcome.files, outcome.files)
+                        is com.xnota.platform.BackupManager.VerifyOutcome.Bad ->
+                            ctx.getString(R.string.backup_verify_fail, outcome.first)
+                        com.xnota.platform.BackupManager.VerifyOutcome.NoManifest ->
+                            ctx.getString(R.string.backup_verify_no_manifest)
+                    }
                 }
             }
         }
@@ -1407,12 +1471,16 @@ private fun BackupSection(
                             ) {
                                 showRestores = false
                                 working = true
-                                editor.restoreBackup(b) { n ->
+                                editor.restoreBackup(b, sessionPass) { outcome ->
                                     working = false
-                                    editor.message = when (n) {
-                                        null -> ctx.getString(R.string.backup_failed)
-                                        0 -> ctx.getString(R.string.backup_nothing_to_restore)
-                                        else -> ctx.resources.getQuantityString(R.plurals.backup_restored, n, n)
+                                    editor.message = when (outcome) {
+                                        is com.xnota.platform.BackupManager.RestoreOutcome.Done ->
+                                            if (outcome.count == 0) ctx.getString(R.string.backup_nothing_to_restore)
+                                            else ctx.resources.getQuantityString(R.plurals.backup_restored, outcome.count, outcome.count)
+                                        is com.xnota.platform.BackupManager.RestoreOutcome.DecryptFailed ->
+                                            ctx.getString(R.string.backup_decrypt_failed)
+                                        com.xnota.platform.BackupManager.RestoreOutcome.Failed ->
+                                            ctx.getString(R.string.backup_failed)
                                     }
                                 }
                             }
