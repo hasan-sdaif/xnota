@@ -1,6 +1,7 @@
 package com.xnota.ui.theme
 
 import com.xnota.core.model.Rgba
+import com.xnota.settings.MaterialStyle
 import com.xnota.settings.Preferences
 import kotlin.math.abs
 
@@ -33,8 +34,12 @@ data class Palette(
     val danger: Rgba get() = materialColors.error
 
     companion object {
-        /** Stands in wherever no theme is provided yet (and in tests). */
-        val DEFAULT: Palette by lazy { materialDark(MaterialColors.seeded(Preferences.DEFAULT_MATERIAL_DUAL, dark = true)) }
+        /** Stands in wherever no theme is provided yet (and in tests): the 1.7 emerald identity —
+         *  the neon-green accent seed, the vibrant scheme style and the teal surface seed together,
+         *  exactly as [com.xnota.ui.Editor.buildPalette] assembles it from the new defaults. */
+        val DEFAULT: Palette by lazy {
+            materialDark(MaterialColors.seeded(Preferences.DEFAULT_MATERIAL_DUAL, dark = true, style = MaterialStyle.VIBRANT, surfaceSeed = Preferences.DEFAULT_MATERIAL_SURFACE))
+        }
 
         /** Build the full chrome from a Material 3 scheme's tonal surfaces. */
         fun material(appearance: String, m: MaterialColors): Palette = when (appearance) {

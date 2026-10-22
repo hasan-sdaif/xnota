@@ -361,12 +361,51 @@ class SettingsTest {
     @Test fun materialDefaultsUseSystemWithFirstPresetsReady() {
         val defaults = Preferences.fromJson(JSONObject())
         assertEquals(MaterialColourMode.SYSTEM, defaults.materialMode)
-        assertEquals(Rgba(244, 67, 54), defaults.materialSingleSeed)
-        assertEquals(Rgba(154, 124, 66), defaults.materialDualSeed)
-        assertEquals(Rgba(61, 117, 230), defaults.materialSurfaceSeed)
+        // The 1.7 emerald identity: neon-green accent seed over a teal surface seed.
+        assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, defaults.materialSingleSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, defaults.materialDualSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, defaults.materialSurfaceSeed)
+        assertEquals(Rgba(0, 230, 118), defaults.materialDualSeed)
+        assertEquals(Rgba(15, 91, 74), defaults.materialSurfaceSeed)
+        // The vibrant scheme style and the floating toolbar are the redesigned defaults too.
+        assertEquals(MaterialStyle.VIBRANT, defaults.materialStyle)
+        assertTrue(defaults.toolbarLook.floating)
+        assertEquals("shelves", defaults.homeOpensTo)
         for (key in listOf("material_mode", "material_seed", "material_single_seed", "material_dual_seed", "material_surface_seed")) {
             assertFalse(defaults.toJson().has(key))
         }
+    }
+
+    @Test fun preRedesignFileUpgradesOnceToEmeraldIdentity() {
+        // A settings file as the user's device carries it after 1.6.1: dual mode with the old default
+        // seeds written verbatim (the dual-mode save writes them unconditionally), schema v2, the
+        // old default home and strip toolbar — everything still at a pre-1.7 default upgrades once.
+        val pre = JSONObject()
+            .put("pref_schema", 2)
+            .put("material_mode", "dual")
+            .put("material_seed", "#9A7C42")
+            .put("material_dual_tone", true)
+            .put("material_surface_seed", "#3D75E6")
+            .put("home_opens_to", "top")
+        val upgraded = Preferences.fromJson(pre)
+        assertEquals(MaterialColourMode.DUAL, upgraded.materialMode)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, upgraded.materialDualSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, upgraded.materialSurfaceSeed)
+        assertEquals(MaterialStyle.VIBRANT, upgraded.materialStyle)
+        assertEquals("shelves", upgraded.homeOpensTo)
+        assertTrue(upgraded.toolbarLook.floating)
+        // The upgrade sticks: reloading the saved file keeps the identity (schema is now v3).
+        val saved = Preferences.fromJson(upgraded.toJson())
+        assertEquals(upgraded, saved)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, saved.materialDualSeed)
+        assertEquals("shelves", saved.homeOpensTo)
+        // And post-1.7 choices are final: the old gold pair re-picked through the presets stays,
+        // as does a conscious return to the bare top-folder home.
+        val repicked = Preferences.fromJson(upgraded.toJson()
+            .put("material_seed", "#9A7C42").put("material_surface_seed", "#3D75E6").put("home_opens_to", "top"))
+        assertEquals(Rgba(154, 124, 66), repicked.materialDualSeed)
+        assertEquals(Rgba(61, 117, 230), repicked.materialSurfaceSeed)
+        assertEquals("top", repicked.homeOpensTo)
     }
 
     @Test fun legacySingleToneMigratesOnlyItsOwnAccent() {
@@ -402,13 +441,15 @@ class SettingsTest {
     @Test fun customMaterialOptionsDefaultForgivingly() {
         for (value in listOf<Any>(JSONObject.NULL, "unknown", "medium", "high", 123, JSONObject())) {
             val p = Preferences.fromJson(JSONObject().put("material_style", value).put("material_contrast", value))
-            assertEquals(MaterialStyle.TONAL_SPOT, p.materialStyle)
+            assertEquals(MaterialStyle.VIBRANT, p.materialStyle)
             assertFalse(p.toJson().has("material_contrast"))
         }
         val defaults = Preferences.fromJson(JSONObject())
-        assertEquals(MaterialStyle.TONAL_SPOT, defaults.materialStyle)
+        assertEquals(MaterialStyle.VIBRANT, defaults.materialStyle)
         assertFalse(defaults.toJson().has("material_style"))
         assertFalse(defaults.toJson().has("material_contrast"))
+        // An explicit pre-1.7 style pick survives the default's change untouched.
+        assertEquals(MaterialStyle.TONAL_SPOT, Preferences.fromJson(JSONObject().put("material_style", "tonal_spot")).materialStyle)
     }
 
     @Test fun materialOptionsDefaultForgivingly() {

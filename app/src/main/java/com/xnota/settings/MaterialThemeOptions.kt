@@ -11,7 +11,8 @@ enum class MaterialStyle(val id: String) {
     MONOCHROME("monochrome");
 
     companion object {
-        fun fromId(id: String): MaterialStyle = entries.find { it.id == id } ?: TONAL_SPOT
+        /** The unknown/absent id falls back to the 1.7 default style; a stored id is always respected. */
+        fun fromId(id: String): MaterialStyle = entries.find { it.id == id } ?: VIBRANT
     }
 }
 

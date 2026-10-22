@@ -57,7 +57,9 @@ private val singleColourSize = 32.dp
 private val singleColourSpacing = 4.dp
 
 private val singleTonePresets = listOf(
-    ColourPreset(R.string.hue_red, Preferences.DEFAULT_MATERIAL_SINGLE),
+    // 1.7: the single-tone list once led with the default seed itself; it now carries the red the
+    // default used to be, while the new green default lives on in the dual list as Emerald.
+    ColourPreset(R.string.hue_red, rgb(0xf44336)),
     ColourPreset(R.string.hue_pink, rgb(0xe91e63)),
     ColourPreset(R.string.hue_purple, rgb(0x9c27b0)),
     ColourPreset(R.string.material_indigo, rgb(0x3f51b5)),
@@ -69,7 +71,11 @@ private val singleTonePresets = listOf(
 
 // Base2Tone D3 accents and B3 surface seeds; attribution and revision in assets/licenses/base2tone.txt.
 private val dualTonePresets = listOf(
-    ColourPreset(R.string.material_morning, Preferences.DEFAULT_MATERIAL_DUAL, Preferences.DEFAULT_MATERIAL_SURFACE),
+    // The 1.7 emerald identity — the reference design's neon green over deep teal, and the new
+    // defaults, kept first so the picker shows it selected out of the box.
+    ColourPreset(R.string.material_emerald, Preferences.DEFAULT_MATERIAL_DUAL, Preferences.DEFAULT_MATERIAL_SURFACE),
+    // "Morning" keeps the pre-1.7 default pair (gold over blue) so the old look stays one tap away.
+    ColourPreset(R.string.material_morning, rgb(0x9a7c42), rgb(0x3d75e6)),
     ColourPreset(R.string.material_evening, rgb(0xffa142), rgb(0x9a86fd)),
     ColourPreset(R.string.material_sea, rgb(0x0db57d), rgb(0x57718e)),
     ColourPreset(R.string.material_forest, rgb(0xb1c44f), rgb(0x687d68)),

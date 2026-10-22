@@ -4,8 +4,8 @@ package com.xnota.settings
 data class ToolbarLook(
     val position: ToolbarPosition = ToolbarPosition.TOP,
     val size: ToolbarSize = ToolbarSize.REGULAR,
-    /** A rounded pill over the canvas instead of a strip along the pane's edge. */
-    val floating: Boolean = false,
+    /** A rounded pill over the canvas instead of a strip along the pane's edge — the 1.7 default. */
+    val floating: Boolean = true,
 )
 
 /** Which edge of its pane the toolbar runs along. */

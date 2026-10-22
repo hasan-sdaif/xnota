@@ -123,7 +123,7 @@ data class Preferences(
     /** Whether the sidebar lists the user's smart folders (saved searches, the fork). */
     val sidebarSmartFolders: Boolean = true,
     /** Where Home opens: "top" (the notes folder), "last" (the folder last shown) or "shelves" (the notes folder under Recent and Pinned). */
-    val homeOpensTo: String = "top",
+    val homeOpensTo: String = "shelves",
     /** How the explorer writes dates: "relative" (2 days ago), "day" (Wed 17:30) or "date" (16 Sep 2026). */
     val dateStyle: String = "day",
     /** Which calendar dates are written in (the fork): "gregorian" (default) or "hijri" (Umm al-Qura,
@@ -285,7 +285,9 @@ data class Preferences(
             if (cornerStyle != CornerStyle.ROUNDED) put("corner_style", cornerStyle.id)
             if (toolbarLook.position != ToolbarPosition.TOP) put("toolbar_position", toolbarLook.position.id)
             if (toolbarLook.size != ToolbarSize.REGULAR) put("toolbar_size", toolbarLook.size.id)
-            if (toolbarLook.floating) put("toolbar_floating", true)
+            // 1.7: the floating pill is the default look now, so the diff-check flips with it —
+            // a strip is stored as false, and pre-1.7 files (which only ever stored true) read on.
+            if (!toolbarLook.floating) put("toolbar_floating", false)
             startFullscreen?.let { put("start_fullscreen", it) }
             codeThemePath?.let { put("code_theme_path", it) }
             codeThemeName?.let { put("code_theme_name", it) }
@@ -347,9 +349,19 @@ data class Preferences(
 
     companion object {
         val DEFAULT_ACCENT = Rgba(0, 230, 118, 255)
-        val DEFAULT_MATERIAL_SINGLE = Rgba(244, 67, 54, 255)
-        val DEFAULT_MATERIAL_DUAL = Rgba(154, 124, 66, 255)
-        val DEFAULT_MATERIAL_SURFACE = Rgba(61, 117, 230, 255)
+
+        // The 1.7 emerald identity: a neon-green accent over deep teal surfaces, the reference
+        // design's palette. Verified against the vendor scheme generator: dark primary lands on
+        // #00E475 and surfaceContainerLowest on #05100D — the reference's #00E676 / #050F0D.
+        val DEFAULT_MATERIAL_SINGLE = Rgba(0, 230, 118, 255)
+        val DEFAULT_MATERIAL_DUAL = Rgba(0, 230, 118, 255)
+        val DEFAULT_MATERIAL_SURFACE = Rgba(15, 91, 74, 255)
+
+        // The pre-1.7 identity (a gold accent over blue-toned surfaces), kept only so that files
+        // still carrying the old defaults verbatim can be recognised and upgraded once (PREF_SCHEMA v3).
+        val LEGACY_MATERIAL_SINGLE = Rgba(244, 67, 54, 255)
+        val LEGACY_MATERIAL_DUAL = Rgba(154, 124, 66, 255)
+        val LEGACY_MATERIAL_SURFACE = Rgba(61, 117, 230, 255)
 
         /** [trashDays] for keeping deleted items until Trash is emptied by hand. */
         const val TRASH_FOREVER = -1
@@ -363,8 +375,11 @@ data class Preferences(
         /** Preferences payload version. v2 is the fork's gesture-and-pen defaults: a file written
          *  before the fork (or by upstream) carries no `pref_schema`, and its untouched "none"
          *  gesture mappings are upgraded once to the fork's defaults — after which the user's own
-         *  choices are final, whatever they set them to. */
-        const val PREF_SCHEMA = 2
+         *  choices are final, whatever they set them to. v3 is the 1.7 emerald redesign: the old
+         *  default colour seeds (written verbatim by every pre-v3 dual-mode save), the bare
+         *  top-folder home and the strip toolbar upgrade once to the new identity — the same
+         *  rule, anything the user actually picked passes through untouched. */
+        const val PREF_SCHEMA = 3
 
         /** Settable range of the min/max zoom limits, in percent (within the hard zoom bounds). */
         const val ZOOM_LIMIT_MIN_PCT = 20
@@ -389,7 +404,16 @@ data class Preferences(
             // carries the schema, or a mapping the user actually chose, passes through untouched.
             val schema = o.optInt("pref_schema", 1)
             fun migrated(key: String, to: String) =
-                if (schema >= PREF_SCHEMA || o.optString(key, "none") != "none") tapAction(key) else to
+                if (schema >= 2 || o.optString(key, "none") != "none") tapAction(key) else to
+            // v3: the emerald redesign. A pre-v3 file carries the old default seeds verbatim (the
+            // dual-mode save writes them unconditionally), so a value still equal to an old default
+            // upgrades once to the new identity; anything else was a deliberate pick and passes through.
+            val redesigned = schema >= 3
+            fun upgradeSeed(v: Rgba?, legacy: Rgba, new: Rgba): Rgba? = when {
+                v == null -> null
+                !redesigned && v == legacy -> new
+                else -> v
+            }
             val legacySeed = Rgba.fromHex(o.optString("material_seed"))
             val legacyDual = o.optBoolean("material_dual_tone", false)
             val materialMode = MaterialColourMode.fromId(o.optString("material_mode")) ?: when {
@@ -401,19 +425,20 @@ data class Preferences(
             return Preferences(
                 uiAppearance = appearance,
                 materialMode = materialMode,
-                materialSingleSeed = Rgba.fromHex(o.optString("material_single_seed"))
-                    ?: legacySeed?.takeIf { !legacyDual } ?: DEFAULT_MATERIAL_SINGLE,
-                materialDualSeed = Rgba.fromHex(o.optString("material_dual_seed"))
-                    ?: if (legacyDual) legacyDualAccent else DEFAULT_MATERIAL_DUAL,
+                materialSingleSeed = upgradeSeed(Rgba.fromHex(o.optString("material_single_seed")), LEGACY_MATERIAL_SINGLE, DEFAULT_MATERIAL_SINGLE)
+                    ?: legacySeed?.takeIf { !legacyDual }?.let { l -> if (!redesigned && l == LEGACY_MATERIAL_DUAL) DEFAULT_MATERIAL_SINGLE else l }
+                    ?: DEFAULT_MATERIAL_SINGLE,
+                materialDualSeed = upgradeSeed(Rgba.fromHex(o.optString("material_dual_seed")), LEGACY_MATERIAL_DUAL, DEFAULT_MATERIAL_DUAL)
+                    ?: if (legacyDual) legacyDualAccent.let { l -> if (!redesigned && l == LEGACY_MATERIAL_DUAL) DEFAULT_MATERIAL_DUAL else l } else DEFAULT_MATERIAL_DUAL,
                 materialStyle = MaterialStyle.fromId(o.optString("material_style")),
                 materialContrast = o.optDouble("material_contrast", 0.0).takeIf { it in -1.0..1.0 } ?: 0.0,
-                materialSurfaceSeed = Rgba.fromHex(o.optString("material_surface_seed"))
+                materialSurfaceSeed = upgradeSeed(Rgba.fromHex(o.optString("material_surface_seed")), LEGACY_MATERIAL_SURFACE, DEFAULT_MATERIAL_SURFACE)
                     ?: if (legacyDual && !o.has("material_mode")) Rgba(33, 150, 243, 255) else DEFAULT_MATERIAL_SURFACE,
                 cornerStyle = CornerStyle.fromId(o.optString("corner_style")),
                 toolbarLook = ToolbarLook(
                     position = ToolbarPosition.fromId(o.optString("toolbar_position")),
                     size = ToolbarSize.fromId(o.optString("toolbar_size")),
-                    floating = o.optBoolean("toolbar_floating", false),
+                    floating = o.optBoolean("toolbar_floating", true),
                 ),
                 hideWindowDecoration = o.optBoolean("hide_window_decoration", false),
                 pageColor = if (o.isNull("page_color")) null else Rgba.fromHex(o.optString("page_color")),
@@ -470,7 +495,13 @@ data class Preferences(
                 sidebarColours = o.optBoolean("sidebar_colours", true),
                 sidebarTrash = o.optBoolean("sidebar_trash", true),
                 sidebarSmartFolders = o.optBoolean("sidebar_smart_folders", true),
-                homeOpensTo = o.optString("home_opens_to", "top").let { if (it == "last" || it == "shelves") it else "top" },
+                homeOpensTo = when (val rawHome = o.optString("home_opens_to")) {
+                    "last", "shelves" -> rawHome
+                    // v3: the redesigned dashboard home replaces the bare top folder for pre-v3 files;
+                    // a "top" saved by the new build is a conscious re-pick and stays.
+                    "top" -> if (redesigned) "top" else "shelves"
+                    else -> "shelves"
+                },
                 dateStyle = o.optString("date_style", "day").let { if (it == "relative" || it == "date") it else "day" },
                 dateSystem = o.optString("date_system", "gregorian").let { if (it == "hijri") it else "gregorian" },
                 digitSystem = o.optString("digit_system", "auto").let { if (it == "latin" || it == "arabic") it else "auto" },
