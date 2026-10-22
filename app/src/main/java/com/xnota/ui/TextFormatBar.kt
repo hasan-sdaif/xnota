@@ -39,9 +39,11 @@ import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,7 +54,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -143,6 +147,8 @@ fun TextFormatBar(editor: Editor) {
             BarIcon(Icons.AutoMirrored.Filled.FormatIndentDecrease, stringResource(R.string.outdent), enabled = (para?.indent ?: 0) > 0, shortcut = Keys.OUTDENT) {
                 editor.flowIndent(-1)
             }
+            BarDivider()
+            WordCountChip(editor)
         }
     }
     if (tableDialog) TableDialog(editor, null) { tableDialog = false }
@@ -471,6 +477,46 @@ private fun SizeStepper(size: Double, onDelta: (Double) -> Unit) {
         Tooltip(stringResource(R.string.larger)) {
             Box(Modifier.size(36.dp).clip(CircleShape).clickable { onDelta(1.0) }, contentAlignment = Alignment.Center) {
                 Icon(NotaIcons.plus, stringResource(R.string.larger), tint = palette.textDim.toComposeColor(), modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+
+/** The fork's word counter: a compact chip on the format bar; tapping opens the counts. */
+@Composable
+private fun WordCountChip(editor: Editor) {
+    val palette = LocalPalette.current
+    var open by remember { mutableStateOf(false) }
+    var counts by remember { mutableStateOf(com.xnota.core.text.WordCount.Counts(0, 0, 0)) }
+    LaunchedEffect(editor.contentVersion, editor.flowSelTick) {
+        counts = editor.flowText.wordCounts()
+    }
+    Tooltip(pluralStringResource(R.plurals.words_n, counts.words, counts.words)) {
+        Text(
+            pluralStringResource(R.plurals.words_n, counts.words, counts.words),
+            color = palette.textDim.toComposeColor(),
+            fontSize = 12.sp,
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .clickable { open = !open }
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+    if (open) {
+        Dialog(onDismissRequest = { open = false }) {
+            Column(
+                Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(palette.panel.toComposeColor())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(stringResource(R.string.stats_title), fontWeight = FontWeight.Bold, color = palette.text.toComposeColor())
+                Text(pluralStringResource(R.plurals.words_n, counts.words, counts.words), fontSize = 13.sp, color = palette.text.toComposeColor())
+                Text(pluralStringResource(R.plurals.chars_n, counts.chars, counts.chars), fontSize = 13.sp, color = palette.text.toComposeColor())
+                Text(pluralStringResource(R.plurals.paragraphs_n, counts.paragraphs, counts.paragraphs), fontSize = 13.sp, color = palette.text.toComposeColor())
+                Text(stringResource(R.string.reading_time, com.xnota.core.text.WordCount.readingMinutes(counts.words)), fontSize = 13.sp, color = palette.text.toComposeColor())
             }
         }
     }

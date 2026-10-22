@@ -12,6 +12,7 @@ import com.xnota.core.history.History
 import com.xnota.core.history.ParaSnapshot
 import com.xnota.core.model.Page
 import com.xnota.core.text.CellIndex
+import com.xnota.core.text.FindReplace
 import com.xnota.core.text.caretPreviewSpan
 import com.xnota.core.text.CharStyle
 import com.xnota.core.text.FlowEditor
@@ -402,6 +403,60 @@ class FlowTextController(
         if (syncIme) imeSync()
         requestRender()
     }
+
+    // ── Find & replace + word count (the fork's text power) ─────────────────────
+
+    /** The flow being edited, for the editor's find bar and counters. */
+    fun flow(): TextFlow = flow.invoke()
+
+    /** Every match of [needle] in the flow's text, as global (plainText) ranges, in order. */
+    fun findAll(needle: String, caseSensitive: Boolean, wholeWord: Boolean, ignoreDiacritics: Boolean): List<IntRange> =
+        FindReplace.findAll(flow().plainText(), needle, caseSensitive, wholeWord, ignoreDiacritics)
+            .map { m -> m.start until m.end }
+
+    /** The first match at or after [fromGlobal] (wrapping), as a global range, or null. */
+    fun findNext(needle: String, fromGlobal: Int, caseSensitive: Boolean, wholeWord: Boolean, ignoreDiacritics: Boolean): IntRange? {
+        val all = findAll(needle, caseSensitive, wholeWord, ignoreDiacritics)
+        if (all.isEmpty()) return null
+        return all.firstOrNull { it.first >= fromGlobal } ?: all.first()
+    }
+
+    /** The last match at or before [fromGlobal] (wrapping), as a global range, or null. */
+    fun findPrev(needle: String, fromGlobal: Int, caseSensitive: Boolean, wholeWord: Boolean, ignoreDiacritics: Boolean): IntRange? {
+        val all = findAll(needle, caseSensitive, wholeWord, ignoreDiacritics)
+        if (all.isEmpty()) return null
+        return all.lastOrNull { it.last < fromGlobal } ?: all.last()
+    }
+
+    /**
+     * Replace every match with [replacement], as one undo step: matches are applied
+     * right-to-left so each one's global range stays valid as the text shifts. The caret
+     * lands where the first match's replacement ends (or stays put when nothing matched).
+     */
+    fun replaceAllMatches(needle: String, replacement: String, caseSensitive: Boolean, wholeWord: Boolean, ignoreDiacritics: Boolean): Int {
+        val matches = findAll(needle, caseSensitive, wholeWord, ignoreDiacritics)
+        if (matches.isEmpty()) return 0
+        var caret: FlowPos? = null
+        for (range in matches.asReversed()) {
+            val from = flow().posAtGlobal(range.first)
+            val to = flow().posAtGlobal(range.last + 1)
+            val (cmd, after) = FlowEditor(flow()).replaceRange(FlowRange(from, to), replacement)
+            commitEdit(cmd, after)
+            if (caret == null) caret = after
+        }
+        return matches.size
+    }
+
+    /** Select the flow range of a global [range] (a find bar's hit), moving the caret to it. */
+    fun selectGlobal(range: IntRange) {
+        val from = flow().posAtGlobal(range.first)
+        val to = flow().posAtGlobal(range.last + 1)
+        setSelection(FlowRange(from, to))
+    }
+
+    /** The flow's word/character/paragraph counts (the fork's word counter). */
+    fun wordCounts(): com.xnota.core.text.WordCount.Counts =
+        com.xnota.core.text.WordCount.count(flow().plainText())
 
     fun selectAll() {
         if (flow().paragraphs.isEmpty()) return

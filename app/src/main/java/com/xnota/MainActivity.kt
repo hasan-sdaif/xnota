@@ -1298,6 +1298,9 @@ private fun EditorPane(
                         com.xnota.ui.TextStyleBar(editor)
                         com.xnota.ui.LongPressMenu(editor, onInsertImageAt = { c -> actions.onInsertImage(editor, c) })
                         com.xnota.ui.FlowEditMenu(editor)
+                        if (editor.flowFindOpen && editor.flowEditingActive) {
+                            com.xnota.ui.FlowFindBar(editor) { editor.flowFindOpen = false }
+                        }
                         com.xnota.ui.PdfSelectionMenu(editor)
                         com.xnota.ui.MarkupNotePeek(editor)
                         com.xnota.ui.MarkupMenu(editor)

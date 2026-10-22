@@ -601,6 +601,11 @@ fun FlowEditMenu(editor: Editor) {
             ActionIcon(NotaIcons.trash, stringResource(R.string.delete), enabled = hasSelection, shortcut = Keys.DELETE) {
                 editor.flowDeleteSelection(); editor.dismissFlowContextMenu()
             }
+            // The fork's find & replace: the bar opens above the keyboard and stays while editing.
+            ActionIcon(NotaIcons.search, stringResource(R.string.find_replace)) {
+                editor.flowFindOpen = !editor.flowFindOpen
+                editor.dismissFlowContextMenu()
+            }
         }
     }
 }

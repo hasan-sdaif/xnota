@@ -1373,6 +1373,15 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     var flowContextMenu by mutableStateOf<Rect?>(null)
         private set
 
+    /** The flow text's find & replace bar (the fork): open while editing text. */
+    var flowFindOpen by mutableStateOf(false)
+
+    /** The caret's global (plainText) offset — where a find steps from. */
+    fun flowCaretGlobal(): Int {
+        val sel = flowText.selection.normalized()
+        return flowText.flow().globalOffset(sel.end)
+    }
+
     fun dismissFlowContextMenu() {
         flowContextMenu = null
     }
