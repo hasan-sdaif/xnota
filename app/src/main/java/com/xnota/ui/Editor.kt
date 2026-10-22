@@ -548,6 +548,12 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     /** PDFs picked together, awaiting a batch import into the current folder; each keeps its own name. */
     var pendingImports by mutableStateOf<List<PendingImport>>(emptyList())
         private set
+    /** Notes migrating from another app (the fork), parsed and awaiting the explorer's commit. */
+    var pendingAppImports by mutableStateOf<List<com.xnota.core.util.IncomingNote>>(emptyList())
+        private set
+    /** True while migrating notes are being written as documents off-thread (the fork's import wizard). */
+    var importingNotes by mutableStateOf(false)
+        private set
     /** Files finished so far in a batch import; null for a single-file import. */
     var importProgress by mutableStateOf<ImportProgress?>(null)
         private set
@@ -4754,6 +4760,23 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         return createNoteFile(treeUri, parentDocId, name) { codec.write(doc, it) }
     }
 
+    /** Creates a `.xnote` under [parentDocId] for one [note] migrating from another app (the fork):
+     *  the parsed title sanitized into the file name, the body as flow paragraphs (Markdown bodies
+     *  keep their headings and lists), the source's tags and creation stamp carried over. Returns
+     *  the new document's URI, or null. IO — call off-thread. */
+    fun createImportedNoteFile(treeUri: String, parentDocId: String, note: com.xnota.core.util.IncomingNote): String? {
+        val name = uniqueDocumentName(
+            treeUri, parentDocId, com.xnota.core.util.NameTemplate.sanitize(note.title), com.xnota.core.util.DocumentKind.NOTE,
+        )
+        val doc = blankDocument().also { stampNewNoteDefaults(it) }
+        if (note.created > 0) doc.created = note.created
+        val paragraphs = if (note.markdown) com.xnota.core.text.FlowImport.markdownParagraphs(note.text)
+        else com.xnota.core.text.FlowImport.plainParagraphs(note.text)
+        doc.flow.paragraphs.addAll(paragraphs)
+        doc.tags = com.xnota.core.util.Tags.normalize(note.tags)
+        return createNoteFile(treeUri, parentDocId, name) { codec.write(doc, it) { importCancelled.get() } }
+    }
+
     /** Imports the PDF at [pdfFile] into a new `.xnote` under [parentDocId] (named after [rawName]);
      *  returns its URI, or null. The PDF is streamed straight into the bundle, never held in RAM. IO. */
     fun createPdfNoteFile(treeUri: String, parentDocId: String, rawName: String, pdfFile: java.io.File): String? {
@@ -4852,6 +4875,11 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         pendingImports = items
     }
 
+    /** Queues a parsed app-import pick (the fork); the explorer commits it into the folder it is showing. */
+    fun requestAppImports(notes: List<com.xnota.core.util.IncomingNote>) {
+        pendingAppImports = notes
+    }
+
     /** Imports every queued PDF into [parentDocId] one at a time; returns how many landed. Each file
      *  is staged to its own temp, written into its `.xnote`, then dropped before the next is opened,
      *  so a batch costs the same memory as a single import however long the list is. Names come from
@@ -4886,6 +4914,31 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             pendingImports = emptyList()
             importProgress = null
             importing = false
+        }
+    }
+
+    /** Writes every queued migrating note (the fork) into [parentDocId] as a document of its own;
+     *  returns how many landed. The parses are already done, so this only writes — one note at a
+     *  time, each under the same machinery a new note takes. Cancel stops after the note in flight
+     *  (its half-written file is discarded); whatever already landed stays. [importingNotes] drives
+     *  the "Importing notes…" spinner. IO — runs off-thread. */
+    suspend fun commitAppImportsAsync(treeUri: String, parentDocId: String): Int {
+        val notes = pendingAppImports
+        if (notes.isEmpty()) return 0
+        importCancelled.set(false)
+        importingNotes = true
+        return try {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                var done = 0
+                for (note in notes) {
+                    if (importCancelled.get()) break
+                    if (createImportedNoteFile(treeUri, parentDocId, note) != null) done++
+                }
+                done
+            }
+        } finally {
+            pendingAppImports = emptyList()
+            importingNotes = false
         }
     }
 

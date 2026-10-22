@@ -710,6 +710,22 @@
         <item quantity="one">Imported %d PDF</item>
         <item quantity="other">Imported %d PDFs</item>
     </plurals>
+    <!-- The fork: import wizard — notes migrating from Evernote / Google Keep / Joplin -->
+    <string name="import_from_apps">Import from other apps…</string>
+    <string name="import_wizard_title">Import from other apps</string>
+    <string name="import_from_evernote">Evernote (.enex)</string>
+    <string name="import_evernote_desc">An Evernote export file; each note becomes a document with its tags.</string>
+    <string name="import_from_keep">Google Keep</string>
+    <string name="import_keep_desc">Takeout\'s Keep files, JSON or HTML; labels become tags.</string>
+    <string name="import_from_joplin">Joplin</string>
+    <string name="import_joplin_desc">Markdown notes from a RAW export; front-matter titles are kept.</string>
+    <string name="importing_notes">Importing notes…</string>
+    <string name="import_none_found">No notes found in what you picked.</string>
+    <string name="err_import">Could not import those notes.</string>
+    <plurals name="import_done_n">
+        <item quantity="one">Imported %d note.</item>
+        <item quantity="other">Imported %d notes.</item>
+    </plurals>
     <string name="unlock_zoom">Unlock zoom</string>
     <string name="lock_zoom_fit_width">Lock zoom at fit width</string>
     <string name="lock_zoom">Lock zoom</string>

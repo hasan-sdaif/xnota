@@ -457,6 +457,49 @@ private fun EditorScreen(
             editor.goHomeAll() // land on backstage to name the single pick, or to run the batch
         }
     }
+
+    // The fork's import wizard: one export picked from another app, read and parsed on IO, then
+    // handed to the explorer as pending notes — it writes them into the folder on screen. Evernote
+    // is a single .enex; Keep takes its Takeout files in either shape; Joplin takes .md files.
+    fun landAppImport(notes: List<com.xnota.core.util.IncomingNote>) {
+        editor.requestAppImports(notes)
+        backstageView = com.xnota.ui.BackstageView.HOME
+        editor.goHomeAll() // land on backstage so the folder receiving them is the one on screen
+    }
+    val importEvernoteLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val notes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.xnota.ui.readEvernoteImport(resolver, uri)
+                }
+                when {
+                    notes == null -> editor.message = context.getString(R.string.err_import)
+                    notes.isEmpty() -> editor.message = context.getString(R.string.import_none_found)
+                    else -> landAppImport(notes)
+                }
+            }
+        }
+    }
+    val importKeepLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                val notes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.xnota.ui.readKeepImport(resolver, uris)
+                }
+                if (notes.isEmpty()) editor.message = context.getString(R.string.import_none_found) else landAppImport(notes)
+            }
+        }
+    }
+    val importJoplinLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                val notes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.xnota.ui.readJoplinImport(resolver, uris)
+                }
+                if (notes.isEmpty()) editor.message = context.getString(R.string.import_none_found) else landAppImport(notes)
+            }
+        }
+    }
     // A PDF "Save as" destination. The note is already rendered into [pendingExportTemp]
     // (off-thread, behind the progress dialog), so the picker just chooses where to copy it —
     // shared by the open-note export, the explorer-file export, and side-panel page saves.
@@ -1038,6 +1081,15 @@ private fun EditorScreen(
                     exportNotesZipLauncher.launch("$name.zip")
                 },
                 onImportTemplate = { importTemplateLauncher.launch(arrayOf("*/*")) },
+                onImportFromApps = { kind ->
+                    // Each app's export asks for its own pick: one .enex, several Takeout files,
+                    // or the .md files of a RAW export.
+                    when (kind) {
+                        com.xnota.ui.ImportKind.EVERNOTE -> importEvernoteLauncher.launch(arrayOf("*/*"))
+                        com.xnota.ui.ImportKind.KEEP -> importKeepLauncher.launch(arrayOf("*/*"))
+                        com.xnota.ui.ImportKind.JOPLIN -> importJoplinLauncher.launch(arrayOf("*/*"))
+                    }
+                },
                 onTemplateFromImage = { kind ->
                     pendingTemplateKind = kind
                     templateFromImageLauncher.launch(arrayOf("image/*"))
@@ -1166,6 +1218,17 @@ private fun EditorScreen(
         val batch = importer.importProgress
         if (batch != null) PdfImportBatchDialog(batch.done, batch.total) { importer.cancelImportInProgress() }
         else PdfImportDialog(onCancel = { importer.cancelImportInProgress() }) // the stream-copy stops at its next buffer
+    }
+    // The fork's app import: migrating notes are being written as documents. Small imports finish
+    // between frames, so like the note-opening spinner, the dialog only shows once the write has
+    // run long enough to matter; Cancel stops after the note in flight.
+    var showAppImport by remember { mutableStateOf(false) }
+    val appImporting = editor.importingNotes
+    LaunchedEffect(appImporting) {
+        if (appImporting) { delay(160); showAppImport = appImporting } else showAppImport = false
+    }
+    if (showAppImport && appImporting) {
+        SpinnerDialog(stringResource(R.string.importing_notes), onCancel = { editor.cancelImportInProgress() })
     }
     // Tapping a note reads it off-thread (editor.opening). Only show the spinner once the read has run
     // long enough to matter, so opening a small note never flashes a dialog; a big PDF gets the loader.

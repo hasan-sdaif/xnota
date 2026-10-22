@@ -218,6 +218,8 @@ fun Backstage(
     onImportTemplate: () -> Unit = {},
     /** The New note screen asked to make a cover or page template from a picture. */
     onTemplateFromImage: (com.xnota.core.template.TemplateKind) -> Unit = {},
+    /** The explorer's import wizard asked to pick another app's export (the fork). */
+    onImportFromApps: (ImportKind) -> Unit = {},
     /** Preferences asked to pick the backup folder. */
     onPickBackupRoot: () -> Unit = {},
 ) {
@@ -239,6 +241,7 @@ fun Backstage(
         exportNotesZip = onExportNotesZip,
         importTemplate = onImportTemplate,
         templateFromImage = onTemplateFromImage,
+        importFromApps = { if (editor.browseRoot != null) onImportFromApps(it) else onPickRoot() },
     )
     // The backstage is the root of the stack — ordinary base content, not a dialog. The activity
     // window already runs edge-to-edge with the system bars hidden (MainActivity.applyFullscreen).
@@ -995,6 +998,7 @@ private fun NewItemMenuItems(
     onClose: () -> Unit,
     onCreateMode: (CreateMode) -> Unit,
     onImportPdf: () -> Unit,
+    onImportFromApps: () -> Unit,
 ) {
     val tint = LocalPalette.current.text.toComposeColor()
     // Taller than a default menu row (the explorer's primary create affordance), but only as wide
@@ -1013,6 +1017,8 @@ private fun NewItemMenuItems(
     item(NotaIcons.edit, stringResource(R.string.new_note_menu)) { onCreateMode(CreateMode.FILE) }
     item(NotaIcons.canvas, stringResource(R.string.new_canvas_menu)) { onCreateMode(CreateMode.CANVAS) }
     item(NotaIcons.importDoc, stringResource(R.string.import_pdf)) { onImportPdf() }
+    // The fork's migration path: notes coming over from Evernote / Keep / Joplin.
+    item(NotaIcons.importDoc, stringResource(R.string.import_from_apps)) { onImportFromApps() }
     item(NotaIcons.newFolder, stringResource(R.string.new_folder_menu)) { onCreateMode(CreateMode.FOLDER) }
 }
 
@@ -1036,6 +1042,8 @@ private class ExplorerCalls(
     val exportNotesZip: (List<String>, String) -> Unit,
     val importTemplate: () -> Unit,
     val templateFromImage: (com.xnota.core.template.TemplateKind) -> Unit,
+    /** Opens the import wizard's chooser for a migration from another app (the fork). */
+    val importFromApps: (ImportKind) -> Unit,
 )
 
 @Composable
@@ -1062,6 +1070,7 @@ private fun CreateButton(
     exporting: Boolean,
     onCreateMode: (CreateMode) -> Unit,
     onImportPdf: () -> Unit,
+    onImportFromApps: () -> Unit,
     onExport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1084,7 +1093,7 @@ private fun CreateButton(
             )
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            NewItemMenuItems({ menuOpen = false }, onCreateMode, onImportPdf)
+            NewItemMenuItems({ menuOpen = false }, onCreateMode, onImportPdf, onImportFromApps)
         }
     }
 }
@@ -1155,6 +1164,8 @@ private fun ExplorerSection(
     var statsShowing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
     // The version-history dialog (the fork): one entry at a time, like the two above.
     var historyShowing by remember(root) { mutableStateOf<BrowseEntry?>(null) }
+    // The import wizard's chooser (the fork): open from the create menu and the ⋮ overflow.
+    var importWizardOpen by remember(root) { mutableStateOf(false) }
     // The fork's "save this search as a smart folder" prompt.
     var savingSmart by remember(root) { mutableStateOf(false) }
     var fieldError by remember(root) { mutableStateOf<String?>(null) }
@@ -2008,7 +2019,7 @@ private fun ExplorerSection(
                     Box(Modifier.floatingBacking(liftNow, CircleShape, floatFill, floatEdge)) {
                         ExplorerIcon(NotaIcons.more, stringResource(R.string.more)) { moreOpen = true }
                         DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
-                            NewItemMenuItems({ moreOpen = false }, onCreateMode, calls.importPdf)
+                            NewItemMenuItems({ moreOpen = false }, onCreateMode, calls.importPdf) { importWizardOpen = true }
                             HorizontalDivider(color = palette.border.toComposeColor())
                             clipboard?.let { clip ->
                                 DropdownMenuItem(text = { Text(pluralStringResource(R.plurals.paste_items_here, clip.entries.size, clip.entries.size)) }, onClick = { moreOpen = false; paste(clip) })
@@ -2070,6 +2081,7 @@ private fun ExplorerSection(
             exporting = selection.isNotEmpty(),
             onCreateMode = onCreateMode,
             onImportPdf = calls.importPdf,
+            onImportFromApps = { importWizardOpen = true },
             onExport = {
                 val picked = selection.toList()
                 // A lone folder zips under its own name, anything else under the folder it was picked in.
@@ -2090,6 +2102,29 @@ private fun ExplorerSection(
             refreshKey++
             if (n > 0) editor.message = context.resources.getQuantityString(R.plurals.imported_pdfs, n, n)
         }
+    }
+
+    // The fork's app import: notes parsed out of another app's export, landing here as documents
+    // of the folder on screen. Like the PDF batch, this runs where the target folder is known, and
+    // cancelling keeps whatever already landed.
+    val pendingAppImports = editor.pendingAppImports
+    LaunchedEffect(pendingAppImports) {
+        if (pendingAppImports.isNotEmpty()) {
+            val n = editor.commitAppImportsAsync(root, currentDocId)
+            refreshKey++
+            editor.message = when {
+                n > 0 -> context.resources.getQuantityString(R.plurals.import_done_n, n, n)
+                else -> context.getString(R.string.err_import)
+            }
+        }
+    }
+
+    // The chooser itself: Evernote / Google Keep / Joplin, each option opening its own picker.
+    if (importWizardOpen) {
+        ImportWizardDialog(
+            onImport = { calls.importFromApps(it) },
+            onDismiss = { importWizardOpen = false },
+        )
     }
 
     val pendingImport = editor.pendingImport

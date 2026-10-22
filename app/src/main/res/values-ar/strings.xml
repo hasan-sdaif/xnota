@@ -767,6 +767,26 @@
         <item quantity="many">تم استيراد %d ملف PDF</item>
         <item quantity="other">تم استيراد %d ملف PDF</item>
     </plurals>
+    <!-- The fork: import wizard — notes migrating from Evernote / Google Keep / Joplin -->
+    <string name="import_from_apps">الاستيراد من تطبيقات أخرى…</string>
+    <string name="import_wizard_title">الاستيراد من تطبيقات أخرى</string>
+    <string name="import_from_evernote">Evernote (.enex)</string>
+    <string name="import_evernote_desc">ملف تصدير من Evernote؛ تصبح كل ملاحظة مستندًا يحمل وسومها.</string>
+    <string name="import_from_keep">Google Keep</string>
+    <string name="import_keep_desc">ملفات Keep من Takeout بصيغة JSON أو HTML؛ تتحوّل التصنيفات إلى وسوم.</string>
+    <string name="import_from_joplin">Joplin</string>
+    <string name="import_joplin_desc">ملاحظات ماركداون من تصدير RAW؛ تُحفظ عناوين الترويسة.</string>
+    <string name="importing_notes">جارٍ استيراد الملاحظات…</string>
+    <string name="import_none_found">لم يُعثر على ملاحظات في ما اخترته.</string>
+    <string name="err_import">تعذّر استيراد تلك الملاحظات.</string>
+    <plurals name="import_done_n">
+        <item quantity="zero">تم استيراد %d من الملاحظات.</item>
+        <item quantity="one">تم استيراد %d ملاحظة.</item>
+        <item quantity="two">تم استيراد %d ملاحظتين.</item>
+        <item quantity="few">تم استيراد %d ملاحظات.</item>
+        <item quantity="many">تم استيراد %d ملاحظة.</item>
+        <item quantity="other">تم استيراد %d ملاحظة.</item>
+    </plurals>
     <string name="unlock_zoom">إلغاء قفل التكبير</string>
     <string name="lock_zoom_fit_width">قفل التكبير عند ملاءمة العرض</string>
     <string name="lock_zoom">قفل التكبير</string>
