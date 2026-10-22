@@ -112,8 +112,8 @@ private fun xnotaLight(accent: Rgba, m: MaterialColors): Palette {
 private fun xnotaOled(accent: Rgba, m: MaterialColors): Palette = xnotaDark(accent, m).copy(
     bg = XNotaBrand.BLACK,
     panel = XNotaBrand.BLACK,
+    menuBg = XNotaBrand.BLACK,
     paper = XNotaBrand.INK925,
-    menuBg = XNotaBrand.INK925,
 )
 
 /**

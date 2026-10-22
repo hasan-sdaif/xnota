@@ -21,7 +21,7 @@ data class Preferences(
     val materialMode: MaterialColourMode = MaterialColourMode.DUAL,
     val materialSingleSeed: Rgba = DEFAULT_MATERIAL_SINGLE,
     val materialDualSeed: Rgba = DEFAULT_MATERIAL_DUAL,
-    val materialStyle: MaterialStyle = MaterialStyle.TONAL_SPOT,
+    val materialStyle: MaterialStyle = MaterialStyle.VIBRANT,
     /** Material contrast level, -1 (reduced) .. 0 (standard) .. 1 (high). */
     val materialContrast: Double = 0.0,
     val materialSurfaceSeed: Rgba = DEFAULT_MATERIAL_SURFACE,
@@ -277,7 +277,7 @@ data class Preferences(
                 MaterialColourMode.SINGLE -> put("material_seed", Rgba.toHex(materialSingleSeed))
                 MaterialColourMode.DUAL -> put("material_seed", Rgba.toHex(materialDualSeed)).put("material_dual_tone", true)
             }
-            if (materialStyle != MaterialStyle.TONAL_SPOT) put("material_style", materialStyle.id)
+            if (materialStyle != MaterialStyle.VIBRANT) put("material_style", materialStyle.id)
             if (materialContrast != 0.0) put("material_contrast", materialContrast)
             if (materialMode == MaterialColourMode.DUAL || materialSurfaceSeed != DEFAULT_MATERIAL_SURFACE) {
                 put("material_surface_seed", Rgba.toHex(materialSurfaceSeed))

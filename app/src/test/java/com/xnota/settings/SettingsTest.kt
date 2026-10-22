@@ -358,22 +358,21 @@ class SettingsTest {
         }
     }
 
-    @Test fun freshInstallKeepsSystemModeWithTheEmeraldSeeds() {
-        // A fresh install reads no file at all: the constructor's own defaults, "system" mode
-        // with the emerald seeds ready. (The v4 identity reset applies to files, not defaults.)
+    @Test fun freshInstallBootsStraightIntoTheIdentity() {
+        // A fresh install reads no file at all: the constructor's own defaults — dual mode with the
+        // emerald seeds and the vibrant style, so buildPalette lands on the brand accent immediately.
         val fresh = Preferences()
-        assertEquals(MaterialColourMode.SYSTEM, fresh.materialMode)
-        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, fresh.materialDualSeed)
-        // The 1.7 emerald identity: neon-green accent seed over a teal surface seed.
+        assertEquals(MaterialColourMode.DUAL, fresh.materialMode)
         assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, fresh.materialSingleSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, fresh.materialDualSeed)
         assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, fresh.materialSurfaceSeed)
         assertEquals(Rgba(0, 230, 118), fresh.materialDualSeed)
         assertEquals(Rgba(15, 91, 74), fresh.materialSurfaceSeed)
-        // The vibrant scheme style and the floating toolbar are the redesigned defaults too.
         assertEquals(MaterialStyle.VIBRANT, fresh.materialStyle)
         assertTrue(fresh.toolbarLook.floating)
         assertEquals("shelves", fresh.homeOpensTo)
-        for (key in listOf("material_mode", "material_seed", "material_single_seed", "material_dual_seed", "material_surface_seed")) {
+        // The defaults write nothing material — a first save carries only the schema stamp.
+        for (key in listOf("material_mode", "material_seed", "material_single_seed", "material_dual_seed", "material_surface_seed", "material_style")) {
             assertFalse(fresh.toJson().has(key))
         }
     }
@@ -705,6 +704,6 @@ class SettingsTest {
         assertEquals("right", Settings.fromJson(JSONObject().put("backstage_nav_side", "junk")).backstageNavSide)
         assertEquals("left", Settings.fromJson(JSONObject().put("backstage_nav_side", "left")).backstageNavSide)
         assertEquals("bottom", Settings.fromJson(JSONObject().put("backstage_nav_side", "bottom")).backstageNavSide)
-        assertEquals(Settings(backstageNavSide = "right"), Settings.fromJson(Settings().toJson()))
+        assertEquals("right", Settings.fromJson(Settings().toJson()).backstageNavSide)
     }
 }

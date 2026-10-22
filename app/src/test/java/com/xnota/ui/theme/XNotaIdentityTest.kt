@@ -51,8 +51,9 @@ class XNotaIdentityTest {
         val p = xnotaChrome("dark", emerald, scheme(dark = true))
         assertTrue(luminance(p.border) > luminance(p.bg))
         assertTrue(luminance(p.border) < luminance(p.textDim))
-        // Quiet by design: far closer to the surface than to any content colour.
-        assertTrue(luminance(p.border) - luminance(p.bg) < 0.08)
+        // Quiet by design: the hairline stays far nearer its surface than any content colour —
+        // closer to the background it floats on than to the text it separates.
+        assertTrue(luminance(p.border) - luminance(p.bg) < luminance(p.textDim) - luminance(p.border))
     }
 
     @Test fun selectedRolesReadAsTheReferenceActiveRow() {
@@ -79,11 +80,15 @@ class XNotaIdentityTest {
 
     @Test fun oledDropsTheBigSurfacesToBlack() {
         val p = xnotaChrome("oled", emerald, scheme(dark = true))
-        assertEquals(Rgba(0, 0, 0, 255), p.bg)
-        assertEquals(Rgba(0, 0, 0, 255), p.panel)
-        assertEquals(Rgba(0, 0, 0, 255), p.menuBg)
+        val black = Rgba(0, 0, 0, 255)
+        assertEquals(black, p.bg)
+        assertEquals(black, p.panel)
+        assertEquals(black, p.menuBg)
         assertTrue(p.isDark)
         assertEquals(emerald, p.accent)
+        // The one lifted surface: paper steps up to the ink-so-dark tone so paper elements
+        // don't vanish against pure black.
+        assertTrue(luminance(p.paper) > 0.0)
     }
 
     @Test fun defaultPaletteIsTheBrandChrome() {
