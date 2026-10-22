@@ -123,6 +123,18 @@ interface SelectionMenuHost : SwatchHost {
 
     /** Mirror the selection about its own centre, left to right or [upsideDown], as one undo step. */
     fun mirrorSelection(upsideDown: Boolean)
+
+    /** True when the Align popup can do something: two or more items align among themselves, one to its page. */
+    fun canAlignSelection(): Boolean
+
+    /** Line the selection up per [mode] — edges or centres against the selection's own bounds — as one undo step. */
+    fun alignSelection(mode: com.xnota.core.geometry.AlignMode)
+
+    /** True when the selection holds enough items to distribute: equal gaps need three at least. */
+    fun canDistributeSelection(): Boolean
+
+    /** Spread the selection so the gaps between neighbours come out even along one axis, as one undo step. */
+    fun distributeSelection(vertical: Boolean)
 }
 
 /**
@@ -138,6 +150,7 @@ fun SelectionMenu(host: SelectionMenuHost) {
     val density = LocalDensity.current
     var overflowOpen by remember { mutableStateOf(false) }
     var styleOpen by remember { mutableStateOf(false) }
+    var alignOpen by remember { mutableStateOf(false) }
 
     val barHeightPx = with(density) { 48.dp.toPx() }
     val barWidthPx = with(density) { (6 * 46).dp.toPx() }
@@ -205,6 +218,11 @@ fun SelectionMenu(host: SelectionMenuHost) {
                         onClick = { overflowOpen = false; host.mirrorSelection(upsideDown = true) },
                     )
                     DropdownMenuItem(
+                        text = { Text(stringResource(R.string.title_align)) },
+                        enabled = host.canAlignSelection(),
+                        onClick = { overflowOpen = false; alignOpen = true },
+                    )
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.lock)) },
                         onClick = { overflowOpen = false; host.lockSelection() },
                     )
@@ -212,6 +230,9 @@ fun SelectionMenu(host: SelectionMenuHost) {
                 if (styleOpen) {
                     // Closing settles any preview the slider left open.
                     SelectionStylePopup(host) { host.restyleSelection(null, null); styleOpen = false }
+                }
+                if (alignOpen) {
+                    AlignPopup(host) { alignOpen = false }
                 }
             }
         }

@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.xnota.canvas.InteractionController
+import com.xnota.core.geometry.AlignMode
+import com.xnota.core.geometry.AlignOps
 import com.xnota.core.geometry.Pt
 import com.xnota.core.geometry.Rect
 import com.xnota.core.history.EditLabel
@@ -687,6 +689,36 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
     override fun mirrorSelection(upsideDown: Boolean) {
         if (!canMirrorSelection()) return
         selection.mirror(upsideDown)?.let { history.push(it) }
+        markDirty()
+        refresh()
+        publishOverlay()
+    }
+
+    /**
+     * Align needs something to align against. A flat canvas has no page to offer a lone item, so
+     * the ops take two or more; the selection's own collective bounds are then the target.
+     */
+    override fun canAlignSelection(): Boolean = selection.items.size >= 2
+
+    override fun alignSelection(mode: AlignMode) {
+        val members = selection.items.toList()
+        if (members.size < 2) return
+        val bounds = members.map { it.bounds() }
+        val target = bounds.drop(1).fold(bounds[0]) { acc, b -> acc.union(b) }
+        selection.shiftEach(AlignOps.alignDeltas(bounds, target, mode))?.let { history.push(it) }
+        markDirty()
+        refresh()
+        publishOverlay()
+    }
+
+    override fun canDistributeSelection(): Boolean = selection.items.size >= 3
+
+    override fun distributeSelection(vertical: Boolean) {
+        val members = selection.items.toList()
+        if (members.size < 3) return
+        val bounds = members.map { it.bounds() }
+        val deltas = AlignOps.distributeDeltas(bounds, vertical) ?: return
+        selection.shiftEach(deltas)?.let { history.push(it) }
         markDirty()
         refresh()
         publishOverlay()

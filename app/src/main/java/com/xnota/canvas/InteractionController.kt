@@ -6,6 +6,8 @@ import android.view.Choreographer
 import android.view.KeyEvent
 import android.view.MotionEvent
 import com.xnota.core.geometry.Affine
+import com.xnota.core.geometry.AlignMode
+import com.xnota.core.geometry.AlignOps
 import com.xnota.core.geometry.Geometry
 import com.xnota.core.geometry.Obb
 import com.xnota.core.geometry.Pt
@@ -3129,6 +3131,71 @@ class InteractionController(
         state.document.dirty = true
         // Members stay lifted, so only the box needs to follow: mirrored about its own centre.
         selObb = if ((selection.singleOrNull()?.item as? ShapeItem)?.frameObb() != null) selectionBox() else box.copy(angle = -box.angle)
+        onContentChanged()
+        refreshSelectionMenu()
+        requestRender()
+    }
+
+    /** True when the menu's Align entry can do something: two or more items align among themselves, one aligns to its page. */
+    fun canAlignSelection(): Boolean = selection.isNotEmpty()
+
+    /** True when the menu's Distribute entries can do anything: equal gaps need three items at least. */
+    fun canDistributeSelection(): Boolean = selection.size >= 3
+
+    /**
+     * Line the selection up per [mode]: each item's bbox edge or centre against the selection's own
+     * bounds, or the item's page rect when a lone item is selected (there is nothing else to align
+     * with). One undo step, however many items moved.
+     */
+    fun alignSelection(mode: AlignMode) {
+        if (selection.isEmpty()) return
+        val members = selection.toList()
+        val target = (
+            if (members.size == 1) state.pageRects.getOrNull(members[0].pageIndex)
+            else selectionBoundsContent()
+            ) ?: return
+        val bounds = members.map { state.fromPageSpaceRect(it.pageIndex, it.item.bounds()) }
+        shiftSelectedBy(members, AlignOps.alignDeltas(bounds, target, mode))
+    }
+
+    /**
+     * Spread the selection so the gaps between neighbours come out equal, horizontally or
+     * vertically; the outermost items stay put. One undo step.
+     */
+    fun distributeSelection(vertical: Boolean) {
+        if (!canDistributeSelection()) return
+        val members = selection.toList()
+        val bounds = members.map { state.fromPageSpaceRect(it.pageIndex, it.item.bounds()) }
+        shiftSelectedBy(members, AlignOps.distributeDeltas(bounds, vertical) ?: return)
+    }
+
+    /**
+     * Move each selected item by its own content-space delta — the shared tail of align and
+     * distribute. A lone item's align targets its page, so the members may all sit on one page or
+     * not: the delta is content-space and reaches each item as the page-space vector the view's
+     * rotation turns it into, exactly as a drag's offset does. Connectors joined to what moved keep
+     * their glue, as any move keeps it. Items stay lifted, so only the box has to follow.
+     */
+    private fun shiftSelectedBy(members: List<Selected>, deltas: List<Pt>) {
+        if (deltas.size != members.size) return
+        val before = members.map { it.item.snapshotGeometry() }
+        beginFollow(rigid = false, pin = false)
+        var anyMoved = false
+        for ((i, sel) in members.withIndex()) {
+            val d = deltas[i]
+            if (d.x == 0.0 && d.y == 0.0) continue
+            if (state.pageRects.getOrNull(sel.pageIndex) == null) continue
+            anyMoved = true
+            val local = state.vectorToPageSpace(d)
+            sel.item.translate(local.x, local.y)
+        }
+        for ((_, f) in follows) f.follow(Affine.IDENTITY)
+        val tx = TransformItems(members.map { it.item }, before, members.map { it.item.snapshotGeometry() })
+        val cmds = listOfNotNull(if (anyMoved) tx else null, followCommand())
+        if (cmds.isNotEmpty()) history.push(cmds.singleOrNull() ?: CompositeCommand(cmds))
+        endFollow()
+        if (cmds.isNotEmpty()) state.document.dirty = true
+        selObb = selectionBox()
         onContentChanged()
         refreshSelectionMenu()
         requestRender()

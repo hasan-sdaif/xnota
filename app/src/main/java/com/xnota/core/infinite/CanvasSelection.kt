@@ -325,6 +325,29 @@ class CanvasSelection(private val doc: InfiniteDocument) {
         return command
     }
 
+    /**
+     * Move each item by its own delta — an align or a distribute, where every item goes somewhere
+     * different, so no single transform can say it. Connectors glued to what moved keep their glue,
+     * as any move keeps it; the box refits. The undoable edit, or null when the deltas do not match
+     * the items or nothing is selected.
+     */
+    fun shiftEach(deltas: List<Pt>): Command? {
+        if (items.isEmpty() || deltas.size != items.size) return null
+        val moving = items.toList()
+        val before = moving.map { it.snapshotGeometry() }
+        follow = followOf(moving, rigid = false, pin = false)
+        for (i in moving.indices) moving[i].translate(deltas[i].x, deltas[i].y)
+        follow.follow(Affine.IDENTITY)
+        doc.itemsChanged(moving)
+        doc.itemsChanged(follow.items)
+        // Connectors are recorded whole, glue and all, as any non-uniform move is.
+        val shaped = moving + follow.items
+        val beforeAll = before + follow.startSnapshots
+        val command = OnCanvas(doc, TransformItems(shaped, beforeAll, shaped.map { it.snapshotGeometry() }), shaped)
+        refreshBox()
+        return command
+    }
+
     /** True when [item] is still on the canvas, so glue to it counts. */
     fun holds(item: CanvasItem): Boolean = doc.holds(item)
 

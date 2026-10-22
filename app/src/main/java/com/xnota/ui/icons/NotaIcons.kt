@@ -290,4 +290,26 @@ object NotaIcons {
     )
     val github = icon("M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22")
     val heart = icon("M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z")
+
+    // Object alignment (the selection's Align popup): a guide line plus the boxes it gathers,
+    // kept apart from the text-align glyphs above by the guide and the boxy bars.
+    val alignEdgeLeft = icon("M5 3v18", rect(8.0, 4.0, 11.0, 4.0), rect(8.0, 10.0, 7.0, 4.0), rect(8.0, 16.0, 13.0, 4.0))
+    val alignEdgeRight = icon("M19 3v18", rect(5.0, 4.0, 11.0, 4.0), rect(9.0, 10.0, 7.0, 4.0), rect(3.0, 16.0, 13.0, 4.0))
+    val alignCentreH = icon("M12 3v18", rect(7.0, 4.0, 10.0, 4.0), rect(9.0, 10.0, 6.0, 4.0), rect(5.0, 16.0, 14.0, 4.0))
+    val alignEdgeTop = icon("M3 5h18", rect(4.0, 8.0, 4.0, 9.0), rect(10.0, 8.0, 4.0, 6.0), rect(16.0, 8.0, 4.0, 12.0))
+    val alignEdgeBottom = icon("M3 19h18", rect(4.0, 6.0, 4.0, 9.0), rect(10.0, 10.0, 4.0, 6.0), rect(16.0, 3.0, 4.0, 12.0))
+    val alignCentreV = icon("M3 12h18", rect(4.0, 7.0, 4.0, 10.0), rect(10.0, 9.0, 4.0, 6.0), rect(16.0, 5.0, 4.0, 14.0))
+    val distributeH = icon(rect(3.0, 7.0, 4.0, 10.0), rect(10.0, 9.0, 4.0, 6.0), rect(17.0, 7.0, 4.0, 10.0))
+    val distributeV = icon(rect(7.0, 3.0, 10.0, 4.0), rect(9.0, 10.0, 6.0, 4.0), rect(7.0, 17.0, 10.0, 4.0))
+
+    // The layers panel: an item's eye (hidden or shown).
+    val eye = icon(
+        "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z",
+        circle(12.0, 12.0, 3.0),
+    )
+    val eyeOff = icon(
+        "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z",
+        circle(12.0, 12.0, 3.0),
+        "M3 3l18 18",
+    )
 }

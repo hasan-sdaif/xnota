@@ -17,6 +17,7 @@ import com.xnota.canvas.FlowTextController
 import com.xnota.canvas.InitialView
 import com.xnota.canvas.InteractionController
 import com.xnota.canvas.TextBar
+import com.xnota.core.geometry.AlignMode
 import com.xnota.core.geometry.Pt
 import com.xnota.core.geometry.Rect
 import com.xnota.core.history.AddItem
@@ -6351,6 +6352,14 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     override fun canMirrorSelection() = controller.canMirrorSelection()
 
     override fun mirrorSelection(upsideDown: Boolean) = controller.mirrorSelection(upsideDown)
+
+    override fun canAlignSelection() = controller.canAlignSelection()
+
+    override fun alignSelection(mode: AlignMode) = controller.alignSelection(mode)
+
+    override fun canDistributeSelection() = controller.canDistributeSelection()
+
+    override fun distributeSelection(vertical: Boolean) = controller.distributeSelection(vertical)
 
     override fun restyleSelection(color: Rgba?, width: Double?, preview: Boolean) {
         controller.restyleSelection(color, width, preview)
