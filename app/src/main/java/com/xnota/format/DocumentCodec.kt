@@ -268,6 +268,13 @@ class DocumentCodec(
         doc.created?.let { j.name("created").value(java.time.Instant.ofEpochMilli(it).toString()) }
         j.name("dpi").value(doc.dpi)
         j.name("has_pdf").value(doc.pdfFile != null)
+        // The fork's tags ride ahead of the pages so a peek reads them without touching the items;
+        // only a tagged note writes the array, so everyone else's manifest is byte-identical.
+        if (doc.tags.isNotEmpty()) {
+            j.name("tags").beginArray()
+            for (t in doc.tags) j.value(t)
+            j.endArray()
+        }
         j.name("bookmarks").beginArray()
         for (b in doc.bookmarks) {
             j.beginObject()
@@ -712,6 +719,7 @@ class DocumentCodec(
 
         val doc = Document(dpi = m.dpi)
         doc.created = m.created
+        doc.tags = m.tags
         doc.templates = templates
         doc.templatePackages = packages
         doc.style = m.style
@@ -783,6 +791,7 @@ class DocumentCodec(
         var created: Long? = null
         var dpi = PageSize.DEFAULT_DPI
         var hasPdf = false
+        var tags: List<String> = emptyList()
         var style = PageStyle()
         var margins = PageMargins()
         var newPageSize: PageSizeChoice? = null
@@ -834,12 +843,14 @@ class DocumentCodec(
         var hasPdf = false
         var created: Long? = null
         var pages = 0
+        var tags: List<String> = emptyList()
         p.beginObject()
         while (p.hasNext()) {
             when (p.nextName()) {
                 "format" -> isNote = stringOr(p, "") == FORMAT
                 "created" -> created = stringOrNull(p)?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
                 "has_pdf" -> hasPdf = boolOr(p, false)
+                "tags" -> tags = stringListOr(p)
                 "pages" -> {
                     if (p.peek() != JsonPull.Token.BEGIN_ARRAY) { p.skipValue(); continue }
                     p.beginArray()
@@ -851,7 +862,7 @@ class DocumentCodec(
                 else -> p.skipValue()
             }
         }
-        return if (isNote) NotePeek(pages, hasPdf, created) else null
+        return if (isNote) NotePeek(pages, hasPdf, created, tags) else null
     }
 
     private fun parseManifest(p: JsonPull): ParsedManifest {
@@ -867,6 +878,7 @@ class DocumentCodec(
                 "created" -> m.created = stringOrNull(p)?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
                 "dpi" -> m.dpi = intOr(p, PageSize.DEFAULT_DPI)
                 "has_pdf" -> m.hasPdf = boolOr(p, false)
+                "tags" -> m.tags = stringListOr(p)
                 "style" -> m.style = parseStyle(p)
                 "margins" -> m.margins = parseMargins(p)
                 "new_page_size" -> m.newPageSize = parseNewPageSize(p)
@@ -1551,6 +1563,19 @@ class DocumentCodec(
         }
     }
 
+    /** An array of strings, read forgivingly: a non-string element drops out rather than failing the manifest. */
+    private fun stringListOr(p: JsonPull): List<String> {
+        if (p.peek() != JsonPull.Token.BEGIN_ARRAY) {
+            p.skipValue()
+            return emptyList()
+        }
+        val out = ArrayList<String>()
+        p.beginArray()
+        while (p.hasNext()) stringOrNull(p)?.let { out.add(it) }
+        p.endArray()
+        return out
+    }
+
     private fun rgbaOrNull(p: JsonPull): Rgba? {
         if (p.peek() != JsonPull.Token.BEGIN_ARRAY) {
             p.skipValue()
@@ -1653,7 +1678,7 @@ class DocumentCodec(
 }
 
 /** What the explorer shows about a note without loading it. */
-class NotePeek(val pages: Int, val hasPdf: Boolean, val created: Long?)
+class NotePeek(val pages: Int, val hasPdf: Boolean, val created: Long?, val tags: List<String> = emptyList())
 
 /** Up to [limit] bytes of [input], or null when it holds more (the rest is left unread). */
 private fun readAtMost(input: InputStream, limit: Int): ByteArray? {

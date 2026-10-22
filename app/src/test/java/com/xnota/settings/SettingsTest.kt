@@ -560,5 +560,27 @@ class SettingsTest {
         assertEquals(shape, back)
         assertEquals("uml_aggregation_elbow", back.connector!!.key)
     }
-}
 
+    @Test fun favoritesPinnedUrisAndSmartFoldersRoundTrip() {
+        val original = Settings(
+            favorites = listOf("content://tree/primary%3ANotes/document/notes-a.xnote", "content://tree/primary%3ANotes/document/sub"),
+            pinnedUris = listOf("content://tree/primary%3ANotes/document/notes-b.xnote"),
+            smartFolders = listOf(SmartFolder("Work", "report", "work"), SmartFolder("All")),
+        )
+        val back = Settings.fromJson(original.toJson())
+        assertEquals(original.favorites, back.favorites)
+        assertEquals(original.pinnedUris, back.pinnedUris)
+        assertEquals(original.smartFolders, back.smartFolders)
+    }
+
+    @Test fun explorerListSettingsDropJunkAndKeepOrder() {
+        val junk = JSONObject()
+            .put("favorites", org.json.JSONArray().put("a").put("").put("a").put(true))
+            .put("pinned_uris", org.json.JSONArray().put("z").put("z"))
+            .put("smart_folders", org.json.JSONArray().put(JSONObject().put("name", " n ").put("query", " q ")))
+        val back = Settings.fromJson(junk)
+        assertEquals(listOf("a"), back.favorites)
+        assertEquals(listOf("z"), back.pinnedUris)
+        assertEquals(listOf(SmartFolder("n", "q", null)), back.smartFolders)
+    }
+}

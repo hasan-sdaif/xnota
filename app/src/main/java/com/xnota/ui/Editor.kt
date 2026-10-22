@@ -5260,7 +5260,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         } else {
             val peek = peekFile(entry.documentUri, { codec.peek(it) }, { codec.peek(it) }) ?: return null
             peek.created?.let { createdStore.put(key, it) }
-            com.xnota.platform.DocMetaStore.Meta(peek.pages, peek.hasPdf, entry.modified)
+            com.xnota.platform.DocMetaStore.Meta(peek.pages, peek.hasPdf, entry.modified, peek.tags)
         }
         return meta.also { docMeta.put(key, it) }
     }

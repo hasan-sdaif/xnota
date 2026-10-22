@@ -1037,5 +1037,33 @@ class DocumentCodecTest {
         assertEquals(c.elbow, bc.elbow)
         assertEquals(1, back[1].items.size)
     }
-}
 
+    @Test fun tagsRoundTripThroughTheManifest() {
+        val doc = Document(dpi = 150)
+        doc.pages.add(Page(100.0, 100.0))
+        doc.tags = listOf("work", "draft")
+        val back = roundTrip(doc)
+        assertEquals(listOf("work", "draft"), back.tags)
+    }
+
+    @Test fun anUntaggedNoteWritesNoTagsArray() {
+        val doc = Document(dpi = 150)
+        doc.pages.add(Page(100.0, 100.0))
+        val out = ByteArrayOutputStream()
+        codec.write(doc, out)
+        assertFalse("tags" in manifestOf(out.toByteArray()))
+        assertTrue(roundTrip(doc).tags.isEmpty())
+    }
+
+    @Test fun peekReadsTheTagsAheadOfThePages() {
+        val doc = Document(dpi = 150)
+        doc.pages.add(Page(100.0, 100.0))
+        doc.tags = listOf("a", "b")
+        val out = ByteArrayOutputStream()
+        codec.write(doc, out)
+        val peek = codec.peekManifest(ByteArrayInputStream(manifestOf(out.toByteArray()).toByteArray()))
+        assertEquals(listOf("a", "b"), peek?.tags)
+        assertEquals(1, peek?.pages)
+        assertEquals(false, peek?.hasPdf)
+    }
+}

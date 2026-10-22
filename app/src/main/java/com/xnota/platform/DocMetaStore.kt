@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
  */
 class DocMetaStore(private val store: JsonStore) {
 
-    class Meta(val pages: Int, val pdf: Boolean, val modified: Long)
+    class Meta(val pages: Int, val pdf: Boolean, val modified: Long, val tags: List<String> = emptyList())
 
     private val metas: HashMap<String, Meta> = load()
     private val writer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "doc-meta").apply { isDaemon = true } }
@@ -24,7 +24,7 @@ class DocMetaStore(private val store: JsonStore) {
         val o = store.read()
         for (key in o.keys()) {
             val m = o.optJSONObject(key) ?: continue
-            out[key] = Meta(m.optInt("pages", 0), m.optBoolean("pdf", false), m.optLong("modified", 0L))
+            out[key] = Meta(m.optInt("pages", 0), m.optBoolean("pdf", false), m.optLong("modified", 0L), stringList(m.optJSONArray("tags")))
         }
         return out
     }
@@ -40,7 +40,7 @@ class DocMetaStore(private val store: JsonStore) {
     @Synchronized
     fun put(key: String, meta: Meta) {
         val old = metas[key]
-        if (old != null && old.pages == meta.pages && old.pdf == meta.pdf && old.modified == meta.modified) return
+        if (old != null && old.pages == meta.pages && old.pdf == meta.pdf && old.modified == meta.modified && old.tags == meta.tags) return
         metas[key] = meta
         writeSoon()
     }
@@ -77,11 +77,25 @@ class DocMetaStore(private val store: JsonStore) {
     private fun takeSnapshot(): JSONObject {
         scheduled = false
         val o = JSONObject()
-        for ((k, m) in metas) o.put(k, JSONObject().put("pages", m.pages).put("pdf", m.pdf).put("modified", m.modified))
+        for ((k, m) in metas) {
+            val entry = JSONObject().put("pages", m.pages).put("pdf", m.pdf).put("modified", m.modified)
+            if (m.tags.isNotEmpty()) entry.put("tags", org.json.JSONArray(m.tags))
+            o.put(k, entry)
+        }
         return o
     }
 
     private companion object {
         const val WRITE_DELAY_MS = 1500L
+
+        fun stringList(a: org.json.JSONArray?): List<String> {
+            if (a == null) return emptyList()
+            val out = ArrayList<String>()
+            for (i in 0 until a.length()) {
+                val s = a.opt(i) as? String ?: continue
+                if (s.isNotEmpty()) out.add(s)
+            }
+            return out
+        }
     }
 }

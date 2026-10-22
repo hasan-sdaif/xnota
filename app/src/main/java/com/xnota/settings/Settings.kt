@@ -40,7 +40,6 @@ enum class ExplorerSortKey(val id: String) {
 
 /** A folder pinned to the home sidebar: its tree document uri and the name to show. */
 data class PinnedFolder(val uri: String, val name: String)
-
 /** All persistent non-document state (spec 09 §2). */
 data class Settings(
     /** Global View-menu defaults; per-note [com.xnota.canvas.ViewOverrides] shadow them. */
@@ -78,6 +77,12 @@ data class Settings(
     val appLanguage: String = "system",
     /** Folders pinned to the home sidebar on this device, in pin order. */
     val pinnedFolders: List<PinnedFolder> = emptyList(),
+    /** Notes and folders starred on this device (the fork), as document uri strings in star order. */
+    val favorites: List<String> = emptyList(),
+    /** Notes and folders pinned to the top of their folder listing (the fork), uri strings in pin order. */
+    val pinnedUris: List<String> = emptyList(),
+    /** The user's saved searches (the fork), in the order the sidebar lists them. */
+    val smartFolders: List<SmartFolder> = emptyList(),
     /** How the explorer shows a folder, for every folder or for those without a view of their own. */
     val explorerView: ExplorerView = ExplorerView(),
     /** Views set in one folder only, keyed by the folder's document key; used when views are per folder. */
@@ -145,6 +150,9 @@ data class Settings(
             .put("backstage_nav_side", backstageNavSide)
             .put("app_language", appLanguage)
             .put("pinned_folders", JSONArray().apply { pinnedFolders.forEach { put(JSONObject().put("uri", it.uri).put("name", it.name)) } })
+            .put("favorites", JSONArray(favorites))
+            .put("pinned_uris", JSONArray(pinnedUris))
+            .apply { if (smartFolders.isNotEmpty()) put("smart_folders", SmartFolders.toJson(smartFolders)) }
             .put("explorer_view", explorerView.toJson())
             .put("folder_views", JSONObject().apply { folderViews.forEach { (k, v) -> put(k, v.toJson()) } })
             .put("recent_docs", JSONArray().apply { recentDocs.forEach { put(JSONObject().put("uri", it.uri).put("name", it.name).put("opened", it.opened)) } })
@@ -210,6 +218,9 @@ data class Settings(
                 backstageNavSide = o.optString("backstage_nav_side", "auto").let { if (it in NAV_SIDES) it else "auto" },
                 appLanguage = o.optString("app_language", "system").let { if (it in APP_LANGUAGES) it else "system" },
                 pinnedFolders = pinnedFolders(o.optJSONArray("pinned_folders")),
+                favorites = stringList(o.optJSONArray("favorites")),
+                pinnedUris = stringList(o.optJSONArray("pinned_uris")),
+                smartFolders = SmartFolders.of(o.optJSONArray("smart_folders")),
                 explorerView = o.optJSONObject("explorer_view")?.let { ExplorerView.fromJson(it) } ?: ExplorerView(
                     sortKey = ExplorerSortKey.fromId(o.optString("explorer_sort_key", "modified")),
                     descending = o.optBoolean("explorer_sort_descending", true),
@@ -253,6 +264,18 @@ data class Settings(
                 val uri = o.optString("uri", "").ifEmpty { return@mapNotNull null }
                 PinnedFolder(uri, o.optString("name", ""))
             }
+        }
+
+        /** A persisted list of uri strings: blanks and non-strings drop out, duplicates fold. */
+        private fun stringList(a: JSONArray?): List<String> {
+            if (a == null) return emptyList()
+            val out = ArrayList<String>()
+            for (i in 0 until a.length()) {
+                val s = a.opt(i) as? String ?: continue
+                if (s.isEmpty()) continue
+                if (s !in out) out.add(s)
+            }
+            return out
         }
 
         /** Settings written before the View menu's Global tab: the old PDF dark-mode

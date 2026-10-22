@@ -45,6 +45,12 @@ class Document(
     var templatePackages: Map<String, java.io.File> = emptyMap(),
     /** The size of each page added from now on, or null to give it the size of the page before it. */
     var newPageSize: PageSizeChoice? = null,
+    /**
+     * The note's tags (the fork): short labels the explorer can filter and group by, stored in the
+     * manifest as the optional `tags` array so they travel with the file. Replaced whole, never
+     * mutated; normalized through [com.xnota.core.util.Tags].
+     */
+    var tags: List<String> = emptyList(),
 ) {
     /** Transient: set by the codec when legacy ink was compacted at load (debug overlay readout). */
     var compactedOnLoad = false
