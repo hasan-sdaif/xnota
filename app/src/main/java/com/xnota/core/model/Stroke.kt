@@ -108,7 +108,7 @@ class Stroke(
     fun xAt(i: Int): Double = pts.let { it.ox + it.xa[i] }
     fun yAt(i: Int): Double = pts.let { it.oy + it.ya[i] }
     fun pAt(i: Int): Double = pts.pa[i].toDouble()
-    fun tAt(i: Int): Double = pts.ta?.get(i)?.toDouble() ?: 0.0
+    fun tAt(i: Int): Double = pts.t(i)
 
     fun sampleAt(i: Int): Sample = pts.sample(i)
 
@@ -167,7 +167,10 @@ class Stroke(
         val ox = xs[0]
         val oy = ys[0]
         var timed = false
-        if (ts != null) for (i in 0 until count) if (ts[i] != 0.0) { timed = true; break }
+        // A short timing channel (hand-edited or corrupt file) must not crash the load: the scan
+        // and the fill below both treat a missing entry as "no time", exactly how [t] reads one.
+        val tLim = minOf(ts?.size ?: 0, count)
+        if (ts != null) for (i in 0 until tLim) if (ts[i] != 0.0) { timed = true; break }
         val xa = FloatArray(count)
         val ya = FloatArray(count)
         val pa = FloatArray(count)
@@ -176,7 +179,7 @@ class Stroke(
             xa[i] = (xs[i] - ox).toFloat()
             ya[i] = (ys[i] - oy).toFloat()
             pa[i] = ps[i].toFloat()
-            ta?.set(i, ts!![i].toFloat())
+            ta?.set(i, (ts?.getOrNull(i) ?: 0.0).toFloat())
         }
         pts = Samples(ox, oy, xa, ya, pa, ta, count)
         invalidate()
@@ -258,7 +261,23 @@ class Stroke(
         }
         // Timing is relative to each stroke's own first sample; a joined stroke just restarts the
         // clock for the appended half — only the speed pen reads it, and its presets never join.
-        pts = Samples(a.ox, a.oy, xa, ya, pa, a.ta, n)
+        // The joined channel must be n long, NOT a's array carried over: a finished stroke's
+        // storage is exactly its own count (trimToSize / the pen-up reduction), so a.ta stops at
+        // a.n while the published tuple claims a.n + b.n samples — the first reader that walks
+        // 0 until n (the ribbon builder, the save loop, the renderer's timing unpack) would read
+        // one index past the end and crash the app mid-gesture. This was the 1.6.0 crash:
+        // ArrayIndexOutOfBoundsException length=142 index=142 — a 142-sample stroke joined with
+        // a timed one, then rendered on the same pen-up touch event.
+        val ta = when {
+            a.ta == null && b.ta == null -> null
+            else -> FloatArray(n).apply {
+                a.ta?.let { src -> System.arraycopy(src, 0, this, 0, minOf(src.size, a.n)) }
+                b.ta?.let { src ->
+                    for (i in 0 until b.n) this[a.n + i] = if (i < src.size) src[i] else 0f
+                }
+            }
+        }
+        pts = Samples(a.ox, a.oy, xa, ya, pa, ta, n)
         invalidate()
     }
 
@@ -282,7 +301,10 @@ class Stroke(
             ry[i] = s.oy + s.ya[i]
             rp[i] = s.pa[i].toDouble()
         }
-        val rt = s.ta?.let { src -> DoubleArray(n) { src[it].toDouble() } }
+        // The timing unpack walks 0 until n; a channel shorter than n (only possible from a
+        // file this fix predates, or a hand-edited one) reads as "no time" past its end rather
+        // than throwing — a stroke renders untimed instead of taking the app down.
+        val rt = s.ta?.let { src -> DoubleArray(n) { src.getOrElse(it) { 0f }.toDouble() } }
         return StrokeEngine.build(
             rx, ry, rp, rt,
             config.baseWidth,
@@ -878,7 +900,7 @@ private class Samples(
     val ta: FloatArray?,
     val n: Int,
 ) {
-    fun t(i: Int): Double = ta?.get(i)?.toDouble() ?: 0.0
+    fun t(i: Int): Double = ta?.getOrNull(i)?.toDouble() ?: 0.0
 
     fun sample(i: Int): Sample = Sample(ox + xa[i], oy + ya[i], pa[i].toDouble(), t(i))
 
