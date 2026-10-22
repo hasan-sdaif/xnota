@@ -53,5 +53,5 @@ object FrontBufferProbe {
         return count[0]
     }
 
-    private const val TAG = "xnotes.gl"
+    private const val TAG = "xnota.gl"
 }

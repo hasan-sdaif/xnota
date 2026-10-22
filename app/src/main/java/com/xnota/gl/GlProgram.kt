@@ -38,7 +38,7 @@ class GlProgram private constructor(val id: Int, val contextGen: Int) {
     }
 
     companion object {
-        private const val TAG = "xnotes.gl"
+        private const val TAG = "xnota.gl"
 
         /** Compile and link, or throw [GlShaderException] with the driver's log attached. */
         fun build(vertexSrc: String, fragmentSrc: String, contextGen: Int): GlProgram {

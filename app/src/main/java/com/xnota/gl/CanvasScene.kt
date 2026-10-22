@@ -1218,7 +1218,7 @@ class CanvasScene(private val store: GeometryStore = GeometryStore()) : GlScene 
     private fun key(cx: Int, cy: Int): Long = (cx.toLong() shl 32) or (cy.toLong() and 0xffffffffL)
 
     companion object {
-        private const val TAG = "xnotes.gl"
+        private const val TAG = "xnota.gl"
 
         /** Widest cell span a record is binned across before it is just tested on every frame. */
         private const val MAX_FILE_CELLS = 256L

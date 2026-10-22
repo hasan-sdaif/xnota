@@ -303,7 +303,7 @@ class GlRenderer : GLSurfaceView.Renderer {
     }
 
     companion object {
-        private const val TAG = "xnotes.gl"
+        private const val TAG = "xnota.gl"
 
         /** The window the rate is counted over. */
         private const val WINDOW_NS = 1_000_000_000L

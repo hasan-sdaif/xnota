@@ -16,10 +16,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.xnota.R
 
 /**
- * Fullscreen launch animation: the exported frame-by-frame glitch loader
- * ([R.drawable.nota_loader] — a 24-frame ~1.6s [AnimationDrawable]) centred on a
- * pure-black stage that matches the frames' flat black background exactly, so
- * there's no edge seam. Shown while the session restores, then faded out.
+ * Fullscreen launch animation: the XNota brand splash ([R.drawable.nota_loader] — a
+ * 24-frame ~1.9s [AnimationDrawable]) in which the mint pen draws the X-nib mark,
+ * the wordmark XNota / إكس نوتا settles in and the tagline fades up. Centred on the
+ * brand stage #0C1818, matching the frames' background exactly, so there's no edge
+ * seam. Shown while the session restores, then faded out.
  */
 @Composable
 fun NotaLoader(modifier: Modifier = Modifier) {
@@ -28,7 +29,7 @@ fun NotaLoader(modifier: Modifier = Modifier) {
     val shortEdge = minOf(cfg.screenWidthDp, cfg.screenHeightDp)
     val side = minOf(shortEdge * 0.55f, 288f).dp
     Box(
-        modifier.fillMaxSize().background(Color.Black),
+        modifier.fillMaxSize().background(Color(0xFF0C1818)),
         contentAlignment = Alignment.Center,
     ) {
         AndroidView(

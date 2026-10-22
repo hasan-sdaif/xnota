@@ -220,7 +220,7 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
 
     /** One low-priority thread decoding images, so a big photo never stalls a frame. */
     private val decodeExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
-        Thread(r, "xnotes-canvas-decode").apply {
+        Thread(r, "xnota-canvas-decode").apply {
             isDaemon = true
             priority = Thread.MIN_PRIORITY
         }

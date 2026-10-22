@@ -77,7 +77,7 @@ class MsaaConfigChooser(
     }
 
     companion object {
-        private const val TAG = "xnotes.gl"
+        private const val TAG = "xnota.gl"
 
         /** EGL_OPENGL_ES3_BIT_KHR; not exposed by the EGL10 constants. */
         const val EGL_OPENGL_ES3_BIT = 0x0040

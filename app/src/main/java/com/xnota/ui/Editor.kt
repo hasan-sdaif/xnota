@@ -221,7 +221,7 @@ private val searchWorker: java.util.concurrent.Executor by lazy {
         Thread({
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             r.run()
-        }, "xnotes-search").apply { isDaemon = true }
+        }, "xnota-search").apply { isDaemon = true }
     }
 }
 
@@ -1309,7 +1309,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         withPdfSelectionText { text ->
             val cm = appContext.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                 as? android.content.ClipboardManager ?: return@withPdfSelectionText
-            runCatching { cm.setPrimaryClip(android.content.ClipData.newPlainText("xnotes text", text)) }
+            runCatching { cm.setPrimaryClip(android.content.ClipData.newPlainText("XNota text", text)) }
         }
         pdfText.clear()
     }
@@ -1614,7 +1614,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     fun copyScreenshotAsImage() {
         val rect = controller.screenshotRect ?: return
         val bmp = renderRegionBitmap(rect)
-        val ok = bmp != null && putBitmapOnClipboard(bmp, "xnotes capture")
+        val ok = bmp != null && putBitmapOnClipboard(bmp, "XNota capture")
         controller.clearScreenshot()
         controller.switchBackAfterScreenshot() // return to the previous pen, like the eraser
         message = if (ok) appContext.getString(R.string.image_copied) else appContext.getString(R.string.err_copy_image)
@@ -3135,7 +3135,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             state.lastOpenAssetsMs = timing.assetsMs
             state.lastOpenCompactMs = timing.compactMs
             android.util.Log.i(
-                "xnotes.save",
+                "xnota.save",
                 "open read ${readMs}ms = inflate ${timing.inflateMs} + parse ${timing.parseMs}" +
                     " + assets ${timing.assetsMs} + compact ${timing.compactMs}, $fileBytes bytes",
             )
@@ -4765,7 +4765,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             state.autosaveStatus = if (res != null) "done" else "failed"
             state.lastSaveTotalMs = msSince(startNs)
             android.util.Log.i(
-                "xnotes.save",
+                "xnota.save",
                 "save ${state.lastSaveTotalMs}ms = snapshot ${state.lastSaveSnapshotMs}" +
                     " + encode ${state.lastSaveEncodeMs} (json ${state.lastSaveManifestMs}" +
                     " of which deflate ${state.lastSaveDeflateMs} over" +
@@ -7412,7 +7412,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         val text = CellIndex(flow.paragraphs).textOf(flow.paragraphs, sel)
         val cm = appContext.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
             as? android.content.ClipboardManager ?: return
-        cm.setPrimaryClip(android.content.ClipData.newPlainText("xnotes text", text))
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("XNota text", text))
         if (cut) flowText.replaceExternal(sel, "")
     }
 

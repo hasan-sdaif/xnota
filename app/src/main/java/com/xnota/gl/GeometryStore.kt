@@ -371,7 +371,7 @@ class GeometryStore {
         private const val INITIAL_VERTICES = 8192
         private const val INITIAL_INDICES = 24576
 
-        private const val SHARED_NAME = "xnotes-geometry"
+        private const val SHARED_NAME = "xnota-geometry"
 
         /** Chunk index a content coordinate falls in, clamped to what a short can hold. */
         fun chunkIndex(v: Double): Double = CanvasProjection.chunkIndex(v)

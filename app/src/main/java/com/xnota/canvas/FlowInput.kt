@@ -391,6 +391,6 @@ class FlowInput(
     var onForwardDeleteSpecial: () -> Boolean = { false }
 
     private companion object {
-        const val TAG = "xnotes.ime"
+        const val TAG = "xnota.ime"
     }
 }

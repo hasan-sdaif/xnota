@@ -362,7 +362,7 @@ class CanvasView @JvmOverloads constructor(
         super.onAttachedToWindow()
         if (cacheExecutor?.isShutdown != false) {
             cacheExecutor = Executors.newSingleThreadExecutor { r ->
-                Thread(r, "xnotes-cache").apply { isDaemon = true }
+                Thread(r, "xnota-cache").apply { isDaemon = true }
             }
         }
         startDebugTick() // resume the HUD ticker if it was left enabled across a detach/reattach

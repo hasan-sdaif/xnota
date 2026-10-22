@@ -540,7 +540,7 @@ class GlWetPadInk {
     }
 
     private companion object {
-        const val TAG = "xnotes.gl"
+        const val TAG = "xnota.gl"
 
         /** The largest scratch side, in pixels; a damage wider than this is clamped to it. */
         const val SCRATCH_MAX = 1024

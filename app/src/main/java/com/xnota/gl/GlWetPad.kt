@@ -166,7 +166,7 @@ class GlWetPad(context: Context, onTop: Boolean = false) : SurfaceView(context),
     // --- main thread ---
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        val t = HandlerThread("xnotes-wet-pad").also { it.start() }
+        val t = HandlerThread("xnota-wet-pad").also { it.start() }
         thread = t
         handler = Handler(t.looper)
         val surface = openLayer(holder) ?: holder.surface
@@ -206,7 +206,7 @@ class GlWetPad(context: Context, onTop: Boolean = false) : SurfaceView(context),
         val parent = surfaceControl?.takeIf { it.isValid } ?: return null
         val frame = holder.surfaceFrame
         val child = SurfaceControl.Builder()
-            .setName("xnotes-wet-pad")
+            .setName("xnota-wet-pad")
             .setParent(parent)
             .setBufferSize(frame.width().coerceAtLeast(1), frame.height().coerceAtLeast(1))
             .setFormat(android.graphics.PixelFormat.TRANSLUCENT)
@@ -722,7 +722,7 @@ class GlWetPad(context: Context, onTop: Boolean = false) : SurfaceView(context),
 
 
     companion object {
-        private const val TAG = "xnotes.gl"
+        private const val TAG = "xnota.gl"
 
         /** EGL constants for the mutable render buffer, none of which EGL14 declares. */
         const val EGL_RENDER_BUFFER = 0x3086

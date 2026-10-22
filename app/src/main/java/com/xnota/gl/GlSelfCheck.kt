@@ -452,7 +452,7 @@ class GlSelfCheck {
     }
 
     companion object {
-        private const val TAG = "xnotes.gl"
+        private const val TAG = "xnota.gl"
 
         /** Edge of the check's own buffer. Small enough to read back in microseconds. */
         private const val SIZE = 64
