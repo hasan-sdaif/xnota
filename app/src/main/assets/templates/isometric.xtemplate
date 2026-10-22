@@ -1,0 +1,17 @@
+{
+  "xtemplate": 1,
+  "id": "com.xnota.isometric",
+  "name": "Isometric grid · الشبكة المتساوية",
+  "description": "A 30° isometric grid (القياس المتساوي): two families of guides tilting up and down from the horizontal, drawing the equilateral triangles that technical sketching and isometric lettering lean on. The spacing control is the triangle's side.",
+  "license": "MIT",
+  "tags": ["grid", "isometric"],
+  "params": {
+    "spacing": { "type": "length", "default": "8mm", "min": "4mm", "max": "16mm",
+                 "label": "Triangle side · طول الضلع", "role": "spacing" }
+  },
+  "strokeWidth": "0.254mm",
+  "items": [
+    { "type": "hatch", "angle": "30", "period": "0.8660254 * spacing", "extend": true },
+    { "type": "hatch", "angle": "-30", "period": "0.8660254 * spacing", "extend": true }
+  ]
+}

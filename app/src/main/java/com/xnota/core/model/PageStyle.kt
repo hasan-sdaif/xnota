@@ -9,6 +9,13 @@ package com.xnota.core.model
  * inside it (see [PagePatternPainter]): KHATT a full square grid with the baseline every fourth
  * line emphasized, RUQAA widely-spaced baselines alone (it writes fast, so guides stay horizontal),
  * NASKH a baseline with the alif-height line above it, the classic نسخ two-line measure.
+ *
+ * The fork's canvas-power rulings (B9) are **paged-only**: ISOMETRIC (30° triangles), STAFF
+ * (five-line music staves) and CORNELL (the note-taking layout) draw through the paged painter
+ * and the bundled templates. The infinite canvas's ruling is a fragment shader, and a rotated
+ * triangle lattice or a staff's grouped lines are not worth the GLSL — so the canvas styles
+ * popup never offers them, and [com.xnota.gl.BackgroundShader] maps them to no background
+ * rather than drawing a wrong one if a stored canvas somehow carries the id.
  */
 enum class PagePattern(val id: String) {
     NONE("none"),
@@ -17,19 +24,23 @@ enum class PagePattern(val id: String) {
     GRID("grid"),
     KHATT("khatt"),
     RUQAA("ruqaa"),
-    NASKH("naskh");
+    NASKH("naskh"),
+    ISOMETRIC("isometric"),
+    STAFF("staff"),
+    CORNELL("cornell");
 
     companion object {
         fun fromId(id: String?): PagePattern? = entries.firstOrNull { it.id == id }
     }
 }
 
-/** The page template keys that need no embedded file: none, and the six built-in rulings. */
+/** The page template keys that need no embedded file: none, and the nine built-in rulings. */
 object PageTemplates {
     const val NONE = "none"
     val BUILT_IN = setOf(
         PagePattern.LINES.id, PagePattern.DOTS.id, PagePattern.GRID.id,
         PagePattern.KHATT.id, PagePattern.RUQAA.id, PagePattern.NASKH.id,
+        PagePattern.ISOMETRIC.id, PagePattern.STAFF.id, PagePattern.CORNELL.id,
     )
 
     fun isBuiltIn(key: String?) = key != null && key in BUILT_IN
@@ -98,6 +109,16 @@ data class PageStyle(
         const val KHATT_BASELINE_WIDTH = 3.0
         const val RUQAA_CELLS = 2.0
         const val NASKH_ALIF_FRACTION = 0.35
+
+        // The fork's canvas-power rulings (B9), likewise read against [spacing] — the family
+        // measure keeps holding: the isometric triangle's side, the staff's line gap, and the
+        // Cornell layout as plain fractions of the page. A staff occupies STAFF_LINES cells of
+        // lines plus one of clear air, so one stave lands every STAFF_CELLS cells.
+        const val ISOMETRIC_ANGLE_DEG = 30.0
+        const val STAFF_LINES = 5
+        const val STAFF_CELLS = 6.0
+        const val CORNELL_COLUMN_FRACTION = 0.30
+        const val CORNELL_SUMMARY_FROM_TOP = 0.75
     }
 }
 

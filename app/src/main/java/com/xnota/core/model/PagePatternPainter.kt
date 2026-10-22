@@ -73,6 +73,46 @@ fun paintPagePattern(
             val alif = Pen(ink, width = PageStyle.LINE_THICKNESS, cosmetic = false)
             hLines(r, alif, spacing, bounds, clip, offset = -spacing * PageStyle.NASKH_ALIF_FRACTION)
         }
+        // The fork's canvas-power rulings (B9) — paged-only, see the [PagePattern] doc. Isometric
+        // reuses the fill-pattern hatch walk (clipped segments, anchored to page zero), one family
+        // each side of the horizontal so every triangle comes out equilateral with [spacing] sides.
+        PagePattern.ISOMETRIC -> {
+            val pitch = spacing * kotlin.math.sin(Math.toRadians(60.0))
+            for (a in listOf(PageStyle.ISOMETRIC_ANGLE_DEG, -PageStyle.ISOMETRIC_ANGLE_DEG)) {
+                for ((from, to) in FillPattern.HATCH.hatchLines(clip, pitch, a)) {
+                    r.strokePolyline(listOf(from, to), pen)
+                }
+            }
+        }
+        // A staff is STAFF_LINES lines every [spacing] with one clear cell between staves, so a
+        // stave starts every STAFF_CELLS cells; the stave lattice is anchored to page zero like
+        // every other ruling, so a margin grows downward without shifting the staves already drawn.
+        PagePattern.STAFF -> {
+            val period = spacing * PageStyle.STAFF_CELLS
+            val reach = spacing * (PageStyle.STAFF_LINES - 1)
+            var stave = (kotlin.math.floor((clip.top - reach) / period).toLong()) * period
+            while (stave < clip.bottom) {
+                for (line in 0 until PageStyle.STAFF_LINES) {
+                    val y = stave + line * spacing
+                    if (y in clip.top..clip.bottom && y > bounds.top && y < bounds.bottom) {
+                        r.strokePolyline(listOf(Pt(bounds.left, y), Pt(bounds.right, y)), pen)
+                    }
+                }
+                stave += period
+            }
+        }
+        // Cornell: the cue column CORNELL_COLUMN_FRACTION across, the summary band below
+        // CORNELL_SUMMARY_FROM_TOP down — two layout lines the length of the page's sides.
+        PagePattern.CORNELL -> {
+            val x = bounds.left + bounds.w * PageStyle.CORNELL_COLUMN_FRACTION
+            if (x in clip.left..clip.right && x > bounds.left && x < bounds.right) {
+                r.strokePolyline(listOf(Pt(x, bounds.top), Pt(x, bounds.bottom)), pen)
+            }
+            val y = bounds.top + bounds.h * PageStyle.CORNELL_SUMMARY_FROM_TOP
+            if (y in clip.top..clip.bottom && y > bounds.top && y < bounds.bottom) {
+                r.strokePolyline(listOf(Pt(bounds.left, y), Pt(bounds.right, y)), pen)
+            }
+        }
         PagePattern.NONE -> {}
     }
     if (translucent) r.restore()

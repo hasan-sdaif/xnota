@@ -74,6 +74,11 @@ class BackgroundShader(contextGen: Int) {
         // comes from the resolve (the spacing is a cell).
         PagePattern.RUQAA -> MODE_LINES
         PagePattern.NASKH -> MODE_NASKH
+        // The fork's paged-only rulings (B9): isometric's rotated lattice and a staff's grouped
+        // lines are not worth this shader's axis-distance machinery, so the infinite canvas never
+        // offers them — and a stored canvas somehow carrying one draws no background rather than a
+        // wrong one. See the [PagePattern] doc.
+        PagePattern.ISOMETRIC, PagePattern.STAFF, PagePattern.CORNELL -> MODE_NONE
     }
 
     companion object {

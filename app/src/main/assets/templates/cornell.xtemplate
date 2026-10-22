@@ -1,0 +1,14 @@
+{
+  "xtemplate": 1,
+  "id": "com.xnota.cornell",
+  "name": "Cornell notes · نظام كورنيل",
+  "description": "The Cornell note-taking layout (نظام كورنيل للتدوين): a cue column down the left 30% of the page and a summary band across the bottom quarter — two layout lines on plain paper, ready for the note column, the cue column and the wrap-up.",
+  "license": "MIT",
+  "tags": ["lines", "notes"],
+  "params": {},
+  "strokeWidth": "0.4mm",
+  "items": [
+    { "type": "vline", "x": "30%" },
+    { "type": "hline", "y": "75%" }
+  ]
+}

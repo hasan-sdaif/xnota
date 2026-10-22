@@ -1,0 +1,22 @@
+{
+  "xtemplate": 1,
+  "id": "com.xnota.staff",
+  "name": "Music staves · سطور الموسيقى",
+  "description": "Five-line music staves (سطور النوتة): one stave every six cells with a clear cell of air between, so the page fills with ruled systems ready for notes. The spacing control is the line gap.",
+  "license": "MIT",
+  "tags": ["lines", "music"],
+  "params": {
+    "spacing": { "type": "length", "default": "3mm", "min": "1.5mm", "max": "6mm",
+                 "label": "Line gap · تباعد السطور", "role": "spacing" }
+  },
+  "strokeWidth": "0.254mm",
+  "items": [
+    { "type": "repeat", "axis": "y", "period": "6 * spacing", "extend": true, "children": [
+      { "type": "hline", "y": "0" },
+      { "type": "hline", "y": "spacing" },
+      { "type": "hline", "y": "2 * spacing" },
+      { "type": "hline", "y": "3 * spacing" },
+      { "type": "hline", "y": "4 * spacing" }
+    ]}
+  ]
+}
