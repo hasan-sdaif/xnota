@@ -1584,6 +1584,7 @@
     </plurals>
 
     <!-- The fork's release ledger (About → What's new) -->
+        <string name="changelog_version">الإصدار %1$s</string>
     <string name="whats_new">ما الجديد</string>
     <string name="changelog_rounded_image_corners">زوايا دائرية للصور المُدرجة</string>
     <string name="changelog_prefs_search">البحث داخل التفضيلات</string>
