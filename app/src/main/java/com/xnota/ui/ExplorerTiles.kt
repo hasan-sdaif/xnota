@@ -340,6 +340,8 @@ internal fun GridFileTile(b: ExplorerBody, e: BrowseEntry) {
     val code = b.colorOf(e)?.let { codeTint(it, palette) }
     val accent = palette.accent.toComposeColor()
     val shape = MaterialTheme.shapes.medium
+    // Compact density (the fork): a thinner caption block under the same thumbnail.
+    val dense = b.view.compactRows
     Column(
         Modifier
             .alpha(if (b.host.isCut(e)) 0.4f else 1f)
@@ -359,8 +361,8 @@ internal fun GridFileTile(b: ExplorerBody, e: BrowseEntry) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 50.dp)
-                .padding(start = 10.dp, end = 2.dp, top = 7.dp, bottom = 8.dp),
+                .heightIn(min = if (dense) 34.dp else 50.dp)
+                .padding(start = if (dense) 6.dp else 10.dp, end = 2.dp, top = if (dense) 3.dp else 7.dp, bottom = if (dense) 4.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -448,6 +450,8 @@ internal fun FolderCardTile(b: ExplorerBody, e: BrowseEntry) {
     val code = b.colorOf(e)?.let { codeTint(it, palette) }
     val accent = palette.accent.toComposeColor()
     val shape = MaterialTheme.shapes.medium
+    // Compact density (the fork): the same thinner caption block the file cards take.
+    val dense = b.view.compactRows
     Column(
         Modifier
             .alpha(if (b.host.isCut(e)) 0.4f else 1f)
@@ -471,8 +475,8 @@ internal fun FolderCardTile(b: ExplorerBody, e: BrowseEntry) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 50.dp)
-                .padding(start = 10.dp, end = 2.dp, top = 7.dp, bottom = 8.dp),
+                .heightIn(min = if (dense) 34.dp else 50.dp)
+                .padding(start = if (dense) 6.dp else 10.dp, end = 2.dp, top = if (dense) 3.dp else 7.dp, bottom = if (dense) 4.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -594,12 +598,12 @@ internal fun GalleryItem(b: ExplorerBody, e: BrowseEntry, shelf: Dp) {
                 }
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(if (b.view.compactRows) 5.dp else 10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
             if (code != null) Box(Modifier.size(8.dp).clip(CircleShape).background(code))
             Text(b.label(e), color = palette.text.toComposeColor(), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(if (b.view.compactRows) 2.dp else 3.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
             if (b.view.showKind && (kind == EntryKind.PDF || kind == EntryKind.CANVAS)) {
                 Icon(kindIcon(kind), null, tint = palette.textDim.toComposeColor(), modifier = Modifier.size(13.dp))

@@ -44,6 +44,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -262,6 +264,7 @@ internal fun SelectionBar(
     actions: @Composable () -> Unit,
 ) {
     val palette = LocalPalette.current
+    val batchActionsLabel = stringResource(R.string.batch_actions)
     val shape = MaterialTheme.shapes.medium
     val fg = palette.selectionForeground.toComposeColor()
     Row(
@@ -279,7 +282,10 @@ internal fun SelectionBar(
         SubcomposeLayout(Modifier.weight(1f)) { c ->
             val loose = Constraints(maxHeight = c.maxHeight)
             val counted = subcompose("count") {
-                Text(stringResource(R.string.n_selected, count), color = fg.copy(alpha = 0.75f), fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 4.dp, end = 10.dp))
+                Text(
+                    stringResource(R.string.n_selected, count), color = fg.copy(alpha = 0.75f), fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(start = 4.dp, end = 10.dp).semantics { contentDescription = batchActionsLabel },
+                )
             }.first().measure(loose)
             val all = subcompose("all") {
                 if (onSelectAll != null) Text(
@@ -431,6 +437,14 @@ internal fun ViewOptionsContent(
                 }
             }
         } else if (layout != ExplorerLayout.COLUMNS) {
+            // Compact density (the fork): the same preference as the list's compact rows, applied to
+            // the cards — thinner caption blocks and tighter grid gaps.
+            OptionBlock(stringResource(R.string.opt_density)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ExplorerChip(stringResource(R.string.density_comfortable), !view.compactRows) { onChange(view.copy(compactRows = false)) }
+                    ExplorerChip(stringResource(R.string.density_compact), view.compactRows) { onChange(view.copy(compactRows = true)) }
+                }
+            }
             OptionBlock(stringResource(R.string.opt_tile_size)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TileSize.entries.forEach { t -> ExplorerChip(t.label, view.tileSize == t, Modifier.widthIn(min = 48.dp)) { onChange(view.copy(tileSize = t)) } }

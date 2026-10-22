@@ -92,7 +92,9 @@ import com.xnota.settings.SwatchRole
 import com.xnota.ui.icons.NotaIcons
 import com.xnota.ui.theme.LocalPalette
 import com.xnota.ui.theme.toComposeColor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /** One-tap filename templates offered beside the free-text field. */
 private val NAME_TEMPLATE_PRESETS = listOf(
@@ -588,6 +590,20 @@ fun PreferencesPane(
             CheckRow(stringResource(R.string.pref_per_folder_views), prefs.perFolderViews) { updateHome(prefs.copy(perFolderViews = it)) }
             CheckRow(stringResource(R.string.pref_show_folder_counts), prefs.showFolderCounts) { updateHome(prefs.copy(showFolderCounts = it)) }
             CheckRow(stringResource(R.string.pref_show_extensions), prefs.showExtensions) { updateHome(prefs.copy(showExtensions = it)) }
+            // The fork's storage readout: the notes root's total size, scanned on IO and keyed to the
+            // root so changing folders re-measures while nothing else recomposes it.
+            val notesRoot = editor.browseRoot
+            if (notesRoot != null) {
+                val used by androidx.compose.runtime.produceState<Long?>(null, notesRoot) {
+                    value = withContext(Dispatchers.IO) { editor.storageUsedBytes(notesRoot) }
+                }
+                FieldLabel(stringResource(R.string.pref_storage))
+                Text(
+                    used?.let { formatSize(it, words::digits) } ?: stringResource(R.string.storage_scan),
+                    color = palette.textDim.toComposeColor(),
+                    fontSize = 13.sp,
+                )
+            }
 
             HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_backup))

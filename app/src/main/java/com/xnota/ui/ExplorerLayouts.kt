@@ -93,12 +93,14 @@ internal fun timelineCard(size: TileSize): Dp = when (size) { TileSize.S -> 110.
 /** Grid: the chip row, folders in a row of chips (or mixed in as cards), then file cards under their group headings. */
 @Composable
 internal fun GridBody(b: ExplorerBody, state: LazyGridState, columns: Int, chips: @Composable (Dp) -> Unit, top: (LazyGridScope.() -> Unit)?, modifier: Modifier = Modifier) {
+    // Compact density (the fork) packs the cards closer together as well as thinner.
+    val gap = if (b.view.compactRows) 6.dp else 12.dp
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         state = state,
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(gap),
+        verticalArrangement = Arrangement.spacedBy(gap),
         contentPadding = PaddingValues(top = EXPLORER_HEADER, bottom = 88.dp),
     ) {
         item(key = "chips", span = { GridItemSpan(maxLineSpan) }, contentType = "chips") { chips(48.dp) }
@@ -198,12 +200,15 @@ private fun ColumnHead(
 internal fun GalleryBody(b: ExplorerBody, state: LazyGridState, columns: Int, chips: @Composable (Dp) -> Unit, top: (LazyGridScope.() -> Unit)?, modifier: Modifier = Modifier) {
     val palette = LocalPalette.current
     val shelf = galleryShelf(b.view.tileSize)
+    // Compact density (the fork) narrows the shelves' row spacing with everything else.
+    val gapH = if (b.view.compactRows) 16.dp else 28.dp
+    val gapV = if (b.view.compactRows) 12.dp else 22.dp
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         state = state,
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(28.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
+        horizontalArrangement = Arrangement.spacedBy(gapH),
+        verticalArrangement = Arrangement.spacedBy(gapV),
         contentPadding = PaddingValues(top = EXPLORER_HEADER, bottom = 88.dp),
     ) {
         // Shorter than elsewhere since the shelves' wider row spacing already follows it.
