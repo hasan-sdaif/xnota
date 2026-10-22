@@ -255,7 +255,9 @@ private fun TrashRow(
     onDelete: () -> Unit,
 ) {
     val palette = LocalPalette.current
-    val words = rememberExplorerWords()
+    // The wording carries the digit/calendar prefs (display-only), read through the standard
+    // prefs snapshot like every other preference that reaches a composable.
+    val words = rememberExplorerWords(remember(editor.prefsVersion) { editor.preferences }, editor.appLanguage)
     val e = item.entry
     val kind = entryKind(e, editor.cachedMeta(e))
     val dim = palette.textDim.toComposeColor()

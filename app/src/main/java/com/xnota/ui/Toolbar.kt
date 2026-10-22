@@ -75,6 +75,7 @@ import com.xnota.R
 import com.xnota.core.tools.Tool
 import com.xnota.core.tools.ToolbarItem
 import com.xnota.platform.ImageDecoder
+import com.xnota.settings.DigitSystem
 import com.xnota.ui.icons.NotaIcons
 import com.xnota.ui.theme.LocalPalette
 import com.xnota.ui.theme.toComposeColor
@@ -97,6 +98,17 @@ fun Toolbar(
     onClosePane: (() -> Unit)? = null,
     onImportTemplate: () -> Unit = {},
 ) {
+    // xnota: display-only digit shaping (Preferences.digitSystem) for the numbers this bar
+    // renders — the zoom label and the page counter. Read through the standard prefs snapshot
+    // (editor.prefsVersion) so a preference change recomposes the label; nothing written to
+    // disk is ever shaped. The GL canvas bar keeps its own rendering.
+    val digits: (String) -> String = remember(editor.prefsVersion, editor.appLanguage) {
+        if (DigitSystem.active(editor.preferences.digitSystem, editor.appLanguage)) {
+            { s: String -> DigitSystem.apply(s) }
+        } else {
+            { s: String -> s }
+        }
+    }
     // The five stroke tools use the designed vector drawables (res/drawable/ic_stroke_*),
     // tinted at the call site like every other icon; the rest use the built-in line set.
     val toolIcons: Map<Tool, ImageVector> = mapOf(
@@ -134,6 +146,7 @@ fun Toolbar(
                     setConfigForTool = { configForTool = it },
                     switcherIndex = switcherIndex,
                     setSwitcherIndex = { switcherIndex = it },
+                    digits = digits,
                     onRename = { renaming = true },
                     onOpenBackstage = onOpenBackstage,
                     onInsertImage = onInsertImage,
@@ -168,6 +181,7 @@ private fun ToolbarItemView(
     setConfigForTool: (Tool?) -> Unit,
     switcherIndex: Int?,
     setSwitcherIndex: (Int?) -> Unit,
+    digits: (String) -> String,
     onRename: () -> Unit,
     onOpenBackstage: () -> Unit,
     onInsertImage: () -> Unit,
@@ -226,6 +240,7 @@ private fun ToolbarItemView(
                         Modifier
                             .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { jumpOpen = true },
+                        digits,
                     )
                 }
                 if (jumpOpen) PageJumpPopup(editor) { jumpOpen = false }
@@ -242,7 +257,7 @@ private fun ToolbarItemView(
             Box {
                 Tooltip(stringResource(R.string.title_zoom)) {
                     Label(
-                        "${editor.zoomPercent}%",
+                        digits("${editor.zoomPercent}%"),
                         modifier = Modifier
                             .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { zoomMenuOpen = true },
@@ -584,15 +599,15 @@ private fun Rule() {
 
 /** "3 / 12" along the bar; down a side rail, where that is too wide, the two numbers stack. */
 @Composable
-private fun PageCounter(current: Int, count: Int, modifier: Modifier) {
+private fun PageCounter(current: Int, count: Int, modifier: Modifier, digits: (String) -> String = { it }) {
     if (!LocalBar.current.vertical) {
-        Label("$current / $count", modifier)
+        Label(digits("$current / $count"), modifier)
         return
     }
     Column(modifier.padding(vertical = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Label("$current")
+        Label(digits("$current"))
         Rule()
-        Label("$count")
+        Label(digits("$count"))
     }
 }
 

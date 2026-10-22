@@ -107,6 +107,12 @@ data class Preferences(
     val homeOpensTo: String = "top",
     /** How the explorer writes dates: "relative" (2 days ago), "day" (Wed 17:30) or "date" (16 Sep 2026). */
     val dateStyle: String = "day",
+    /** Which calendar dates are written in (the fork): "gregorian" (default) or "hijri" (Umm al-Qura,
+     *  via java.time.chrono.HijrahDate). Display-only; sorting and file times stay Gregorian. */
+    val dateSystem: String = "gregorian",
+    /** Digits shown across the UI (the fork): "auto" (Arabic-Indic when the app language is Arabic),
+     *  "latin" (0-9) or "arabic" (٠١٢٣٤٥٦٧٨٩). Display-only — nothing written to disk is ever shaped. */
+    val digitSystem: String = "auto",
     /** Tapping a file previews it instead of opening it. */
     val tapPreviews: Boolean = false,
     /** Days a deleted item waits in Trash: 0 deletes at once, [TRASH_FOREVER] keeps it until Trash is emptied. */
@@ -202,6 +208,8 @@ data class Preferences(
         .put("sidebar_trash", sidebarTrash)
         .put("home_opens_to", homeOpensTo)
         .put("date_style", dateStyle)
+        .put("date_system", dateSystem)
+        .put("digit_system", digitSystem)
         .put("tap_previews", tapPreviews)
         .put("trash_days", trashDays)
         .put("per_folder_views", perFolderViews)
@@ -321,6 +329,8 @@ data class Preferences(
                 sidebarTrash = o.optBoolean("sidebar_trash", true),
                 homeOpensTo = o.optString("home_opens_to", "top").let { if (it == "last" || it == "shelves") it else "top" },
                 dateStyle = o.optString("date_style", "day").let { if (it == "relative" || it == "date") it else "day" },
+                dateSystem = o.optString("date_system", "gregorian").let { if (it == "hijri") it else "gregorian" },
+                digitSystem = o.optString("digit_system", "auto").let { if (it == "latin" || it == "arabic") it else "auto" },
                 tapPreviews = o.optBoolean("tap_previews", false),
                 trashDays = o.optInt("trash_days", 30).let { if (it == TRASH_FOREVER || it in 0..365) it else 30 },
                 perFolderViews = o.optBoolean("per_folder_views", false),

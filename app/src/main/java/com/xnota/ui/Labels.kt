@@ -16,9 +16,11 @@ import com.xnota.core.tools.MarkupMode
 import com.xnota.core.tools.Tool
 import com.xnota.core.tools.ToolbarItem
 import com.xnota.platform.FontCatalog
+import com.xnota.settings.DigitSystem
 import com.xnota.settings.ExplorerLayout
 import com.xnota.settings.FolderPlacement
 import com.xnota.settings.GroupBy
+import com.xnota.settings.Preferences
 import java.time.DayOfWeek
 import java.time.Month
 
@@ -169,11 +171,29 @@ val FolderPlacement.labelRes: Int
         FolderPlacement.HIDDEN -> R.string.folders_hidden
     }
 
-/** [ExplorerWords] read from string resources. */
-internal class ResourceWords(private val res: Resources) : ExplorerWords {
+/**
+ * [ExplorerWords] read from string resources.
+ *
+ * [arabicDigits] shapes every number this class formats for display (Arabic-Indic ٠-٩, the
+ * [Preferences.digitSystem] pref — never anything written to disk); [hijri] switches the date
+ * wording to the Hijri calendar ([Preferences.dateSystem] pref), whose month names come from
+ * the `hijri_months` array. Gregorian month names keep coming from `months`/`months_short`.
+ */
+internal class ResourceWords(
+    private val res: Resources,
+    arabicDigits: Boolean = false,
+    override val hijri: Boolean = false,
+) : ExplorerWords {
     private val months = res.getStringArray(R.array.months)
     private val shortMonths = res.getStringArray(R.array.months_short)
     private val weekdays = res.getStringArray(R.array.weekdays_short)
+    private val hijriMonths = res.getStringArray(R.array.hijri_months)
+    private val shape: (String) -> String = if (arabicDigits) {
+        { s: String -> DigitSystem.apply(s) }
+    } else {
+        { s: String -> s }
+    }
+    override fun digits(s: String): String = shape(s)
     override fun month(m: Month): String = months[m.value - 1]
     override fun shortMonth(m: Month): String = shortMonths[m.value - 1]
     override fun shortWeekday(d: DayOfWeek): String = weekdays[d.value - 1]
@@ -182,20 +202,28 @@ internal class ResourceWords(private val res: Resources) : ExplorerWords {
     override val earlierThisWeek: String = res.getString(R.string.earlier_this_week)
     override val lastWeek: String = res.getString(R.string.last_week)
     override fun earlierIn(m: Month): String = res.getString(R.string.earlier_in, month(m))
-    override fun monthYear(m: Month, year: Int): String = res.getString(R.string.month_year, month(m), year)
+    override fun monthYear(m: Month, year: Int): String = shape(res.getString(R.string.month_year, month(m), year))
     override val justNow: String = res.getString(R.string.just_now)
-    override fun minutesAgo(n: Long): String = res.getString(R.string.minutes_ago, n)
-    override fun hoursAgo(n: Long): String = res.getString(R.string.hours_ago, n)
-    override fun daysAgo(n: Long): String = res.getQuantityString(R.plurals.days_ago, n.toInt(), n)
-    override fun dayMonth(day: Int, m: Month): String = res.getString(R.string.day_month, day, shortMonth(m))
-    override fun dayMonthYear(day: Int, m: Month, year: Int): String = res.getString(R.string.day_month_year, day, shortMonth(m), year)
+    override fun minutesAgo(n: Long): String = shape(res.getString(R.string.minutes_ago, n))
+    override fun hoursAgo(n: Long): String = shape(res.getString(R.string.hours_ago, n))
+    override fun daysAgo(n: Long): String = shape(res.getQuantityString(R.plurals.days_ago, n.toInt(), n))
+    override fun dayMonth(day: Int, m: Month): String = shape(res.getString(R.string.day_month, day, shortMonth(m)))
+    override fun dayMonthYear(day: Int, m: Month, year: Int): String = shape(res.getString(R.string.day_month_year, day, shortMonth(m), year))
     override fun withTime(date: String, clock: String): String = res.getString(R.string.date_with_time, date, clock)
     override fun clock12(hour: Int, minute: Int, pm: Boolean): String =
-        res.getString(R.string.clock_12h, hour, minute, res.getString(if (pm) R.string.pm else R.string.am))
+        shape(res.getString(R.string.clock_12h, hour, minute, res.getString(if (pm) R.string.pm else R.string.am)))
     override fun opened(ago: String): String = res.getString(R.string.opened_ago, ago)
-    override fun folders(n: Int): String = res.getQuantityString(R.plurals.folders_count, n, n)
-    override fun files(n: Int): String = res.getQuantityString(R.plurals.files_count, n, n)
-    override fun items(n: Int): String = res.getQuantityString(R.plurals.items_count, n, n)
+    override fun folders(n: Int): String = shape(res.getQuantityString(R.plurals.folders_count, n, n))
+    override fun files(n: Int): String = shape(res.getQuantityString(R.plurals.files_count, n, n))
+    override fun items(n: Int): String = shape(res.getQuantityString(R.plurals.items_count, n, n))
+
+    // Hijri wording reuses the Gregorian format strings with hijri_months names; the digits in
+    // day/year arguments are shaped like every other number above.
+    override fun hijriMonth(n: Int): String = hijriMonths[n - 1]
+    override fun hijriDayMonth(day: Int, month: Int): String = shape(res.getString(R.string.day_month, day, hijriMonth(month)))
+    override fun hijriDayMonthYear(day: Int, month: Int, year: Int): String = shape(res.getString(R.string.day_month_year, day, hijriMonth(month), year))
+    override fun hijriMonthYear(month: Int, year: Int): String = shape(res.getString(R.string.month_year, hijriMonth(month), year))
+    override fun hijriEarlierIn(n: Int): String = res.getString(R.string.earlier_in, hijriMonth(n))
     override fun kinds(k: EntryKind): String = res.getString(
         when (k) {
             EntryKind.FOLDER -> R.string.kind_folders
@@ -223,8 +251,19 @@ internal class ResourceWords(private val res: Resources) : ExplorerWords {
 }
 
 @Composable
-internal fun rememberExplorerWords(): ExplorerWords {
+internal fun rememberExplorerWords(prefs: Preferences, appLanguage: String): ExplorerWords {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    return remember(configuration) { ResourceWords(context.resources) }
+    // The digit/calendar prefs thread in through the same snapshot pattern the explorer's other
+    // preferences use (Backstage reads `remember(editor.prefsVersion) { editor.preferences }` and
+    // passes the result here); appLanguage rides Editor's observable copy so "auto" digits follow
+    // the live app language. Only the three values the wording depends on key the remember, so
+    // unrelated preference changes leave the built words object alone.
+    return remember(configuration, prefs.digitSystem, prefs.dateSystem, appLanguage) {
+        ResourceWords(
+            context.resources,
+            arabicDigits = DigitSystem.active(prefs.digitSystem, appLanguage),
+            hijri = prefs.dateSystem == "hijri",
+        )
+    }
 }

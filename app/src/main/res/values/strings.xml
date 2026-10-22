@@ -875,6 +875,21 @@
         <item>Sat</item>
         <item>Sun</item>
     </string-array>
+    <!-- xnota: Hijri (Umm al-Qura) month names, shown when the calendar pref is set to Hijri. -->
+    <string-array name="hijri_months">
+        <item>Muharram</item>
+        <item>Safar</item>
+        <item>Rabi\' I</item>
+        <item>Rabi\' II</item>
+        <item>Jumada I</item>
+        <item>Jumada II</item>
+        <item>Rajab</item>
+        <item>Sha\'ban</item>
+        <item>Ramadan</item>
+        <item>Shawwal</item>
+        <item>Dhu\'l-Qi\'dah</item>
+        <item>Dhu\'l-Hijja</item>
+    </string-array>
     <plurals name="days_ago">
         <item quantity="one">%d day ago</item>
         <item quantity="other">%d days ago</item>
@@ -998,6 +1013,13 @@
     <string name="pref_show_folder_counts">Show item counts on folders</string>
     <string name="pref_show_extensions">Show file extensions (.xnote, .xcanvas)</string>
     <string name="pref_dates">Dates</string>
+    <string name="pref_calendar">Calendar</string>
+    <string name="date_gregorian">Gregorian</string>
+    <string name="date_hijri">Hijri</string>
+    <string name="pref_digits">Digits</string>
+    <string name="digit_auto">Auto</string>
+    <string name="digit_latin">Latin</string>
+    <string name="digit_arabic">Arabic</string>
     <string name="material_system_colours">System colours</string>
     <string name="material_system_fallback">Uses the default accent on this device.</string>
     <string name="material_custom_colour">Choose a custom colour</string>

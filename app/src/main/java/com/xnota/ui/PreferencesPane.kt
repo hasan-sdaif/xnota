@@ -471,12 +471,25 @@ fun PreferencesPane(
                 Chip(stringResource(R.string.last_folder), prefs.homeOpensTo == "last") { updateHome(prefs.copy(homeOpensTo = "last")) }
                 Chip(stringResource(R.string.recent_and_pinned), prefs.homeOpensTo == "shelves") { updateHome(prefs.copy(homeOpensTo = "shelves")) }
             }
-            val words = rememberExplorerWords()
+            val words = rememberExplorerWords(prefs, editor.appLanguage)
             FieldLabel(stringResource(R.string.pref_dates))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(words.daysAgo(2), prefs.dateStyle == "relative") { updateHome(prefs.copy(dateStyle = "relative")) }
                 Chip("${words.shortWeekday(java.time.DayOfWeek.WEDNESDAY)} ${clockText(words, java.time.LocalTime.of(17, 30), true)}", prefs.dateStyle == "day") { updateHome(prefs.copy(dateStyle = "day")) }
                 Chip(words.dayMonthYear(16, java.time.Month.SEPTEMBER, 2026), prefs.dateStyle == "date") { updateHome(prefs.copy(dateStyle = "date")) }
+            }
+            // xnota: the calendar the explorer writes dates in, and the digits it writes numbers
+            // with — both display-only (nothing on disk changes), so they apply like the date style.
+            FieldLabel(stringResource(R.string.pref_calendar))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(stringResource(R.string.date_gregorian), prefs.dateSystem == "gregorian") { updateHome(prefs.copy(dateSystem = "gregorian")) }
+                Chip(stringResource(R.string.date_hijri), prefs.dateSystem == "hijri") { updateHome(prefs.copy(dateSystem = "hijri")) }
+            }
+            FieldLabel(stringResource(R.string.pref_digits))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(stringResource(R.string.digit_auto), prefs.digitSystem == "auto") { updateHome(prefs.copy(digitSystem = "auto")) }
+                Chip(stringResource(R.string.digit_latin), prefs.digitSystem == "latin") { updateHome(prefs.copy(digitSystem = "latin")) }
+                Chip(stringResource(R.string.digit_arabic), prefs.digitSystem == "arabic") { updateHome(prefs.copy(digitSystem = "arabic")) }
             }
             FieldLabel(stringResource(R.string.pref_tapping_file))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

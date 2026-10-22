@@ -145,6 +145,50 @@ class ExplorerGroupsTest {
     }
 
     @Test
+    fun `the hijri calendar writes the dates the umm al-qura tables give`() {
+        // Umm al-Qura: 16 Sep 2026 = 5 Rabi' II 1448; the "now" above (18 Sep 2026) = 7 Rabi' II 1448.
+        assertEquals("5 Rabi' II 1448", formatWhen(HijriEnglishWords, at(2026, 9, 16, 9, 12), now, "date", false, true, zone))
+        assertEquals("5 Rabi' II 1448, 09:12", formatWhen(HijriEnglishWords, at(2026, 9, 16, 9, 12), now, "date", true, true, zone))
+        assertEquals("5 Rabi' II 1448, 09:12", formatFull(HijriEnglishWords, at(2026, 9, 16, 9, 12), true, zone))
+        // Beyond a week back the day style writes the day-month date: 20 Aug 2026 = 7 Rabi' I 1448.
+        assertEquals("7 Rabi' I", formatWhen(HijriEnglishWords, at(2026, 8, 20), now, "day", false, true, zone))
+        // Day-relative wording stays day-relative, exactly as with the Gregorian calendar.
+        assertEquals("3 days ago", formatWhen(HijriEnglishWords, at(2026, 9, 15), now, "relative", false, true, zone))
+        assertEquals("Yesterday", formatWhen(HijriEnglishWords, at(2026, 9, 17), now, "day", false, true, zone))
+    }
+
+    @Test
+    fun `hijri month buckets head by hijri month`() {
+        // 6 Sep 2026 = 24 Rabi' I 1448 — this Hijri year, but another Hijri month than today's.
+        assertEquals("Rabi' I", dateBucket(HijriEnglishWords, at(2026, 9, 6), now, zone).label)
+        // 1 Dec 2025 = 10 Jumada II 1447 — another Hijri year altogether.
+        assertEquals("Jumada II 1447", dateBucket(HijriEnglishWords, at(2025, 12, 1), now, zone).label)
+    }
+
+    @Test
+    fun `dates outside the hijri range fall back to the gregorian wording`() {
+        // 2200 lies past the Hijrah chronology's coverage (1600 AH ≈ Nov 2174): the wording stays Gregorian.
+        assertEquals("1 Jan 2200", formatWhen(HijriEnglishWords, at(2200, 1, 1), now, "date", false, true, zone))
+        assertEquals(
+            formatWhen(EnglishWords, at(2200, 1, 1), now, "date", false, true, zone),
+            formatWhen(HijriEnglishWords, at(2200, 1, 1), now, "date", false, true, zone),
+        )
+    }
+
+    @Test
+    fun `timeline month headings follow the calendar`() {
+        val today = java.time.LocalDate.of(2026, 9, 18)
+        assertEquals("September", monthHeading(EnglishWords, java.time.YearMonth.of(2026, 9), today))
+        assertEquals("September 2025", monthHeading(EnglishWords, java.time.YearMonth.of(2025, 9), today))
+        // Sep 2026 straddles Rabi' I/II 1448; the mid-month sample lands in Rabi' II, this Hijri year.
+        assertEquals("Rabi' II", monthHeading(HijriEnglishWords, java.time.YearMonth.of(2026, 9), today))
+        // Dec 2025 = Jumada II 1447, a Hijri year away from today's 1448.
+        assertEquals("Jumada II 1447", monthHeading(HijriEnglishWords, java.time.YearMonth.of(2025, 12), today))
+        assertEquals("Sha'ban", monthName(HijriEnglishWords, java.time.YearMonth.of(2026, 2)))
+        assertEquals("February", monthName(EnglishWords, java.time.YearMonth.of(2026, 2)))
+    }
+
+    @Test
     fun `unnamed colours are called by their hue`() {
         assertEquals("Red", hueName(EnglishWords, Rgba(230, 40, 40)))
         assertEquals("Orange", hueName(EnglishWords, Rgba(242, 166, 90)))

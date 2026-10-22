@@ -8,7 +8,10 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.Month
+import java.time.YearMonth
 import java.time.ZoneId
+import java.time.chrono.HijrahDate
+import java.time.temporal.ChronoField
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
@@ -45,6 +48,32 @@ internal interface ExplorerWords {
     fun kinds(k: EntryKind): String
     fun hue(h: Hue): String
     val noColour: String
+
+    // xnota: the fork's digit and calendar wording. `digits` shapes numerals for display
+    // (Arabic-Indic ٠-٩ when the digit pref is on); the hijri members name Hijri months by
+    // number 1..12 so the Umm al-Qura conversions below can hand them straight to the usual
+    // date format strings. Day-relative wording ("2 days ago") stays Gregorian either way.
+
+    /** Numerals shaped for display: ASCII 0-9 become ٠-٩ when Arabic digits are on. */
+    fun digits(s: String): String
+
+    /** Whether dates are written in the Hijri calendar ([Preferences.dateSystem] "hijri"). */
+    val hijri: Boolean
+
+    /** Hijri month name by month number, 1 = Muharram … 12 = Dhu'l-Hijja. */
+    fun hijriMonth(n: Int): String
+
+    /** Hijri "day month" ("12 Ramadan"), the sibling of [dayMonth]. */
+    fun hijriDayMonth(day: Int, month: Int): String
+
+    /** Hijri "day month year" ("12 Ramadan 1447"), the sibling of [dayMonthYear]. */
+    fun hijriDayMonthYear(day: Int, month: Int, year: Int): String
+
+    /** Hijri "month year" ("Ramadan 1447"), the sibling of [monthYear]. */
+    fun hijriMonthYear(month: Int, year: Int): String
+
+    /** "Earlier in <Hijri month>", the sibling of [earlierIn]. */
+    fun hijriEarlierIn(n: Int): String
 }
 
 /** One heading's worth of entries; [color] is set when grouped by colour. An empty [label] means no heading. */
@@ -54,6 +83,48 @@ internal class EntryGroup(val key: String, val label: String, val items: List<Br
 internal class DateBucket(val label: String, val start: LocalDate)
 
 private fun dayOf(time: Long, zone: ZoneId): LocalDate = Instant.ofEpochMilli(time).atZone(zone).toLocalDate()
+
+/**
+ * [date] in the Hijri calendar (Umm al-Qura), or null when it falls outside the Hijrah chronology's
+ * range (roughly 1882-2174 CE): callers silently fall back to the Gregorian wording there.
+ */
+private fun hijriOf(date: LocalDate): HijrahDate? = try {
+    HijrahDate.from(date)
+} catch (_: Exception) {
+    null
+}
+
+// HijrahDate's day/month/year getters sit on a package-private base class, so the wording reads
+// them through the TemporalField API instead of the usual synthetic properties.
+private val HijrahDate.hijriDay: Int get() = get(ChronoField.DAY_OF_MONTH)
+private val HijrahDate.hijriMonthNumber: Int get() = get(ChronoField.MONTH_OF_YEAR)
+private val HijrahDate.hijriYear: Int get() = get(ChronoField.YEAR)
+
+/** The month [day] heads under when dates are written Gregorian. */
+private fun gregorianMonthBucket(w: ExplorerWords, day: LocalDate, today: LocalDate): DateBucket {
+    val start = day.withDayOfMonth(1)
+    return when {
+        day.year == today.year && day.month == today.month -> DateBucket(w.earlierIn(today.month), start)
+        day.year == today.year -> DateBucket(w.month(day.month), start)
+        else -> DateBucket(w.monthYear(day.month, day.year), start)
+    }
+}
+
+/**
+ * The month [day] heads under when dates are written Hijri: this month / this year's months / month
+ * and year, by Hijri month boundaries. Null when [day] or [today] is outside the Hijrah range, so
+ * the caller keeps the Gregorian heading.
+ */
+private fun hijriMonthBucket(w: ExplorerWords, day: LocalDate, today: LocalDate): DateBucket? {
+    val hDay = hijriOf(day) ?: return null
+    val hToday = hijriOf(today) ?: return null
+    val start = LocalDate.ofEpochDay(hDay.with(TemporalAdjusters.firstDayOfMonth()).toEpochDay())
+    return when {
+        hDay.hijriYear == hToday.hijriYear && hDay.hijriMonthNumber == hToday.hijriMonthNumber -> DateBucket(w.hijriEarlierIn(hDay.hijriMonthNumber), start)
+        hDay.hijriYear == hToday.hijriYear -> DateBucket(w.hijriMonth(hDay.hijriMonthNumber), start)
+        else -> DateBucket(w.hijriMonthYear(hDay.hijriMonthNumber, hDay.hijriYear), start)
+    }
+}
 
 /** The heading [time] files under, seen from [now]: Today, Yesterday, this week, last week, earlier this month, then by month. */
 internal fun dateBucket(w: ExplorerWords, time: Long, now: Long, zone: ZoneId, weekStart: DayOfWeek = DayOfWeek.MONDAY): DateBucket {
@@ -66,9 +137,9 @@ internal fun dateBucket(w: ExplorerWords, time: Long, now: Long, zone: ZoneId, w
         day == today.minusDays(1) -> DateBucket(w.yesterday, day)
         !day.isBefore(thisWeek) -> DateBucket(w.earlierThisWeek, thisWeek)
         !day.isBefore(lastWeek) -> DateBucket(w.lastWeek, lastWeek)
-        day.year == today.year && day.month == today.month -> DateBucket(w.earlierIn(today.month), day.withDayOfMonth(1))
-        day.year == today.year -> DateBucket(w.month(day.month), day.withDayOfMonth(1))
-        else -> DateBucket(w.monthYear(day.month, day.year), day.withDayOfMonth(1))
+        // Day-relative buckets done; the rest head by month — Hijri when the calendar pref says so,
+        // falling back to the Gregorian heading outside the Hijrah range.
+        else -> if (w.hijri) hijriMonthBucket(w, day, today) ?: gregorianMonthBucket(w, day, today) else gregorianMonthBucket(w, day, today)
     }
 }
 
@@ -147,8 +218,20 @@ internal fun hueOf(c: Rgba): Hue {
 }
 
 internal fun clockText(w: ExplorerWords, t: LocalTime, clock24: Boolean): String =
-    if (clock24) "%02d:%02d".format(Locale.ROOT, t.hour, t.minute)
+    // The 24h branch is Kotlin-formatted, so its digits are shaped here; the 12h branch is a
+    // resource string and shaped inside ResourceWords.
+    if (clock24) w.digits("%02d:%02d".format(Locale.ROOT, t.hour, t.minute))
     else w.clock12((t.hour + 11) % 12 + 1, t.minute, t.hour >= 12)
+
+/** [day] as a day-month date, in whichever calendar [w] writes dates. */
+private fun dayMonthDate(w: ExplorerWords, day: LocalDate): String =
+    if (w.hijri) hijriOf(day)?.let { w.hijriDayMonth(it.hijriDay, it.hijriMonthNumber) } ?: w.dayMonth(day.dayOfMonth, day.month)
+    else w.dayMonth(day.dayOfMonth, day.month)
+
+/** [day] as a day-month-year date, in whichever calendar [w] writes dates. */
+private fun dayMonthYearDate(w: ExplorerWords, day: LocalDate): String =
+    if (w.hijri) hijriOf(day)?.let { w.hijriDayMonthYear(it.hijriDay, it.hijriMonthNumber, it.hijriYear) } ?: w.dayMonthYear(day.dayOfMonth, day.month, day.year)
+    else w.dayMonthYear(day.dayOfMonth, day.month, day.year)
 
 /**
  * [time] as the explorer writes it under a tile. [style] is "relative" (2 days ago), "day" (Wed 17:30, the
@@ -160,7 +243,7 @@ internal fun formatWhen(w: ExplorerWords, time: Long, now: Long, style: String, 
     val today = dayOf(now, zone)
     val day = at.toLocalDate()
     val clock = clockText(w, at.toLocalTime(), clock24)
-    val dayMonth = if (day.year != today.year) w.dayMonthYear(day.dayOfMonth, day.month, day.year) else w.dayMonth(day.dayOfMonth, day.month)
+    val dayMonth = if (day.year != today.year) dayMonthYearDate(w, day) else dayMonthDate(w, day)
     return when (style) {
         "relative" -> {
             val mins = (now - time) / 60_000
@@ -173,7 +256,7 @@ internal fun formatWhen(w: ExplorerWords, time: Long, now: Long, style: String, 
                 else -> dayMonth
             }
         }
-        "date" -> w.dayMonthYear(day.dayOfMonth, day.month, day.year).let { if (withTime) w.withTime(it, clock) else it }
+        "date" -> dayMonthYearDate(w, day).let { if (withTime) w.withTime(it, clock) else it }
         else -> {
             val d = when {
                 !day.isBefore(today) -> w.today
@@ -190,7 +273,26 @@ internal fun formatWhen(w: ExplorerWords, time: Long, now: Long, style: String, 
 internal fun formatFull(w: ExplorerWords, time: Long, clock24: Boolean, zone: ZoneId): String {
     if (time <= 0) return ""
     val at = Instant.ofEpochMilli(time).atZone(zone)
-    return w.withTime(w.dayMonthYear(at.dayOfMonth, at.month, at.year), clockText(w, at.toLocalTime(), clock24))
+    return w.withTime(dayMonthYearDate(w, at.toLocalDate()), clockText(w, at.toLocalTime(), clock24))
+}
+
+/**
+ * A timeline month's heading: the month's name alone inside the current year, name and year otherwise —
+ * in whichever calendar [w] writes dates. Hijri conversion samples the month's middle day so one
+ * Gregorian month keeps one label; the timeline's navigation itself stays Gregorian either way.
+ */
+internal fun monthHeading(w: ExplorerWords, month: YearMonth, today: LocalDate): String {
+    if (w.hijri) hijriOf(month.atDay(15))?.let { h ->
+        val sameYear = hijriOf(today)?.hijriYear == h.hijriYear
+        return if (sameYear) w.hijriMonth(h.hijriMonthNumber) else w.hijriMonthYear(h.hijriMonthNumber, h.hijriYear)
+    }
+    return if (month.year == today.year) w.month(month.month) else w.monthYear(month.month, month.year)
+}
+
+/** A month's bare name for inline wording ("18 notes saved in Ramadan"): Hijri when [w] says so. */
+internal fun monthName(w: ExplorerWords, month: YearMonth): String {
+    if (w.hijri) hijriOf(month.atDay(15))?.let { return w.hijriMonth(it.hijriMonthNumber) }
+    return w.month(month.month)
 }
 
 /** When a document was opened, for Recent: "Opened 25 min ago", "Opened yesterday", "Opened 16 Aug". */
@@ -199,12 +301,12 @@ internal fun openedLabel(w: ExplorerWords, time: Long, now: Long, zone: ZoneId =
     return w.opened(if (rel.firstOrNull()?.isLetter() == true) rel.replaceFirstChar { it.lowercase() } else rel)
 }
 
-/** A file size the way the explorer shows it: 940 KB, 3.4 MB. */
-internal fun formatSize(bytes: Long): String = when {
-    bytes < 1000 -> "$bytes B"
-    bytes < 1000L * 1024 -> "${(bytes + 1023) / 1024} KB"
-    bytes < 1000L * 1024 * 1024 -> "%.1f MB".format(Locale.ROOT, bytes / 1048576.0)
-    else -> "%.1f GB".format(Locale.ROOT, bytes / 1073741824.0)
+/** A file size the way the explorer shows it: 940 KB, 3.4 MB. [digits] shapes the numerals for display. */
+internal fun formatSize(bytes: Long, digits: (String) -> String = { it }): String = when {
+    bytes < 1000 -> digits("$bytes B")
+    bytes < 1000L * 1024 -> digits("${(bytes + 1023) / 1024} KB")
+    bytes < 1000L * 1024 * 1024 -> digits("%.1f MB".format(Locale.ROOT, bytes / 1048576.0))
+    else -> digits("%.1f GB".format(Locale.ROOT, bytes / 1073741824.0))
 }
 
 /** "1 folder · 18 files", leaving out a count that is zero. */

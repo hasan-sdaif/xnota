@@ -1014,11 +1014,13 @@ private fun ExplorerSection(
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val words = rememberExplorerWords()
+    val prefs = remember(editor.prefsVersion) { editor.preferences }
+    // The wording carries the digit/calendar prefs (display-only); appLanguage rides Editor's
+    // observable copy so "auto" digits follow the live app language.
+    val words = rememberExplorerWords(prefs, editor.appLanguage)
     val density = LocalDensity.current
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val compactScreen = screenWidthDp < COMPACT_WIDTH_DP
-    val prefs = remember(editor.prefsVersion) { editor.preferences }
     val rootDocId = remember(root) { editor.browseRootDocId(root) }
     val stack = remember(root) { mutableStateListOf<Pair<String, String>>() }
     val currentDocId = if (stack.isEmpty()) rootDocId else stack.last().first
@@ -1502,9 +1504,10 @@ private fun ExplorerSection(
                     val label = if (layout == ExplorerLayout.TIMELINE) {
                         val m = shownMonth
                         val n = arranged.orEmpty().count { !it.isDir && view.timelineTime(it) > 0 && YearMonth.from(java.time.Instant.ofEpochMilli(view.timelineTime(it)).atZone(ZoneId.systemDefault())) == m }
-                        pluralStringResource(if (view.timelineByCreated) R.plurals.notes_created_in else R.plurals.notes_saved_in, n, n, words.month(m.month))
+                        // The month's name follows the calendar pref (Hijri names when it's on).
+                        pluralStringResource(if (view.timelineByCreated) R.plurals.notes_created_in else R.plurals.notes_saved_in, n, n, monthName(words, m))
                     } else {
-                        val size = if (layout == ExplorerLayout.LIST) arranged.orEmpty().filterNot { it.isDir }.sumOf { it.size }.takeIf { it > 0 }?.let { formatSize(it) } else null
+                        val size = if (layout == ExplorerLayout.LIST) arranged.orEmpty().filterNot { it.isDir }.sumOf { it.size }.takeIf { it > 0 }?.let { formatSize(it, words::digits) } else null
                         listOfNotNull(countsLabel(words, folders, files).ifEmpty { null }, size).joinToString(" · ")
                     }
                     Text(label, color = palette.textDim.toComposeColor(), fontSize = 12.5.sp, maxLines = 1, modifier = Modifier.padding(end = 4.dp))

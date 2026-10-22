@@ -146,7 +146,7 @@ internal class ExplorerBody(
     fun metaText(e: BrowseEntry): String {
         metaOverride?.invoke(e)?.let { return it }
         if (e.isDir) return counts[e.documentUri]?.let { itemsLabel(words, it) } ?: whenText(e)
-        return listOfNotNull(whenText(e).ifEmpty { null }, formatSize(e.size).takeIf { view.showSize }).joinToString(" · ")
+        return listOfNotNull(whenText(e).ifEmpty { null }, formatSize(e.size, words::digits).takeIf { view.showSize }).joinToString(" · ")
     }
 
     fun colorOf(e: BrowseEntry): Rgba? = e.color.takeIf { view.showColour }
@@ -485,7 +485,7 @@ internal fun ListRow(b: ExplorerBody, e: BrowseEntry, wide: Boolean) {
             }
             Text(if (e.isDir || kind == EntryKind.CANVAS) "–" else b.pages(e).takeIf { it > 0 }?.toString() ?: "", color = fg, fontSize = 13.sp, textAlign = TextAlign.End, modifier = Modifier.width(LIST_PAGES_W))
             Text(
-                if (e.isDir) b.counts[e.documentUri]?.let { itemsLabel(b.words, it) } ?: "" else formatSize(e.size),
+                if (e.isDir) b.counts[e.documentUri]?.let { itemsLabel(b.words, it) } ?: "" else formatSize(e.size, b.words::digits),
                 color = if (e.isDir) dim else fg, fontSize = 13.sp, textAlign = TextAlign.End, maxLines = 1,
                 modifier = Modifier.width(LIST_SIZE_W),
             )

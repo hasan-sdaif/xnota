@@ -7,6 +7,10 @@ import java.time.Month
 internal object EnglishWords : ExplorerWords {
     private val months = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
     private val weekdays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    private val hijriMonths = listOf(
+        "Muharram", "Safar", "Rabi' I", "Rabi' II", "Jumada I", "Jumada II",
+        "Rajab", "Sha'ban", "Ramadan", "Shawwal", "Dhu'l-Qi'dah", "Dhu'l-Hijja",
+    )
     override fun month(m: Month) = months[m.value - 1]
     override fun shortMonth(m: Month) = months[m.value - 1].take(3)
     override fun shortWeekday(d: DayOfWeek) = weekdays[d.value - 1]
@@ -36,4 +40,16 @@ internal object EnglishWords : ExplorerWords {
     }
     override fun hue(h: Hue) = h.name.lowercase().replaceFirstChar { it.uppercase() }
     override val noColour = "No colour"
+    override fun digits(s: String) = s
+    override val hijri = false
+    override fun hijriMonth(n: Int) = hijriMonths[n - 1]
+    override fun hijriDayMonth(day: Int, month: Int) = "$day ${hijriMonth(month)}"
+    override fun hijriDayMonthYear(day: Int, month: Int, year: Int) = "$day ${hijriMonth(month)} $year"
+    override fun hijriMonthYear(month: Int, year: Int) = "${hijriMonth(month)} $year"
+    override fun hijriEarlierIn(n: Int) = "Earlier in ${hijriMonth(n)}"
+}
+
+/** English wording with the Hijri calendar on, for the hijri branches of the date code. */
+internal object HijriEnglishWords : ExplorerWords by EnglishWords {
+    override val hijri = true
 }

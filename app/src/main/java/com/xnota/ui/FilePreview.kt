@@ -94,7 +94,7 @@ internal fun FilePreview(b: ExplorerBody, e: BrowseEntry, where: String?, action
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         DetailRow(stringResource(R.string.modified), formatFull(b.words, e.modified, b.clock24, b.zone))
                         DetailRow(stringResource(R.string.created), formatFull(b.words, e.created, b.clock24, b.zone))
-                        DetailRow(stringResource(R.string.sort_size), formatSize(e.size))
+                        DetailRow(stringResource(R.string.sort_size), formatSize(e.size, b.words::digits))
                         if (where != null) DetailRow(stringResource(R.string.where_label), where)
                     }
                     Column(Modifier.widthIn(max = 320.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

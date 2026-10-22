@@ -369,7 +369,7 @@ internal fun TimelineBody(
                 Row(Modifier.width(164.dp), verticalAlignment = Alignment.CenterVertically) {
                     ExplorerIcon(NotaIcons.prev, stringResource(R.string.previous_month), palette.textDim.toComposeColor(), mirrored = true) { onMonth(month.minusMonths(1)) }
                     Text(
-                        if (month.year == today.year) b.words.month(month.month) else b.words.monthYear(month.month, month.year),
+                        monthHeading(b.words, month, today),
                         color = palette.text.toComposeColor(), fontSize = 15.sp, fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.weight(1f),
                     )
@@ -406,7 +406,7 @@ internal fun TimelineBody(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                "$d", fontSize = 10.5.sp,
+                                b.words.digits("$d"), fontSize = 10.5.sp,
                                 color = when {
                                     ahead -> palette.textDim.toComposeColor()
                                     n >= 4 -> palette.onAccent.toComposeColor()
@@ -419,7 +419,7 @@ internal fun TimelineBody(
             }
         }
         if (byDay.isEmpty()) {
-            item(key = "none", contentType = "none") { EmptyNote(stringResource(if (view.timelineByCreated) R.string.nothing_created_in else R.string.nothing_saved_in, b.words.month(month.month))) }
+            item(key = "none", contentType = "none") { EmptyNote(stringResource(if (view.timelineByCreated) R.string.nothing_created_in else R.string.nothing_saved_in, monthName(b.words, month))) }
         } else {
             byDay.forEach { (date, files) ->
                 item(key = date.toString()) { TimelineDay(b, date, today, files, card) }
@@ -433,7 +433,7 @@ private fun TimelineDay(b: ExplorerBody, date: LocalDate, today: LocalDate, file
     val palette = LocalPalette.current
     Row(Modifier.fillMaxWidth().height(card + 64.dp)) {
         Column(Modifier.width(84.dp)) {
-            Text("${date.dayOfMonth}", color = palette.text.toComposeColor(), fontSize = 28.sp, fontWeight = FontWeight.Medium, lineHeight = 28.sp)
+            Text(b.words.digits("${date.dayOfMonth}"), color = palette.text.toComposeColor(), fontSize = 28.sp, fontWeight = FontWeight.Medium, lineHeight = 28.sp)
             Spacer(Modifier.height(6.dp))
             Text(b.words.shortWeekday(date.dayOfWeek), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
             val rel = when (date) {

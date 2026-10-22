@@ -932,6 +932,21 @@
         <item>سبت</item>
         <item>أحد</item>
     </string-array>
+    <!-- xnota: أسماء أشهر التقويم الهجري، تُعرض عند تفعيل التقويم الهجري. -->
+    <string-array name="hijri_months">
+        <item>محرم</item>
+        <item>صفر</item>
+        <item>ربيع الأول</item>
+        <item>ربيع الآخر</item>
+        <item>جمادى الأولى</item>
+        <item>جمادى الآخرة</item>
+        <item>رجب</item>
+        <item>شعبان</item>
+        <item>رمضان</item>
+        <item>شوال</item>
+        <item>ذو القعدة</item>
+        <item>ذو الحجة</item>
+    </string-array>
     <plurals name="days_ago">
         <item quantity="zero">منذ %d يوم</item>
         <item quantity="one">منذ يوم واحد</item>
@@ -1083,6 +1098,13 @@
     <string name="pref_show_folder_counts">عرض عدد العناصر على المجلدات</string>
     <string name="pref_show_extensions">عرض امتدادات الملفات (.xnote, .xcanvas)</string>
     <string name="pref_dates">التواريخ</string>
+    <string name="pref_calendar">التقويم</string>
+    <string name="date_gregorian">ميلادي</string>
+    <string name="date_hijri">هجري</string>
+    <string name="pref_digits">الأرقام</string>
+    <string name="digit_auto">تلقائي</string>
+    <string name="digit_latin">لاتينية</string>
+    <string name="digit_arabic">عربية</string>
     <string name="material_system_colours">ألوان النظام</string>
     <string name="material_system_fallback">يستخدم اللون المميّز الافتراضي على هذا الجهاز.</string>
     <string name="material_custom_colour">اختيار لون مخصص</string>
