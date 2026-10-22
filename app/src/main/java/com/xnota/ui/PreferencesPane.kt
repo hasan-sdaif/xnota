@@ -354,6 +354,59 @@ fun PreferencesPane(
             }
 
             HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.pref_ink_engine))
+            Text(stringResource(R.string.pref_ink_engine_help), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
+            FieldLabel(stringResource(R.string.pref_stroke_filter))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(stringResource(R.string.filter_ema), prefs.strokeFilter == "ema") { update(prefs.copy(strokeFilter = "ema")) }
+                Chip(stringResource(R.string.filter_one_euro), prefs.strokeFilter == "one_euro") { update(prefs.copy(strokeFilter = "one_euro")) }
+            }
+            CheckRow(stringResource(R.string.pref_adaptive_smoothing), prefs.adaptiveSmoothing) {
+                update(prefs.copy(adaptiveSmoothing = it))
+            }
+            FieldLabel(stringResource(R.string.pref_pressure_deadzone))
+            Slider(
+                value = prefs.pressureDeadzone.toFloat(),
+                onValueChange = { update(prefs.copy(pressureDeadzone = it.toDouble())) },
+                valueRange = 0f..0.20f,
+                modifier = Modifier.width(280.dp),
+            )
+            FieldLabel(stringResource(R.string.pref_pressure_gamma))
+            Slider(
+                value = prefs.pressureGamma.toFloat(),
+                onValueChange = { update(prefs.copy(pressureGamma = it.toDouble())) },
+                valueRange = 0.5f..2.0f,
+                modifier = Modifier.width(280.dp),
+            )
+            FieldLabel(stringResource(R.string.pref_pressure_smoothing))
+            Slider(
+                value = prefs.pressureSmoothing.toFloat(),
+                onValueChange = { update(prefs.copy(pressureSmoothing = it.toInt())) },
+                valueRange = 0f..100f,
+                modifier = Modifier.width(280.dp),
+            )
+            FieldLabel(stringResource(R.string.pref_nib_angle))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(stringResource(R.string.nib_follow_travel), prefs.nibAngleLockDeg < 0.0) {
+                    update(prefs.copy(nibAngleLockDeg = -1.0))
+                }
+                for (deg in listOf(0.0, 45.0, 90.0, 135.0)) {
+                    Chip("${deg.toInt()}°", prefs.nibAngleLockDeg == deg) { update(prefs.copy(nibAngleLockDeg = deg)) }
+                }
+            }
+            FieldLabel(stringResource(R.string.pref_highlighter_blend))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(stringResource(R.string.blend_multiply), prefs.highlighterBlend == "multiply") { update(prefs.copy(highlighterBlend = "multiply")) }
+                Chip(stringResource(R.string.blend_normal), prefs.highlighterBlend == "normal") { update(prefs.copy(highlighterBlend = "normal")) }
+            }
+            CheckRow(stringResource(R.string.pref_join_strokes), prefs.joinStrokes) {
+                update(prefs.copy(joinStrokes = it))
+            }
+            CheckRow(stringResource(R.string.pref_undo_coalesce), prefs.undoCoalesce) {
+                update(prefs.copy(undoCoalesce = it))
+            }
+
+            HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_new_notes))
             FieldLabel(stringResource(R.string.pref_filename_template))
             Text(

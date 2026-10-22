@@ -50,6 +50,10 @@ class WetRibbon(
     /** Pressure-response S-curve steepness; the fork threads it from the tool's config so the
      *  live ribbon and a rebuilt geometry agree, sample for sample. */
     private val curveK: Double = StrokeEngine.PRESSURE_CURVE_K,
+    /** The fork's engine tuning (filter mode, adaptive lag, pressure shape, grain, scatter, nib
+     *  lock), threaded by [com.xnota.core.model.Stroke] exactly as [StrokeEngine.build] receives
+     *  it, so the wet ribbon and the committed rebuild are the same ink. */
+    private val opts: InkEngineOptions = InkEngineOptions.DEFAULT,
 ) : RibbonPoints {
     /** Samples taken so far; one ribbon point each. */
     override var pointCount = 0
@@ -125,6 +129,29 @@ class WetRibbon(
 
     /** Whether this pen records timing at all; the channel is allocated for it, used once it fills. */
     private val timed = speedStrength > 0.0
+
+    /** Whether the timing channel is kept at all: the speed pen reads it, and so do the fork's
+     *  one-euro filter and adaptive smoothing (each needs a dt per sample). */
+    private val keepTimes = timed ||
+        (smooth && (opts.filter.mode == StrokeFilterMode.ONE_EURO || opts.adaptive))
+
+    /** The one-euro channels (x, y, pressure), present only in that mode. */
+    private val euroX: OneEuroChannel?
+    private val euroY: OneEuroChannel?
+    private val euroP: OneEuroChannel?
+
+    init {
+        if (smooth && opts.filter.mode == StrokeFilterMode.ONE_EURO) {
+            val f = opts.filter
+            euroX = OneEuroChannel(f.freqHz, f.minCutoff, f.beta, f.dCutoff)
+            euroY = OneEuroChannel(f.freqHz, f.minCutoff, f.beta, f.dCutoff)
+            euroP = OneEuroChannel(f.freqHz, f.minCutoff, f.beta, f.dCutoff)
+        } else {
+            euroX = null
+            euroY = null
+            euroP = null
+        }
+    }
 
     /** Set by the first sample carrying a real elapsed time, mirroring how [com.xnota.core.model.Stroke]
      *  only allocates its time channel once one arrives. Without it the engine reads no speed. */
@@ -202,28 +229,73 @@ class WetRibbon(
         val i = pointCount
         ensure(i + 1)
         if (t != 0.0) anyTime = true
-        val step = if (i == 0) 0.0 else hypot(x - lastRawX, y - lastRawY)
+        // The fork's tuning prelude, exactly as [StrokeEngine.build] applies it on the raw arrays:
+        // scatter displaces every sample past the first by its deterministic seeded offset, and
+        // the deadzone floors the raw pressure before anything smooths it.
+        var inX = x
+        var inY = y
+        if (i > 0 && opts.scatter > 0.0) {
+            val amp = BrushScatter.radiusPx(opts.scatter, smoothScale)
+            val (dx, dy) = BrushScatter.offset(opts.scatterSeed, i, amp)
+            inX += dx
+            inY += dy
+        }
+        val inP = if (opts.pressure.deadzone > 0.0) {
+            Pressure.applyDeadzone(pressure.coerceIn(0.0, 1.0), opts.pressure.deadzone)
+        } else {
+            pressure
+        }
+        val step = if (i == 0) 0.0 else hypot(inX - lastRawX, inY - lastRawY)
         if (i == 0) {
-            sx[0] = x
-            sy[0] = y
-            sp[0] = pressure
-            if (timed) {
+            sx[0] = inX
+            sy[0] = inY
+            sp[0] = inP
+            euroX?.filter(inX, t)
+            euroY?.filter(inY, t)
+            euroP?.filter(inP, t)
+            if (keepTimes) {
                 times[0] = t
                 rawCum[0] = 0.0
             }
         } else {
-            sx[i] = if (smooth) StrokeEngine.emaStep(sx[i - 1], lastRawX, x, step, smoothLen) else x
-            sy[i] = if (smooth) StrokeEngine.emaStep(sy[i - 1], lastRawY, y, step, smoothLen) else y
-            sp[i] = StrokeEngine.emaStep(sp[i - 1], lastRawP, pressure, step, smoothLen)
-            if (timed) {
+            // Adaptive lag needs real timing (see the batch build's rawT guard); an un-timed
+            // stream keeps the constant lag rather than a reference-rate guess, so the wet ribbon
+            // and the committed rebuild agree exactly.
+            val lambda = if (opts.adaptive && anyTime && keepTimes) {
+                val dt = if (t > times[i - 1]) t - times[i - 1] else 0.0
+                smoothLen * AdaptiveSmoothing.stepFactor(step, dt, smoothScale)
+            } else {
+                smoothLen
+            }
+            sx[i] = when {
+                euroX != null -> euroX.filter(inX, t)
+                smooth -> StrokeEngine.emaStep(sx[i - 1], lastRawX, inX, step, lambda)
+                else -> inX
+            }
+            sy[i] = when {
+                euroY != null -> euroY.filter(inY, t)
+                smooth -> StrokeEngine.emaStep(sy[i - 1], lastRawY, inY, step, lambda)
+                else -> inY
+            }
+            val pLow = when {
+                euroP != null -> euroP.filter(inP, t)
+                else -> StrokeEngine.emaStep(sp[i - 1], lastRawP, inP, step, smoothLen)
+            }
+            // The pressure-only EMA rides after the low-pass, as in the batch build.
+            sp[i] = if (opts.pressure.smoothing > 0.0) {
+                Pressure.smoothStep(sp[i - 1], pLow, opts.pressure.smoothing)
+            } else {
+                pLow
+            }
+            if (keepTimes) {
                 times[i] = t
                 rawCum[i] = rawCum[i - 1] + step
             }
             arc += hypot(sx[i] - sx[i - 1], sy[i] - sy[i - 1])
         }
-        lastRawX = x
-        lastRawY = y
-        lastRawP = pressure
+        lastRawX = inX
+        lastRawY = inY
+        lastRawP = inP
         pointCount = i + 1
         snapshot = null
 
@@ -273,14 +345,19 @@ class WetRibbon(
     /**
      * The calligraphy head, decided once. Until the stroke's smoothed travel first reaches
      * [headLen] there is no heading to read and every point draws thin, so nothing settles; the
-     * sample that fills it fixes both the direction and the run of points pinned to it.
+     * sample that fills it fixes both the direction and the run of points pinned to it. A locked
+     * nib angle (the fork) is born at its fixed term instead — there is nothing to read.
      */
     private fun freezeHeadIfFilled() {
         if (ds <= 0.0 || headK >= 0) return
         if (arc < headLen) return
         val k = pointCount - 1
         headK = k
-        headDir = StrokeEngine.headDirectionAt(sx, sy, k)
+        headDir = if (NibAngle.isLocked(opts.nibAngleLockDeg)) {
+            NibAngle.directionTerm(0.0, opts.nibAngleLockDeg)
+        } else {
+            StrokeEngine.headDirectionAt(sx, sy, k)
+        }
         for (i in 0..k) nib[i] = headDir
         nibValue = headDir
         nibDone = k + 1
@@ -290,7 +367,7 @@ class WetRibbon(
     private fun extendNib() {
         if (ds <= 0.0 || headK < 0) return
         for (i in nibDone until pointCount - 1) {
-            nibValue = StrokeEngine.nibStep(nibValue, ty[i], stepAlong(i), openLen, closeLen)
+            nibValue = StrokeEngine.nibStep(nibValue, NibAngle.directionTerm(ty[i], opts.nibAngleLockDeg), stepAlong(i), openLen, closeLen)
             nib[i] = nibValue
             nibDone = i + 1
         }
@@ -317,7 +394,14 @@ class WetRibbon(
         } else if (n - 1 < nibDone) {
             nib[n - 1]
         } else {
-            StrokeEngine.nibStep(nibValue, ty[n - 1], stepAlong(n - 1), openLen, closeLen)
+            StrokeEngine.nibStep(nibValue, NibAngle.directionTerm(ty[n - 1], opts.nibAngleLockDeg), stepAlong(n - 1), openLen, closeLen)
+        }
+
+        // Ink roughness, as in the batch build: the deterministic width jitter (see [StrokeGrain]).
+        val grainAmp = if (opts.grain > 0.0 && opts.grainSeed != 0L) {
+            StrokeGrain.amplitudePx(opts.grain, smoothScale)
+        } else {
+            0.0
         }
 
         val speed = speedActive(n)
@@ -337,7 +421,8 @@ class WetRibbon(
                 else -> (if (i < nibDone) nib[i] else liveNib).coerceIn(-1.0, StrokeEngine.DOT_DIR_Y)
             }
             val pressure = if (held) StrokeEngine.heldPressureAt(sp, n, i) else sp[i]
-            var h = StrokeEngine.halfWidth(baseWidth, pressureEnabled, m, ds, pressure, dir, curveK)
+            var h = StrokeEngine.halfWidth(baseWidth, pressureEnabled, m, ds, pressure, dir, curveK, opts.pressure)
+            if (grainAmp > 0.0) h *= StrokeGrain.widthFactor(opts.grainSeed, i, grainAmp)
             if (speed) {
                 h *= StrokeEngine.speedFactorAt(times, rawCum, n, i, speedScratch, speedStrength, speedScale)
             }
@@ -407,7 +492,7 @@ class WetRibbon(
         sp = sp.copyOf(c)
         tx = tx.copyOf(c)
         ty = ty.copyOf(c)
-        if (timed) {
+        if (keepTimes) {
             times = times.copyOf(c)
             rawCum = rawCum.copyOf(c)
         }

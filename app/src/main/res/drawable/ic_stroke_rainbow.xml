@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- XNota — rainbow brush stroke. The hue rotates along the stroke's arc; drawn as arc segments of alternating weight. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#FF000000" android:pathData="M16.23,73.52 L25.89,61.89 L37.52,52.23 A5.50,5.50 0 0 1 30.48,43.77 L30.48,43.77 L18.11,54.11 L7.77,66.48 A5.50,5.50 0 0 1 16.23,73.52 Z"/>
+    <path android:fillColor="#FF000000" android:pathData="M36.95,54.89 L50.06,49.21 L63.06,47.42 A7.50,7.50 0 0 1 60.94,32.58 L60.94,32.58 L45.94,34.79 L31.05,41.11 A7.50,7.50 0 0 1 36.95,54.89 Z"/>
+    <path android:fillColor="#FF000000" android:pathData="M61.22,45.44 L74.03,47.13 L84.95,54.58 A5.50,5.50 0 0 1 91.05,45.42 L91.05,45.42 L77.97,36.87 L62.78,34.56 A5.50,5.50 0 0 1 61.22,45.44 Z"/>
+    <path android:fillColor="#FF000000" android:pathData="M5.50,70.00 A6.50,6.50 0 1 0 18.50,70.00 A6.50,6.50 0 1 0 5.50,70.00 Z"/>
+</vector>

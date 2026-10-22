@@ -442,6 +442,9 @@ private fun itemIcon(item: ToolbarItem): ImageVector = when (item) {
     ToolbarItem.SPEED -> ImageVector.vectorResource(R.drawable.ic_stroke_speed)
     ToolbarItem.TAPER -> ImageVector.vectorResource(R.drawable.ic_stroke_taper)
     ToolbarItem.HIGHLIGHTER -> ImageVector.vectorResource(R.drawable.ic_stroke_highlighter)
+    ToolbarItem.NEON -> ImageVector.vectorResource(R.drawable.ic_stroke_neon)
+    ToolbarItem.RAINBOW -> ImageVector.vectorResource(R.drawable.ic_stroke_rainbow)
+    ToolbarItem.PENCIL -> ImageVector.vectorResource(R.drawable.ic_stroke_pencil)
     ToolbarItem.ERASER -> NotaIcons.eraser
     ToolbarItem.PAN -> NotaIcons.pan
     ToolbarItem.SELECT -> NotaIcons.select

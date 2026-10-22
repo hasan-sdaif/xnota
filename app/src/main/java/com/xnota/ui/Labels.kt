@@ -35,6 +35,9 @@ val Tool.labelRes: Int
         Tool.SPEED -> R.string.tool_speed
         Tool.TAPER -> R.string.tool_taper
         Tool.HIGHLIGHTER -> R.string.tool_highlighter
+        Tool.NEON -> R.string.tool_neon
+        Tool.RAINBOW -> R.string.tool_rainbow
+        Tool.PENCIL -> R.string.tool_pencil
         Tool.ERASER -> R.string.tool_eraser
         Tool.PAN -> R.string.tool_pan
         Tool.SELECT -> R.string.tool_select
@@ -70,6 +73,9 @@ val ToolbarItem.labelRes: Int
         ToolbarItem.SPEED -> R.string.tool_speed
         ToolbarItem.TAPER -> R.string.tool_taper
         ToolbarItem.HIGHLIGHTER -> R.string.tool_highlighter
+        ToolbarItem.NEON -> R.string.tool_neon
+        ToolbarItem.RAINBOW -> R.string.tool_rainbow
+        ToolbarItem.PENCIL -> R.string.tool_pencil
         ToolbarItem.ERASER -> R.string.tool_eraser
         ToolbarItem.PAN -> R.string.tool_pan
         ToolbarItem.SELECT -> R.string.tool_select

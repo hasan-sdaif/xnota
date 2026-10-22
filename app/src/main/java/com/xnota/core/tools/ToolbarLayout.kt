@@ -19,6 +19,9 @@ enum class ToolbarItem(val id: String) {
     SPEED("speed"),
     TAPER("taper"),
     HIGHLIGHTER("highlighter"),
+    NEON("neon"),
+    RAINBOW("rainbow"),
+    PENCIL("pencil"),
     ERASER("eraser"),
     PAN("pan"),
     SELECT("select"),
@@ -164,7 +167,9 @@ data class ToolbarLayout(val sections: List<ToolbarSection>) {
         val CANVAS_ITEMS: Set<ToolbarItem> = setOf(
             ToolbarItem.HOME, ToolbarItem.TITLE,
             ToolbarItem.PEN, ToolbarItem.DASHED, ToolbarItem.CALLIGRAPHY, ToolbarItem.SPEED,
-            ToolbarItem.TAPER, ToolbarItem.HIGHLIGHTER, ToolbarItem.ERASER,
+            ToolbarItem.TAPER, ToolbarItem.HIGHLIGHTER,
+            ToolbarItem.NEON, ToolbarItem.RAINBOW, ToolbarItem.PENCIL,
+            ToolbarItem.ERASER,
             ToolbarItem.PAN, ToolbarItem.SELECT, ToolbarItem.LASSO, ToolbarItem.WAND,
             ToolbarItem.SHAPE,
             ToolbarItem.IMAGE, ToolbarItem.COLORS, ToolbarItem.UNDO, ToolbarItem.REDO,
@@ -183,6 +188,7 @@ data class ToolbarLayout(val sections: List<ToolbarSection>) {
             listOf(
                 ToolbarItem.PEN, ToolbarItem.DASHED, ToolbarItem.CALLIGRAPHY, ToolbarItem.SPEED,
                 ToolbarItem.TAPER, ToolbarItem.HIGHLIGHTER, ToolbarItem.ERASER,
+                ToolbarItem.NEON, ToolbarItem.RAINBOW, ToolbarItem.PENCIL,
             ),
             listOf(ToolbarItem.PAN, ToolbarItem.SELECT, ToolbarItem.LASSO, ToolbarItem.SCREENSHOT),
             listOf(ToolbarItem.WAND, ToolbarItem.SHAPE, ToolbarItem.RULER, ToolbarItem.TEXT, ToolbarItem.TEXT_BOX, ToolbarItem.MARKUP),
@@ -200,6 +206,7 @@ data class ToolbarLayout(val sections: List<ToolbarSection>) {
             listOf(
                 ToolbarItem.PEN, ToolbarItem.DASHED, ToolbarItem.CALLIGRAPHY, ToolbarItem.SPEED,
                 ToolbarItem.TAPER, ToolbarItem.HIGHLIGHTER, ToolbarItem.ERASER,
+                ToolbarItem.NEON, ToolbarItem.RAINBOW, ToolbarItem.PENCIL,
             ),
             listOf(ToolbarItem.PAN, ToolbarItem.SELECT, ToolbarItem.LASSO),
             listOf(ToolbarItem.WAND, ToolbarItem.SHAPE),

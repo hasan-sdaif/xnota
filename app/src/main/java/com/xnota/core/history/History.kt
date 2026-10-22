@@ -30,6 +30,20 @@ class History(private val limit: Int = DEFAULT_LIMIT) {
         redoStack.clear()
     }
 
+    /**
+     * Fold [command] into the last pushed edit as one undo unit (the fork's undo coalescing for
+     * rapid back-to-back strokes): the pair becomes a composite, so one undo takes back the whole
+     * burst. Fails (and the caller falls back to a plain [push]) when the stack is empty. The redo
+     * branch clears exactly as a push would.
+     */
+    fun tryCoalesce(command: Command): Boolean {
+        val last = undoStack.lastOrNull() ?: return false
+        undoStack.removeLast()
+        undoStack.addLast(CompositeCommand(listOf(last, command)))
+        redoStack.clear()
+        return true
+    }
+
     fun undo() {
         val command = undoStack.removeLastOrNull() ?: return
         command.undo()

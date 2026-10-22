@@ -35,6 +35,12 @@ import com.xnota.core.model.Document
 import com.xnota.core.model.ImageData
 import com.xnota.core.model.ImageItem
 import com.xnota.core.model.InkAdaptiveMode
+import com.xnota.core.model.HighlighterBlend
+import com.xnota.core.stroke.EngineTuning
+import com.xnota.core.stroke.NibAngle
+import com.xnota.core.stroke.PressureShape
+import com.xnota.core.stroke.StrokeFilter
+import com.xnota.core.stroke.StrokeFilterMode
 import com.xnota.core.model.InkRendering
 import com.xnota.core.model.MarkupType
 import com.xnota.core.model.Orientation
@@ -2307,7 +2313,24 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
                 InkAdaptiveMode.fromId(p.adaptiveInk),
             )
         )
-        val theme = "$palette|${state.pageColorOverride}"
+        // Ink Engine 2.0 (the fork): reader-level tuning — filter, adaptive lag, pressure shape,
+        // nib lock — installed process-wide exactly like the ink transform above; the
+        // highlighter's blend lands with it. A generation bump invalidates cached ribbons, and the
+        // theme key carries it so thumbnails and page bands re-render under the new tuning too.
+        InkRendering.highlighterBlend = HighlighterBlend.fromId(p.highlighterBlend)
+        EngineTuning.install(
+            filter = StrokeFilter(mode = StrokeFilterMode.fromId(p.strokeFilter)),
+            adaptiveSmoothing = p.adaptiveSmoothing,
+            pressure = PressureShape(
+                deadzone = p.pressureDeadzone,
+                gamma = p.pressureGamma,
+                smoothing = p.pressureSmoothing.toDouble(),
+            ),
+            nibAngleLockDeg = p.nibAngleLockDeg,
+        )
+        controller.undoCoalesce = p.undoCoalesce
+        controller.joinStrokes = p.joinStrokes
+        val theme = "$palette|${state.pageColorOverride}|ink${EngineTuning.generation}"
         if (thumbnailTheme != theme) {
             thumbnailTheme = theme
             thumbnailGeneration = thumbCache.useTheme(theme)
@@ -5790,6 +5813,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
     fun undo() {
         flowText.flushBurst() // the open typing burst is the first thing Ctrl+Z takes back
+        controller.breakUndoCoalescing()
         if (controller.isEditingLabel) controller.commitTextEdit() // and so is a label being typed
         val command = history.nextUndo
         val pagesBefore = state.document.pages.size
@@ -5804,6 +5828,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
     fun redo() {
         flowText.flushBurst()
+        controller.breakUndoCoalescing()
         if (controller.isEditingLabel) controller.commitTextEdit()
         val command = history.nextRedo
         val pagesBefore = state.document.pages.size

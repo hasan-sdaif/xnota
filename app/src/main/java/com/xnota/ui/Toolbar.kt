@@ -117,6 +117,9 @@ fun Toolbar(
         Tool.CALLIGRAPHY to ImageVector.vectorResource(R.drawable.ic_stroke_calligraphy),
         Tool.SPEED to ImageVector.vectorResource(R.drawable.ic_stroke_speed),
         Tool.TAPER to ImageVector.vectorResource(R.drawable.ic_stroke_taper),
+        Tool.NEON to ImageVector.vectorResource(R.drawable.ic_stroke_neon),
+        Tool.RAINBOW to ImageVector.vectorResource(R.drawable.ic_stroke_rainbow),
+        Tool.PENCIL to ImageVector.vectorResource(R.drawable.ic_stroke_pencil),
         Tool.HIGHLIGHTER to ImageVector.vectorResource(R.drawable.ic_stroke_highlighter),
         Tool.ERASER to NotaIcons.eraser,
         Tool.PAN to NotaIcons.pan,
@@ -208,7 +211,8 @@ private fun ToolbarItemView(
             ToolbarIcon(NotaIcons.sidebar, stringResource(R.string.side_panel), active = editor.sidebarVisible, shortcut = Keys.SIDEBAR) { editor.toggleSidebar() }
 
         ToolbarItem.PEN, ToolbarItem.DASHED, ToolbarItem.CALLIGRAPHY, ToolbarItem.SPEED,
-        ToolbarItem.TAPER, ToolbarItem.HIGHLIGHTER, ToolbarItem.ERASER, ToolbarItem.PAN,
+        ToolbarItem.TAPER, ToolbarItem.HIGHLIGHTER, ToolbarItem.NEON, ToolbarItem.RAINBOW,
+        ToolbarItem.PENCIL, ToolbarItem.ERASER, ToolbarItem.PAN,
         ToolbarItem.SELECT, ToolbarItem.LASSO, ToolbarItem.SCREENSHOT, ToolbarItem.SHAPE,
         ToolbarItem.TEXT, ToolbarItem.TEXT_BOX -> {
             val tool = Tool.fromId(item.id)

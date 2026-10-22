@@ -8,8 +8,10 @@ import com.xnota.core.pal.BlendMode
 import com.xnota.core.pal.FillRule
 import com.xnota.core.pal.Pen
 import com.xnota.core.pal.Renderer
+import com.xnota.core.stroke.EngineTuning
 import com.xnota.core.stroke.Sample
 import com.xnota.core.stroke.StrokeEngine
+import com.xnota.core.stroke.StrokeGrain
 import com.xnota.core.stroke.StrokeGeometry
 import com.xnota.core.stroke.WetRibbon
 import com.xnota.core.tools.Tool
@@ -70,6 +72,9 @@ class Stroke(
      *  race costs at worst one redundant rebuild. */
     @Volatile
     private var cachedGeometry: StrokeGeometry? = null
+
+    /** [EngineTuning.generation] the cached geometry was built under; a mismatch rebuilds. */
+    private var cachedTuning: Int = -1
     private var cachedRawBounds: Rect? = null
     private var cachedBounds: Rect? = null
 
@@ -216,9 +221,51 @@ class Stroke(
 
     val isEmpty get() = pts.n == 0
 
+    /** The first/last raw samples, for join tests and statistics (the fork). */
+    val firstSample: Sample? get() = if (pts.n > 0) pts.sample(0) else null
+    val lastSample: Sample? get() = if (pts.n > 0) pts.sample(pts.n - 1) else null
+
+    /** Every raw sample as a list, for the debug HUD's stroke statistics (the fork). */
+    val rawSamples: List<Sample> get() = List(pts.n) { pts.sample(it) }
+
+    /**
+     * Publish this stroke's samples with [other]'s appended after them (the fork's join-strokes
+     * preference): copy-on-write like every mutation here, so a concurrent reader keeps the tuple
+     * it already holds. The joined stroke keeps THIS stroke's style; the caller has already vetted
+     * the pair with [com.xnota.core.stroke.StrokeJoin.canJoin].
+     */
+    fun appendJoined(other: Stroke) {
+        val a = pts
+        val b = other.pts
+        if (a.n == 0 || b.n == 0) return
+        val n = a.n + b.n
+        val xa = FloatArray(n)
+        val ya = FloatArray(n)
+        val pa = FloatArray(n)
+        System.arraycopy(a.xa, 0, xa, 0, a.n)
+        System.arraycopy(a.ya, 0, ya, 0, a.n)
+        System.arraycopy(a.pa, 0, pa, 0, a.n)
+        // Re-origin the appended samples into this stroke's frame.
+        val dx = (b.ox - a.ox).toFloat()
+        val dy = (b.oy - a.oy).toFloat()
+        for (i in 0 until b.n) {
+            xa[a.n + i] = b.xa[i] + dx
+            ya[a.n + i] = b.ya[i] + dy
+            pa[a.n + i] = b.pa[i]
+        }
+        // Timing is relative to each stroke's own first sample; a joined stroke just restarts the
+        // clock for the appended half — only the speed pen reads it, and its presets never join.
+        pts = Samples(a.ox, a.oy, xa, ya, pa, a.ta, n)
+        invalidate()
+    }
+
     /** Lazily-built ribbon geometry; rebuilt only when samples change. */
     fun geometry(): StrokeGeometry {
         wet?.let { return it.geometry() }
+        if (cachedGeometry != null && cachedTuning != EngineTuning.generation) {
+            // Reader-level ink tuning moved under a cached ribbon: rebuild like an edit would.
+            cachedGeometry = null
+        }
         cachedGeometry?.let { return it }
         // Unpack to the doubles the engine works in. It allocates these three arrays anyway, so
         // reading the float storage here costs nothing over passing a list of boxed samples.
@@ -248,7 +295,31 @@ class Stroke(
             finished = finished,
             smoothScale = smoothScale,
             curveK = config.pressureCurveK,
-        ).also { cachedGeometry = it }
+            opts = engineOptions(),
+        ).also {
+            cachedGeometry = it
+            cachedTuning = EngineTuning.generation
+        }
+    }
+
+    /**
+     * The engine options this stroke renders with: the reader-level tuning plus the per-stroke
+     * grain and scatter travelling in the tool config, seeded from the stroke's own first sample
+     * so the jitter is stable across renders, reloads and exports (see [StrokeGrain]).
+     */
+    private fun engineOptions(): com.xnota.core.stroke.InkEngineOptions {
+        if (config.roughness <= 0.0 && config.scatter <= 0.0) {
+            return EngineTuning.optionsFor(0.0, 0L, 0.0, 0L)
+        }
+        val s = pts
+        val x0 = if (s.n > 0) s.ox + s.xa[0] else 0.0
+        val y0 = if (s.n > 0) s.oy + s.ya[0] else 0.0
+        return EngineTuning.optionsFor(
+            config.roughness,
+            StrokeGrain.seedOf(x0, y0, config.baseWidth, smoothScale),
+            config.scatter,
+            StrokeGrain.scatterSeedOf(x0, y0, config.baseWidth, smoothScale),
+        )
     }
 
     fun invalidate() {
@@ -336,6 +407,7 @@ class Stroke(
             holdEnds = tool == Tool.PEN || tool == Tool.HIGHLIGHTER,
             smoothScale = smoothScale,
             curveK = config.pressureCurveK,
+            opts = engineOptions(),
         )
         // Everything before the sample being added; the caller appends that one itself.
         val s = pts

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- XNota — neon pen stroke. A bright core line over a wider translucent same-colour underglow. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:fillColor="#33FF0000" android:pathData="M13.81,69.63 L25.61,62.90 L35.11,66.04 L49.90,74.48 L68.00,83.37 L87.86,86.82 A13.00,13.00 0 0 1 92.14,61.18 L92.14,61.18 L76.00,58.63 L62.10,51.52 L44.89,41.96 L22.39,37.10 L2.19,46.37 A13.00,13.00 0 0 1 13.81,69.63 Z"/>
+    <path android:fillColor="#FF000000" android:pathData="M11.30,61.25 L25.00,55.50 L38.52,61.17 L53.52,69.17 L69.18,75.40 L87.61,77.48 A3.50,3.50 0 0 1 88.39,70.52 L88.39,70.52 L70.82,68.60 L56.48,62.83 L41.48,54.83 L25.00,48.50 L8.70,54.75 A3.50,3.50 0 0 1 11.30,61.25 Z"/>
+</vector>

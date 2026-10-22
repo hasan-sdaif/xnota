@@ -16,6 +16,7 @@ import com.xnota.core.history.Command
 import com.xnota.core.history.CompositeCommand
 import com.xnota.core.history.EraseItems
 import com.xnota.core.history.History
+import com.xnota.core.history.TransformItems
 import com.xnota.core.history.LockItems
 import com.xnota.core.history.EditLabel
 import com.xnota.core.history.EditText
@@ -27,7 +28,6 @@ import com.xnota.core.history.ResizeItem
 import com.xnota.core.history.RestyleItems
 import com.xnota.core.history.RestyleText
 import com.xnota.core.history.TransferItems
-import com.xnota.core.history.TransformItems
 import com.xnota.core.model.CanvasItem
 import com.xnota.core.model.ConnectorDraft
 import com.xnota.core.model.ConnectorEdit
@@ -63,7 +63,9 @@ import com.xnota.core.stroke.RecognizedShape
 import com.xnota.core.stroke.Scribble
 import com.xnota.core.stroke.Sample
 import com.xnota.core.stroke.ShapeRecognizer
+import com.xnota.core.stroke.StrokeJoin
 import com.xnota.core.stroke.StrokeSimplify
+import com.xnota.core.stroke.StrokeUndoCoalescer
 import com.xnota.core.tools.EraseMode
 import com.xnota.core.tools.InkPalette
 import com.xnota.core.tools.ShapeConfig
@@ -206,6 +208,21 @@ class InteractionController(
 
     /** Whether a finger draws (true) or pans (false). The stylus always uses the armed tool. */
     var fingerDraws: Boolean = false
+
+    /** The fork's undo coalescing: rapid back-to-back strokes share one undo unit. */
+    var undoCoalesce: Boolean = true
+
+    /** Anything that makes "the previous stroke" meaningless — an undo, a page jump — closes the
+     *  coalescing window so the next stroke starts a fresh undo unit. */
+    fun breakUndoCoalescing() = strokeCoalescer.reset()
+
+    /** The fork's join-strokes: a new stroke whose start lands on the previous stroke's end
+     *  (same tool, colour, width) continues that stroke instead of starting a new item. */
+    var joinStrokes: Boolean = false
+
+    /** Window state for [undoCoalesce]; clocked by elapsed-realtime at pen-down/pen-up. */
+    private val strokeCoalescer = StrokeUndoCoalescer()
+    private var strokeBeganAtMs: Long = 0L
 
     /** Panning allowed while zoom is locked: "single" (default) | "double" | "none". */
     var zoomLockPan: String = "single"
@@ -1045,6 +1062,7 @@ class InteractionController(
     // --- DRAW ---
 
     private fun beginDraw(content: Pt, pressure: Double, drawTool: Tool, timeMs: Long, downViewport: Pt) {
+        strokeBeganAtMs = android.os.SystemClock.elapsedRealtime()
         val pageIndex = state.pageIndexAtContent(content) ?: return
         // Reaching here with a live selection means the press landed off it (on it the stylus would
         // have grabbed it): dismiss it. A bare tap that only dismissed is dropped in endDraw.
@@ -1243,7 +1261,17 @@ class InteractionController(
         val all = if (last == null) crossedSegments.toList() else crossedSegments + last
         crossedSegments.clear()
         if (all.isEmpty()) return
-        history.push(if (all.size == 1) all[0] else CompositeCommand(all))
+        val command = if (all.size == 1) all[0] else CompositeCommand(all)
+        // The fork's undo coalescing: a stroke begun within the window of the previous pen-up
+        // folds into that stroke's undo unit, so hatching and scribbling come back in one Ctrl+Z.
+        val nowMs = android.os.SystemClock.elapsedRealtime()
+        val coalesce = undoCoalesce && strokeCoalescer.shouldCoalesce(strokeBeganAtMs)
+        strokeCoalescer.notePenUp(nowMs)
+        if (coalesce && history.tryCoalesce(command)) {
+            onContentChanged()
+            return
+        }
+        history.push(command)
         onContentChanged()
     }
 
@@ -1251,12 +1279,43 @@ class InteractionController(
     private fun fileStroke(stroke: Stroke, pageIndex: Int): Command {
         simplifyForCommit(stroke)
         val page = state.document.pages[pageIndex]
+        if (joinStrokes) {
+            joinOnto(page, stroke)?.let { return it }
+        }
         page.items.add(stroke)
         // The front buffer is still showing this stroke, and drawing it here as well would put two
         // antialiased edges over each other. It goes into the cache once the pad has let go.
         if (frontInk?.hold(stroke, page) != true) state.appendToCache(page, stroke)
         state.document.dirty = true
         return AddItem(page, stroke)
+    }
+
+    /**
+     * The fork's join-strokes: when the finished [stroke] starts where the page's top stroke ended
+     * — same tool, ink colour and width within tolerance — its samples continue that stroke. The
+     * command swaps the survivor's geometry between its joined and pre-joined snapshots, so one
+     * undo un-joins it. Falls back to a fresh item (null) whenever anything doesn't line up.
+     */
+    private fun joinOnto(page: Page, stroke: Stroke): Command? {
+        val prev = page.items.lastOrNull() as? Stroke ?: return null
+        if (prev.locked || !prev.finished || !stroke.finished) return null
+        val a = prev.lastSample ?: return null
+        val b = stroke.firstSample ?: return null
+        // The gap reads at the stroke's own draw zoom, like every other arc constant in the engine.
+        val gap = StrokeJoin.DEFAULT_GAP_PX * maxOf(1.0, stroke.smoothScale)
+        if (!StrokeJoin.canJoin(
+                com.xnota.core.geometry.Pt(a.x, a.y), prev.tool, prev.config.baseWidth, prev.config.rgba,
+                com.xnota.core.geometry.Pt(b.x, b.y), stroke.tool, stroke.config.baseWidth, stroke.config.rgba,
+                maxGapPx = gap,
+            )
+        ) return null
+        val before = prev.snapshotGeometry()
+        prev.appendJoined(stroke)
+        val after = prev.snapshotGeometry()
+        state.invalidatePage(page)
+        state.appendToCache(page, prev)
+        state.document.dirty = true
+        return TransformItems(listOf(prev), listOf(before), listOf(after))
     }
 
     private fun endDraw(e: MotionEvent) {

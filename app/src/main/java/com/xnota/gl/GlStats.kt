@@ -17,6 +17,11 @@ data class GlStats(
     val frameMs: Double = 0.0,
     /** Longest gap between drawn frames in the last second, in milliseconds. */
     val worstFrameMs: Double = 0.0,
+    /** 95th-percentile inter-frame gap over the rolling 120-frame window (the fork): the number
+     *  the worst-frame outlier hides — a steady 20 ms is a different problem than one 40 ms spike. */
+    val p95FrameMs: Double = 0.0,
+    /** Mean inter-frame gap over the same rolling window (the fork). */
+    val avgFrameMs: Double = 0.0,
     /** Frames in the last second that arrived more than one and a half refreshes late. */
     val jankFrames: Int = 0,
     /** The panel's refresh rate, so a frame count at the cap is recognizable as the cap. */

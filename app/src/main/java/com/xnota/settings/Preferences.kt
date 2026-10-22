@@ -5,6 +5,9 @@ import com.xnota.core.model.PageSize
 import com.xnota.core.model.PageSizeChoice
 import com.xnota.core.model.Rgba
 import com.xnota.core.util.NameTemplate
+import com.xnota.core.stroke.NibAngle
+import com.xnota.core.stroke.Pressure
+import com.xnota.core.stroke.StrokeFilter
 import org.json.JSONObject
 
 /**
@@ -131,6 +134,32 @@ data class Preferences(
      *  [com.xnota.settings.Settings.backupRoot], any SAF tree the user granted — a Drive folder
      *  works with no network code in the app at all. */
     val backupEvery: String = "never",
+    // ── Ink Engine 2.0 (the fork) ────────────────────────────────────────────────
+    /** Position+pressure low-pass behind the ribbon: "ema" (historical per-arc low-pass) or
+     *  "one_euro" (the fork's adaptive one-euro filter: jitter-resistant at rest, low-lag while
+     *  moving). Reader-level: stored ink never changes, only how it renders. */
+    val strokeFilter: String = "ema",
+    /** Speed-scaled low-pass lag: fast ink crisp, slow ink steady. Off by default — the
+     *  historical ink pipeline is the default until the owner opts in. */
+    val adaptiveSmoothing: Boolean = false,
+    /** Raw-pressure deadzone fraction in [0, 0.20]; pressures below it read as zero. */
+    val pressureDeadzone: Double = 0.0,
+    /** Pressure gamma in [0.5, 2.0], applied after the logistic reshape: below 1 hardens
+     *  (width arrives sooner), above 1 softens. */
+    val pressureGamma: Double = 1.0,
+    /** Pressure-only EMA smoothing strength 0–100; position smoothing untouched. */
+    val pressureSmoothing: Int = 0,
+    /** Calligraphy nib angle in degrees [0, 360), or -1 to follow the travel direction. */
+    val nibAngleLockDeg: Double = NibAngle.FOLLOW_TRAVEL,
+    /** Highlighter compositing: "multiply" (historical — tints what is under it) or "normal"
+     *  (plain alpha, brighter; the only mode that shows on a darker page). */
+    val highlighterBlend: String = "multiply",
+    /** Join a new stroke onto the previous one when its start lands within the join gap of that
+     *  stroke's end with a matching tool and width. Off by default — deliberate strokes only. */
+    val joinStrokes: Boolean = false,
+    /** Rapid back-to-back strokes merge into one undo unit (within ~350 ms). On by default. */
+    val undoCoalesce: Boolean = true,
+
     /** Version of the preferences payload, so one-off migrations can tell a stale file from a
      *  fresh one; see [PREF_SCHEMA]. */
     val prefSchema: Int = PREF_SCHEMA,
@@ -223,6 +252,15 @@ data class Preferences(
         .put("pen_button_2_tool", penButton2Tool)
         .put("adaptive_ink", adaptiveInk)
         .put("backup_every", backupEvery)
+        .put("stroke_filter", strokeFilter)
+        .put("adaptive_smoothing", adaptiveSmoothing)
+        .put("pressure_deadzone", pressureDeadzone)
+        .put("pressure_gamma", pressureGamma)
+        .put("pressure_smoothing", pressureSmoothing)
+        .put("nib_angle_lock", nibAngleLockDeg)
+        .put("highlighter_blend", highlighterBlend)
+        .put("join_strokes", joinStrokes)
+        .put("undo_coalesce", undoCoalesce)
         .put("pref_schema", prefSchema)
 
     companion object {
@@ -346,6 +384,20 @@ data class Preferences(
                     .let { if (it == "off" || it == "achromatic") it else "full" },
                 backupEvery = o.optString("backup_every", "never")
                     .let { if (it == "daily" || it == "weekly") it else "never" },
+                strokeFilter = o.optString("stroke_filter", "ema")
+                    .let { if (it == "one_euro") it else "ema" },
+                adaptiveSmoothing = o.optBoolean("adaptive_smoothing", true),
+                pressureDeadzone = o.optDouble("pressure_deadzone", 0.0)
+                    .coerceIn(0.0, Pressure.DEADZONE_MAX),
+                pressureGamma = o.optDouble("pressure_gamma", 1.0)
+                    .coerceIn(Pressure.GAMMA_MIN, Pressure.GAMMA_MAX),
+                pressureSmoothing = o.optInt("pressure_smoothing", 0).coerceIn(0, 100),
+                nibAngleLockDeg = o.optDouble("nib_angle_lock", NibAngle.FOLLOW_TRAVEL)
+                    .let { if (it >= 0.0) it % 360.0 else NibAngle.FOLLOW_TRAVEL },
+                highlighterBlend = o.optString("highlighter_blend", "multiply")
+                    .let { if (it == "normal") it else "multiply" },
+                joinStrokes = o.optBoolean("join_strokes", false),
+                undoCoalesce = o.optBoolean("undo_coalesce", true),
                 prefSchema = schema.coerceAtLeast(PREF_SCHEMA),
             )
         }

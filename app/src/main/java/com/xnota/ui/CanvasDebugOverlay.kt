@@ -62,7 +62,11 @@ fun CanvasDebugOverlay(editor: InfiniteEditor) {
         // number at the cap is recognizable as the cap rather than as headroom.
         add("fps       %.0f / %.0f".format(stats.fps, stats.displayHz))
         add("frame     %.2f ms".format(stats.frameMs))
+        add("avg/p95   %.1f / %.1f ms".format(stats.avgFrameMs, stats.p95FrameMs))
         add("worst     %.1f ms".format(stats.worstFrameMs))
+        editor.lastStrokeStats?.let { st ->
+            add("stroke    ${st.sampleCount} pts · ${"%.0f".format(st.samplesPerSec)}/s · v ${"%.2f".format(st.meanSpeedPxPerMs)} px/ms · p ${"%.2f".format(st.meanPressure)}")
+        }
         add("late      ${stats.jankFrames}")
         add("req/frame %.1f".format(stats.requestsPerFrame))
         add("step      %.1f px".format(stats.stepPx))

@@ -8,6 +8,19 @@ enum class Tool(val id: String) {
     SPEED("speed"),
     TAPER("taper"),
     HIGHLIGHTER("highlighter"),
+
+    /** The fork's neon pen: a bright core over a wider translucent same-colour underglow. An
+     *  ordinary pressure pen whose preset simply turns the composable neon rendering on. */
+    NEON("neon"),
+
+    /** The fork's rainbow brush: the hue rotates along the stroke's arc length (render-time; the
+     *  stored colour is only the base hue). See [com.xnota.core.stroke.RainbowInk]. */
+    RAINBOW("rainbow"),
+
+    /** The fork's pencil: a fixed-width, grainy, slightly translucent stroke built on the ink
+     *  roughness engine. */
+    PENCIL("pencil"),
+
     ERASER("eraser"),
     PAN("pan"),
     SELECT("select"),
@@ -23,7 +36,8 @@ enum class Tool(val id: String) {
 
     /** Tools that produce ink via the stroke engine. */
     val isStroke: Boolean get() = this == PEN || this == DASHED || this == CALLIGRAPHY ||
-        this == SPEED || this == TAPER || this == HIGHLIGHTER
+        this == SPEED || this == TAPER || this == HIGHLIGHTER ||
+        this == NEON || this == RAINBOW || this == PENCIL
 
     /**
      * Tools the "draw with finger" gate covers: when finger-draw is off, a finger pans
@@ -34,8 +48,13 @@ enum class Tool(val id: String) {
     val fingerPansWhenOff: Boolean get() = isStroke ||
         this == SELECT || this == LASSO || this == SCREENSHOT || this == SHAPE || this == ERASER || this == MARKUP
 
-    /** Render-time ink alpha scale: the highlighter is translucent (spec 03 §3). */
-    val alphaScale: Double get() = if (this == HIGHLIGHTER) 0.35 else 1.0
+    /** Render-time ink alpha scale: the highlighter is translucent (spec 03 §3), the pencil
+     *  slightly translucent like graphite. */
+    val alphaScale: Double get() = when (this) {
+        HIGHLIGHTER -> 0.35
+        PENCIL -> InkToolPresets.PENCIL_ALPHA
+        else -> 1.0
+    }
 
     companion object {
         fun fromId(id: String?): Tool? = entries.firstOrNull { it.id == id }
@@ -43,7 +62,8 @@ enum class Tool(val id: String) {
         /** Armed at startup. */
         val DEFAULT = PAN
 
-        /** Quick-tool-wheel order (spec 06 §11 / 10 §7). */
-        val wheelOrder = listOf(PEN, DASHED, CALLIGRAPHY, SPEED, TAPER, HIGHLIGHTER, ERASER, SELECT, LASSO, SCREENSHOT, SHAPE, TEXT, MARKUP, PAN)
+        /** Quick-tool-wheel order (spec 06 §11 / 10 §7). The fork's three new pens slot in after
+         *  the classic set so existing muscle memory keeps its slots. */
+        val wheelOrder = listOf(PEN, DASHED, CALLIGRAPHY, SPEED, TAPER, HIGHLIGHTER, NEON, RAINBOW, PENCIL, ERASER, SELECT, LASSO, SCREENSHOT, SHAPE, TEXT, MARKUP, PAN)
     }
 }

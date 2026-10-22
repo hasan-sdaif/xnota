@@ -200,6 +200,9 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
 
     /** Whether the debug HUD is up; toggled by a four-finger tap, as on the paged canvas. */
     var debugVisible by mutableStateOf(false)
+
+    /** The last committed stroke's statistics, for the debug HUD (the fork's telemetry). */
+    var lastStrokeStats by mutableStateOf<com.xnota.core.stroke.StrokeStats.Summary?>(null)
         private set
 
     fun toggleDebug() {
@@ -1488,6 +1491,7 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         // Its triangles are held until the pad is opaque, so the canvas cannot draw the stroke
         // while the pad is also showing it. Everything else about the commit happens now.
         heldItems = heldItems + stroke
+        lastStrokeStats = com.xnota.core.stroke.StrokeStats.of(stroke.rawSamples)
         commitItem(stroke)
         captureBehindStroke()
     }

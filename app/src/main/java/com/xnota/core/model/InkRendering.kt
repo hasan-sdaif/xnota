@@ -28,6 +28,15 @@ object InkRendering {
     var transform: InkTransform = InkTransformOff
         private set
 
+    /**
+     * The installed highlighter blend (the fork's `highlighter_blend` preference), read wherever
+     * the highlighter's composite mode is resolved — the paged canvas's layer blend and the GL
+     * canvas's ink pass. MULTIPLY (the historical look) by default. Installed like the transform
+     * above: a property of the reader, applied at render time, never written into a note.
+     */
+    @Volatile
+    var highlighterBlend: HighlighterBlend = HighlighterBlend.MULTIPLY
+
     /** Install [t] as the process-wide transform; cheap enough to call on every theme change. */
     fun install(t: InkTransform) {
         transform = t
@@ -47,6 +56,21 @@ enum class InkAdaptiveMode(val id: String) {
 
     companion object {
         fun fromId(id: String?): InkAdaptiveMode = entries.firstOrNull { it.id == id } ?: FULL
+    }
+}
+
+/**
+ * How the highlighter composites (the fork's `highlighter_blend` preference). [MULTIPLY] is the
+ * historical look — the marker tints what is under it and can never lighten dark ink, so text
+ * stays legible through a highlight. [NORMAL] is plain alpha compositing: brighter, more like a
+ * wax crayon, and the only mode that shows anything on a page already darker than the ink.
+ */
+enum class HighlighterBlend(val id: String) {
+    NORMAL("normal"),
+    MULTIPLY("multiply");
+
+    companion object {
+        fun fromId(id: String?): HighlighterBlend = entries.firstOrNull { it.id == id } ?: MULTIPLY
     }
 }
 

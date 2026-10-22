@@ -5,6 +5,7 @@ import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * Turns raw stylus samples into a smooth, variable-width ink ribbon (spec 03).
@@ -147,6 +148,32 @@ object StrokeEngine {
         ema(values.toDoubleArray(), alpha).asList()
 
     /**
+     * [emaByArc] with the lag scaled per step by the instantaneous speed — the adaptive half of
+     * the fork's `adaptive_ink_smoothing` preference (see [AdaptiveSmoothing]). Requires the
+     * elapsed-ms channel, which every live stroke now records; an untimed stroke falls back to
+     * the constant-lag form. The per-step lambda keeps the recurrence exactly [emaStep]'s, so
+     * [WetRibbon] reproduces this incrementally the way it does the constant form.
+     */
+    fun emaByArcAdaptive(
+        values: DoubleArray,
+        steps: DoubleArray,
+        times: DoubleArray,
+        baseLambda: Double,
+        smoothScale: Double,
+    ): DoubleArray {
+        if (values.isEmpty()) return values
+        if (baseLambda <= 0.0) return values.copyOf()
+        val out = DoubleArray(values.size)
+        out[0] = values[0]
+        for (i in 1 until values.size) {
+            val dt = times[i] - times[i - 1]
+            val lambda = baseLambda * AdaptiveSmoothing.stepFactor(steps[i], dt, smoothScale)
+            out[i] = emaStep(out[i - 1], values[i - 1], values[i], steps[i], lambda)
+        }
+        return out
+    }
+
+    /**
      * The same one-pole low-pass as [ema], measured in travel rather than in samples: the
      * continuous filter `dy/ds = (x(s) - y) / lambda` over arc length `s`, integrated exactly
      * across each step with the input read as a straight line between the two samples. [steps]
@@ -205,8 +232,12 @@ object StrokeEngine {
         pressure: Double,
         ty: Double,
         curveK: Double = PRESSURE_CURVE_K,
+        shape: PressureShape = PressureShape.DEFAULT,
     ): Double {
-        val pEff = if (pressureEnabled) logisticEase(pressure, curveK) else 1.0
+        // The pressure response: the logistic S-curve, then the fork's gamma reshape (identity by
+        // default, so the spec's conformance vectors are unchanged). The deadzone, if any, was
+        // applied to the raw channel before it was smoothed — it is a property of the *input*.
+        val pEff = if (pressureEnabled) shape.reshaped(logisticEase(pressure, curveK)) else 1.0
         val wBase = baseWidth * (m + (1 - m) * pEff)
         val direction = max(1 + ds * ty, MIN_DIRECTION)
         return wBase * direction / 2.0
@@ -524,6 +555,7 @@ object StrokeEngine {
         finished: Boolean = true,
         smoothScale: Double = 1.0,
         curveK: Double = PRESSURE_CURVE_K,
+        opts: InkEngineOptions = InkEngineOptions.DEFAULT,
     ): StrokeGeometry {
         val n = samples.size
         if (n == 0) return StrokeGeometry.EMPTY
@@ -542,6 +574,7 @@ object StrokeEngine {
         return build(
             rawX, rawY, rawP, rawT, baseWidth, pressureEnabled, m, ds, speedStrength,
             taperEnabled, taperMinFactor, speedScale, smooth, holdEnds, finished, smoothScale, curveK,
+            opts,
         )
     }
 
@@ -569,28 +602,90 @@ object StrokeEngine {
         finished: Boolean = true,
         smoothScale: Double = 1.0,
         curveK: Double = PRESSURE_CURVE_K,
+        opts: InkEngineOptions = InkEngineOptions.DEFAULT,
     ): StrokeGeometry {
         val n = rawX.size
         if (n == 0) return StrokeGeometry.EMPTY
 
+        // The fork's engine tuning, applied as a prelude on the raw channels so that everything
+        // downstream (steps, tangents, the nib, the rails) sees one coherent input: scatter
+        // displaces each sample past the first by its deterministic seeded offset, and the
+        // pressure deadzone floors the light end before anything smooths it. Both are identity at
+        // their defaults, which is what keeps the spec's conformance vectors the spec's.
+        val inX: DoubleArray
+        val inY: DoubleArray
+        if (opts.scatter > 0.0) {
+            val amp = BrushScatter.radiusPx(opts.scatter, smoothScale)
+            inX = rawX.copyOf()
+            inY = rawY.copyOf()
+            for (i in 1 until n) {
+                val (dx, dy) = BrushScatter.offset(opts.scatterSeed, i, amp)
+                inX[i] += dx
+                inY[i] += dy
+            }
+        } else {
+            inX = rawX
+            inY = rawY
+        }
+        val inP = if (opts.pressure.deadzone > 0.0) {
+            DoubleArray(n) { Pressure.applyDeadzone(rawP[it], opts.pressure.deadzone) }
+        } else {
+            rawP
+        }
+
         // Travel between consecutive samples: what the low-pass measures itself against, so the
         // smoothing is set by the path and not by how many samples describe it.
         val steps = DoubleArray(n)
-        for (i in 1 until n) steps[i] = hypot(rawX[i] - rawX[i - 1], rawY[i] - rawY[i - 1])
+        for (i in 1 until n) steps[i] = hypot(inX[i] - inX[i - 1], inY[i] - inY[i - 1])
         val smoothLen = SMOOTH_LEN * max(smoothScale, 0.0)
 
         // 2. Smooth each channel independently. Straight-line strokes skip the position low-pass
         //    so the ribbon spans the raw samples exactly (EMA would pull a 2-point line's far end
-        //    toward the midpoint, leaving it short of the pointer).
-        val sx = if (smooth) emaByArc(rawX, steps, smoothLen) else rawX
-        val sy = if (smooth) emaByArc(rawY, steps, smoothLen) else rawY
+        //    toward the midpoint, leaving it short of the pointer). The fork's alternatives to
+        //    the arc-length EMA: the one-euro filter (position *and* pressure), or the same EMA
+        //    with its lag scaled by the instantaneous speed (adaptive smoothing).
+        val oneEuro = smooth && opts.filter.mode == StrokeFilterMode.ONE_EURO
+        val adaptive = smooth && opts.adaptive && rawT != null
+        val sx: DoubleArray
+        val sy: DoubleArray
+        val sp: DoubleArray
+        if (oneEuro) {
+            val f = opts.filter
+            val chX = OneEuroChannel(f.freqHz, f.minCutoff, f.beta, f.dCutoff)
+            val chY = OneEuroChannel(f.freqHz, f.minCutoff, f.beta, f.dCutoff)
+            val chP = OneEuroChannel(f.freqHz, f.minCutoff, f.beta, f.dCutoff)
+            sx = DoubleArray(n)
+            sy = DoubleArray(n)
+            sp = DoubleArray(n)
+            for (i in 0 until n) {
+                val t = rawT?.get(i) ?: 0.0
+                sx[i] = chX.filter(inX[i], t)
+                sy[i] = chY.filter(inY[i], t)
+                sp[i] = chP.filter(inP[i], t)
+            }
+        } else {
+            sx = if (smooth) {
+                if (adaptive) emaByArcAdaptive(inX, steps, rawT!!, smoothLen, smoothScale) else emaByArc(inX, steps, smoothLen)
+            } else {
+                inX
+            }
+            sy = if (smooth) {
+                if (adaptive) emaByArcAdaptive(inY, steps, rawT!!, smoothLen, smoothScale) else emaByArc(inY, steps, smoothLen)
+            } else {
+                inY
+            }
+            sp = emaByArc(inP, steps, smoothLen)
+        }
+        // The fork's pressure-only EMA rides *after* whichever low-pass shaped the channel, so
+        // its strength is a pure add-on and 0 leaves the historical pipeline alone.
+        val spS = if (opts.pressure.smoothing > 0.0) Pressure.smooth(sp, opts.pressure.smoothing) else sp
+
         // The pens that hold their ends (pen, highlighter) land and lift light, so the swept end
         // disc would shrink to a thin tip; hold the body width out to each end so it meets the line
         // at full width. The other ribbon pens take their ends at the raw pressure.
-        val sp = emaByArc(rawP, steps, smoothLen)
-        if (holdEnds && pressureEnabled) holdEndPressure(sp)
+        if (holdEnds && pressureEnabled) holdEndPressure(spS)
 
-        fun hw(i: Int, ty: Double) = halfWidth(baseWidth, pressureEnabled, m, ds, sp[i], ty, curveK)
+        fun hw(i: Int, ty: Double) = halfWidth(baseWidth, pressureEnabled, m, ds, spS[i], ty, curveK, opts.pressure)
 
         // 3. Single sample -> a filled dot: one swept disc at the pure-pressure half-width. A
         //    finished calligraphy tap takes the dot width (past the broad face) so it stays visible.
@@ -657,13 +752,35 @@ object StrokeEngine {
         // since a lift-off skid ends before it can hold. Nothing here looks ahead past the two ends,
         // and nothing reads time. Orientation still follows the true tangent; only the width
         // magnitude is held back. A no-op when ds = 0.
+        //
+        // The fork's nib-angle lock replaces the *target* of all three pieces with one fixed world
+        // angle: the slew limiter then simply eases into that angle and holds it, and the head is
+        // born there — a chisel edge held deliberately askew instead of one that follows travel.
+        val nibLock = opts.nibAngleLockDeg
         val dirY = if (ds > 0.0) {
             val window = headLen(smoothScale)
-            val (head, holdUntil) = headDirection(sx, sy, cum, window, finished)
-            val d = nibDirection(ty, dirSteps, openLen(smoothScale), closeLen(smoothScale), head, holdUntil)
+            val (head, holdUntil) = if (NibAngle.isLocked(nibLock)) {
+                NibAngle.directionTerm(0.0, nibLock) to 0
+            } else {
+                headDirection(sx, sy, cum, window, finished)
+            }
+            val target = if (NibAngle.isLocked(nibLock)) {
+                DoubleArray(n) { NibAngle.directionTerm(ty[it], nibLock) }
+            } else {
+                ty
+            }
+            val d = nibDirection(target, dirSteps, openLen(smoothScale), closeLen(smoothScale), head, holdUntil)
             if (finished) capTail(d, cum, window)
             d
         } else null
+
+        // Ink roughness: the deterministic width jitter, seeded from the stroke's own data so a
+        // rebuild is pixel-identical (see [StrokeGrain]).
+        val grainAmp = if (opts.grain > 0.0 && opts.grainSeed != 0L) {
+            StrokeGrain.amplitudePx(opts.grain, smoothScale)
+        } else {
+            0.0
+        }
 
         // 5–8. Half-widths, normals, and the two ribbon edges, packed straight into the output.
         // No separate end caps: the swept brush disc at each sample (the head and tail included)
@@ -677,6 +794,7 @@ object StrokeEngine {
             // face, so a cap at 1.0 would quietly shrink every tap.
             val dir = if (dirY != null) dirY[i].coerceIn(-1.0, DOT_DIR_Y) else ty[i]
             var h = hw(i, dir)
+            if (grainAmp > 0.0) h *= StrokeGrain.widthFactor(opts.grainSeed, i, grainAmp)
             if (sf != null) h *= sf[i]
             if (tf != null) h *= tf[i]
             writePoint(centerline, halfWidths, leftRail, rightRail, i, sx[i], sy[i], tx[i], ty[i], h)

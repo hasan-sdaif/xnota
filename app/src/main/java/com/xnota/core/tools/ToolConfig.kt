@@ -101,6 +101,14 @@ data class ToolConfig(
      *  historical feel; 0 is a linear response; higher sharpens the mid-range so light presses
      *  vary the width more. Persisted per stroke; older notes default to the historical value. */
     val pressureCurveK: Double = 8.0,
+    // New fields go *after* `rgba` so the positional constructor stays stable.
+    /** Ink roughness (the fork): 0–100, a deterministic seeded width jitter that reads as pencil
+     *  grain or dry-marker drag. 0 is perfectly smooth ink. Persisted per stroke. */
+    val roughness: Double = 0.0,
+    /** Brush scatter (the fork): 0–100, a deterministic seeded offset of each raw sample before
+     *  smoothing, so one stroke reads as many light passes. 0 is a single clean line. Persisted
+     *  per stroke. */
+    val scatter: Double = 0.0,
 ) {
     companion object {
         const val DEFAULT_MARKUP_INTENSITY = 0.5
@@ -125,13 +133,17 @@ object ToolDefaults {
         Tool.SPEED -> ToolConfig(baseWidth = 4.0, pressureEnabled = true, pressureMinFactor = 0.35, directionStrength = 0.0, speedStrength = 0.8)
         Tool.TAPER -> ToolConfig(baseWidth = 4.0, pressureEnabled = true, pressureMinFactor = 0.45, directionStrength = 0.0, taperEnabled = true, taperMinFactor = DEFAULT_TAPER_TIP)
         Tool.HIGHLIGHTER -> ToolConfig(baseWidth = 16.0, pressureEnabled = false, pressureMinFactor = 1.0, directionStrength = 0.0, highlighterAlpha = 0.50)
+        // The fork's three new pens; see [InkToolPresets] for the pure composition + tests.
+        Tool.NEON -> InkToolPresets.neon()
+        Tool.RAINBOW -> InkToolPresets.rainbow()
+        Tool.PENCIL -> InkToolPresets.pencil()
         Tool.ERASER -> ToolConfig(baseWidth = 24.0, pressureEnabled = false, pressureMinFactor = 1.0, directionStrength = 0.0)
         Tool.LASSO -> ToolConfig(baseWidth = 2.0, pressureEnabled = false, pressureMinFactor = 1.0, directionStrength = 0.0)
         else -> ToolConfig()
     }
 
     /** Tools whose config is persisted in settings (spec 09 §2). */
-    val persistedTools = listOf(Tool.PEN, Tool.DASHED, Tool.CALLIGRAPHY, Tool.SPEED, Tool.TAPER, Tool.HIGHLIGHTER, Tool.ERASER, Tool.SELECT, Tool.LASSO, Tool.MARKUP)
+    val persistedTools = listOf(Tool.PEN, Tool.DASHED, Tool.CALLIGRAPHY, Tool.SPEED, Tool.TAPER, Tool.HIGHLIGHTER, Tool.NEON, Tool.RAINBOW, Tool.PENCIL, Tool.ERASER, Tool.SELECT, Tool.LASSO, Tool.MARKUP)
 }
 
 /**

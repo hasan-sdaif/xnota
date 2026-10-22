@@ -141,6 +141,11 @@ class GlRenderer : GLSurfaceView.Renderer {
     private var frameHead = 0
     private var frameCount = 0
     private var frameMs = 0.0
+
+    /** The fork's rolling frame-gap histogram (min/avg/p95/max over 120 frames), published into
+     *  [GlStats] so the HUD can show the steady-state tail the worst-frame outlier hides. */
+    private val frameHistogram = com.xnota.core.util.FrameTimeStats()
+    private var lastFrameStampNs = 0L
     private var lastRequests = 0
     private var requestsPerFrame = 0.0
     private var rendererName = ""
@@ -224,6 +229,8 @@ class GlRenderer : GLSurfaceView.Renderer {
     private fun sampleFrame(startedNs: Long, f: FrameState) {
         val now = System.nanoTime()
         frameMs = (now - startedNs) / 1_000_000.0
+        if (lastFrameStampNs != 0L) frameHistogram.addFrame((now - lastFrameStampNs) / 1_000_000.0)
+        lastFrameStampNs = now
         // How far the content actually moved on screen since the last frame. Even steps are what
         // reads as smooth; uneven ones read as stutter however many frames were drawn.
         val moved = if (lastZoom == f.zoom) {
@@ -278,10 +285,13 @@ class GlRenderer : GLSurfaceView.Renderer {
             if (stepMean > 0.0 && variance > 0.0) jitter = kotlin.math.sqrt(variance) / stepMean
         }
 
+        val hist = frameHistogram.snapshot()
         val base = GlStats(
             fps = frames.toDouble(),
             frameMs = frameMs,
             worstFrameMs = worstNs / 1_000_000.0,
+            p95FrameMs = hist.p95Ms,
+            avgFrameMs = hist.avgMs,
             jankFrames = jank,
             displayHz = displayHz,
             requestsPerFrame = requestsPerFrame,
