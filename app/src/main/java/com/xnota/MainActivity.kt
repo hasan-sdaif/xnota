@@ -1516,6 +1516,7 @@ private fun EditorPane(
                     com.xnota.ui.TextStyleBar(canvas)
                     com.xnota.ui.LongPressMenu(canvas, onInsertImageAt = { c -> actions.onInsertCanvasImage(editor, c) })
                     com.xnota.ui.CanvasDebugOverlay(canvas)
+                    com.xnota.ui.MeasureHud(canvas)
                     if (canvas.layersOpen) {
                         androidx.compose.ui.window.Dialog(onDismissRequest = { canvas.layersOpen = false }) {
                             com.xnota.ui.LayersPanel(canvas) { canvas.layersOpen = false }

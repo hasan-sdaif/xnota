@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- XNota — measure tool. A diagonal rule with its graduation ticks and the round stops at both
+     ends, the line a press-drag sweeps out with its readout beside the pointer. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- The rule: a slim bar corner to corner. -->
+    <path android:fillColor="#FF000000" android:pathData="M16.12,93.78 L93.78,16.12 L83.88,6.22 L6.22,83.88 Z"/>
+    <!-- Graduation ticks crossing it, like a ruler's. -->
+    <path android:fillColor="#FF000000" android:pathData="M35.16,78.98 L32.9,81.24 L18.76,67.1 L21.02,64.84 Z"/>
+    <path android:fillColor="#FF000000" android:pathData="M49.56,64.58 L47.3,66.84 L33.16,52.7 L35.42,50.44 Z"/>
+    <path android:fillColor="#FF000000" android:pathData="M63.96,50.18 L61.7,52.44 L47.56,38.3 L49.82,36.04 Z"/>
+    <path android:fillColor="#FF000000" android:pathData="M78.36,35.78 L76.1,38.04 L61.96,23.9 L64.22,21.64 Z"/>
+    <!-- Round stops at both ends: where the press began and where the pointer is. -->
+    <path android:fillColor="#FF000000" android:pathData="M14,86 m-4.5,0 a4.5,4.5 0 1 1 9,0 a4.5,4.5 0 1 1 -9,0"/>
+    <path android:fillColor="#FF000000" android:pathData="M86,14 m-4.5,0 a4.5,4.5 0 1 1 9,0 a4.5,4.5 0 1 1 -9,0"/>
+</vector>

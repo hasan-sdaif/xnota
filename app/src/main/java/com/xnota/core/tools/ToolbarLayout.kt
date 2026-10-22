@@ -33,6 +33,9 @@ enum class ToolbarItem(val id: String) {
     /** The fork's fill (bucket) tool button: arms [com.xnota.core.tools.Tool.FILL]. */
     FILL("fill"),
 
+    /** The fork's measure tool button: arms [com.xnota.core.tools.Tool.MEASURE]. */
+    MEASURE("measure"),
+
     RULER("ruler"),
     TEXT("text"),
     TEXT_BOX("text_box"),
@@ -161,6 +164,7 @@ data class ToolbarLayout(val sections: List<ToolbarSection>) {
             ToolbarItem.WAND to ToolbarItem.LASSO,
             ToolbarItem.MARKUP to ToolbarItem.TEXT_BOX,
             ToolbarItem.FILL to ToolbarItem.SHAPE,
+            ToolbarItem.MEASURE to ToolbarItem.FILL,
         )
 
         /**
@@ -176,7 +180,7 @@ data class ToolbarLayout(val sections: List<ToolbarSection>) {
             ToolbarItem.NEON, ToolbarItem.RAINBOW, ToolbarItem.PENCIL,
             ToolbarItem.ERASER,
             ToolbarItem.PAN, ToolbarItem.SELECT, ToolbarItem.LASSO, ToolbarItem.WAND,
-            ToolbarItem.SHAPE, ToolbarItem.FILL,
+            ToolbarItem.SHAPE, ToolbarItem.FILL, ToolbarItem.MEASURE,
             ToolbarItem.IMAGE, ToolbarItem.COLORS, ToolbarItem.UNDO, ToolbarItem.REDO,
             ToolbarItem.STYLES, ToolbarItem.WAYPOINTS, ToolbarItem.MINIMAP,
             ToolbarItem.ZOOM, ToolbarItem.FIT, ToolbarItem.ZOOM_LOCK,
@@ -196,7 +200,7 @@ data class ToolbarLayout(val sections: List<ToolbarSection>) {
                 ToolbarItem.NEON, ToolbarItem.RAINBOW, ToolbarItem.PENCIL,
             ),
             listOf(ToolbarItem.PAN, ToolbarItem.SELECT, ToolbarItem.LASSO, ToolbarItem.SCREENSHOT),
-            listOf(ToolbarItem.WAND, ToolbarItem.SHAPE, ToolbarItem.FILL, ToolbarItem.RULER, ToolbarItem.TEXT, ToolbarItem.TEXT_BOX, ToolbarItem.MARKUP),
+            listOf(ToolbarItem.WAND, ToolbarItem.SHAPE, ToolbarItem.FILL, ToolbarItem.MEASURE, ToolbarItem.RULER, ToolbarItem.TEXT, ToolbarItem.TEXT_BOX, ToolbarItem.MARKUP),
             listOf(ToolbarItem.IMAGE),
             listOf(ToolbarItem.COLORS),
             listOf(ToolbarItem.UNDO, ToolbarItem.REDO),
@@ -214,7 +218,7 @@ data class ToolbarLayout(val sections: List<ToolbarSection>) {
                 ToolbarItem.NEON, ToolbarItem.RAINBOW, ToolbarItem.PENCIL,
             ),
             listOf(ToolbarItem.PAN, ToolbarItem.SELECT, ToolbarItem.LASSO),
-            listOf(ToolbarItem.WAND, ToolbarItem.SHAPE, ToolbarItem.FILL),
+            listOf(ToolbarItem.WAND, ToolbarItem.SHAPE, ToolbarItem.FILL, ToolbarItem.MEASURE),
             listOf(ToolbarItem.IMAGE),
             listOf(ToolbarItem.COLORS),
             listOf(ToolbarItem.UNDO, ToolbarItem.REDO),

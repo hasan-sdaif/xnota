@@ -2,11 +2,14 @@ package com.xnota.ui
 
 import android.os.Debug
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,14 +19,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xnota.gl.GlStats
+import com.xnota.ui.theme.LocalPalette
 import com.xnota.ui.theme.toComposeColor
 import com.xnota.core.model.Rgba
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 /**
  * The GL canvas's debug HUD, toggled by a four-finger tap like the paged canvas's.
@@ -134,6 +140,36 @@ fun CanvasDebugOverlay(editor: InfiniteEditor) {
                 modifier = Modifier.padding(top = 6.dp),
             )
         }
+    }
+}
+
+/**
+ * The measure tool's live readout: what the run says, and where (viewport px) its pill sits —
+ * just clear of the pointer, above and right of it.
+ */
+data class MeasureHud(val text: String, val x: Float, val y: Float)
+
+/**
+ * The measure tool's HUD over the GL canvas: one pill of text near the pointer while a run is
+ * live, nothing while it is not. Reads [InfiniteEditor.measureHud] alone, so it recomposes only
+ * while the measure tool is dragging — the line itself rides the canvas's wet buffer, not Compose.
+ */
+@Composable
+fun MeasureHud(editor: InfiniteEditor) {
+    val hud = editor.measureHud ?: return
+    val palette = LocalPalette.current
+    Box(modifier = Modifier.fillMaxSize()) {
+        Text(
+            hud.text,
+            color = palette.text.toComposeColor(),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .offset { IntOffset(hud.x.roundToInt().coerceAtLeast(0), hud.y.roundToInt().coerceAtLeast(0)) }
+                .background(palette.menuBg.scaleAlpha(0.92).toComposeColor())
+                .border(1.dp, palette.border.toComposeColor(), RoundedCornerShape(4.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
 }
 

@@ -45,6 +45,7 @@ val Tool.labelRes: Int
         Tool.SCREENSHOT -> R.string.tool_screenshot
         Tool.SHAPE -> R.string.tool_shape
         Tool.FILL -> R.string.tool_fill
+        Tool.MEASURE -> R.string.tool_measure
         Tool.TEXT -> R.string.tool_text
         Tool.TEXT_BOX -> R.string.tool_text_box
         Tool.IMAGE -> R.string.tool_image
@@ -85,6 +86,7 @@ val ToolbarItem.labelRes: Int
         ToolbarItem.WAND -> R.string.tool_wand
         ToolbarItem.SHAPE -> R.string.tool_shape
         ToolbarItem.FILL -> R.string.tool_fill
+        ToolbarItem.MEASURE -> R.string.tool_measure
         ToolbarItem.RULER -> R.string.tool_ruler
         ToolbarItem.TEXT -> R.string.tool_text
         ToolbarItem.TEXT_BOX -> R.string.tool_text_box

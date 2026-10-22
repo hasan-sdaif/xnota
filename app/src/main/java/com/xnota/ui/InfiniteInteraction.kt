@@ -44,7 +44,7 @@ import com.xnota.core.tools.ToolConfig
 import kotlin.math.exp
 
 /** What the current gesture is doing. */
-enum class CanvasPointerMode { IDLE, PAN, PINCH, DRAW, ERASE, SHAPE, BAND, LASSO, MOVE, RESIZE, ROTATE, VERTEX, POLYGON, CONNECT, JOINT, SLIDE, FILL }
+enum class CanvasPointerMode { IDLE, PAN, PINCH, DRAW, ERASE, SHAPE, BAND, LASSO, MOVE, RESIZE, ROTATE, VERTEX, POLYGON, CONNECT, JOINT, SLIDE, FILL, MEASURE }
 
 /**
  * Gestures on the infinite canvas.
@@ -501,6 +501,7 @@ class InfiniteInteraction(
             effective.isStroke -> beginDraw(vx, vy, effective, e)
             effective == Tool.ERASER -> beginErase(vx, vy)
             effective == Tool.FILL -> beginFill(at)
+            effective == Tool.MEASURE -> beginMeasure(at)
             placing -> beginPolygonTap(vx, vy)
             effective == Tool.SHAPE && shapeConfig().connector != null -> beginConnector(vx, vy)
             effective == Tool.SHAPE -> beginShape(vx, vy)
@@ -522,8 +523,9 @@ class InfiniteInteraction(
     private fun armLongPress(at: Pt, onSelection: Boolean, isFinger: Boolean) {
         cancelLongPress()
         if (!isFinger || onSelection) return
-        // The fill tool's press is a tap waiting to happen; a held finger is not a grab.
-        if (tool == Tool.FILL) return
+        // The fill tool's press is a tap waiting to happen; a held finger is not a grab. The
+        // measure tool's press drags its run — holding it still must not grab either.
+        if (tool == Tool.FILL || tool == Tool.MEASURE) return
         val hit = itemAt(viewport.viewportToContent(at))
         // The eraser is the one tool a grab would fight with, so it is the one that leaves an item
         // alone. Everything else hands it over, which is what makes a held finger pick something up
@@ -628,6 +630,7 @@ class InfiniteInteraction(
             CanvasPointerMode.VERTEX -> extendVertex(e.getX(0).toDouble(), e.getY(0).toDouble())
             CanvasPointerMode.POLYGON -> showPolygonDraft(viewport.viewportToContent(Pt(e.getX(0).toDouble(), e.getY(0).toDouble())))
             CanvasPointerMode.FILL -> Unit // a fill commits on the tap; there is no drag to extend
+            CanvasPointerMode.MEASURE -> extendMeasure(viewport.viewportToContent(Pt(e.getX(0).toDouble(), e.getY(0).toDouble())))
             CanvasPointerMode.IDLE -> Unit
         }
     }
@@ -664,6 +667,7 @@ class InfiniteInteraction(
             onEraseLifted()
         }
         if (mode == CanvasPointerMode.FILL) endFill(e)
+        if (mode == CanvasPointerMode.MEASURE) endMeasure()
         if (mode == CanvasPointerMode.SHAPE) endShape()
         if (mode == CanvasPointerMode.CONNECT) endConnector()
         when (mode) {
@@ -1754,6 +1758,37 @@ class InfiniteInteraction(
         val at = viewport.viewportToContent(Pt(e.getX(0).toDouble(), e.getY(0).toDouble()))
         mode = CanvasPointerMode.IDLE
         if (at.distanceTo(fillPressAt) <= TAP_SLOP_PX / viewport.zoom) onFillTap(at)
+    }
+
+    // --- measure (the fork's rule tool) ---
+
+    /** The measure run under way — where the press began and where the pointer is, content px —
+     *  or null when idle. The editor reads it to draw the line and place the readout. */
+    var measureRun: Pair<Pt, Pt>? = null
+        private set
+
+    /** The measure tool's press: a live run starts here. No ink, no undo — only the overlay. */
+    private fun beginMeasure(at: Pt) {
+        measureRun = at to at
+        mode = CanvasPointerMode.MEASURE
+        onSelectionChanged()
+        requestRender()
+    }
+
+    private fun extendMeasure(at: Pt) {
+        val run = measureRun ?: return
+        if (run.second == at) return
+        measureRun = run.first to at
+        onSelectionChanged()
+        requestRender()
+    }
+
+    /** The finger lifting clears everything the run had shown. */
+    private fun endMeasure() {
+        measureRun = null
+        mode = CanvasPointerMode.IDLE
+        onSelectionChanged()
+        requestRender()
     }
 
     // --- erasing ---

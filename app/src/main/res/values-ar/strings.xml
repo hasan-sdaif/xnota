@@ -1561,6 +1561,7 @@
 
     <!-- XNota: duplicate array, measure, image corners (the fork) -->
     <string name="duplicate_array">تكرار في نمط…</string>
+    <string name="tool_measure">قياس</string>
     <string name="array_apply">تطبيق</string>
     <string name="array_radial">دائري</string>
     <string name="array_grid">شبكي</string>

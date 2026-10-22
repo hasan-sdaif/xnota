@@ -34,6 +34,11 @@ enum class Tool(val id: String) {
      *  it only with finger-draw on, like every other content tool. */
     FILL("fill"),
 
+    /** The fork's measure tool: a press-drag drags a live line whose length and angle read out
+     *  beside the pointer in the page's own millimetres (content px through the document DPI, the
+     *  ruler's own arithmetic). No ink, no undo — the finger lifting clears everything. */
+    MEASURE("measure"),
+
     TEXT("text"),
     TEXT_BOX("text_box"),
     IMAGE("image"),
@@ -54,7 +59,7 @@ enum class Tool(val id: String) {
      */
     val fingerPansWhenOff: Boolean get() = isStroke ||
         this == SELECT || this == LASSO || this == SCREENSHOT || this == SHAPE || this == ERASER ||
-        this == MARKUP || this == FILL
+        this == MARKUP || this == FILL || this == MEASURE
 
     /** Render-time ink alpha scale: the highlighter is translucent (spec 03 §3), the pencil
      *  slightly translucent like graphite. */
@@ -72,6 +77,6 @@ enum class Tool(val id: String) {
 
         /** Quick-tool-wheel order (spec 06 §11 / 10 §7). The fork's three new pens slot in after
          *  the classic set so existing muscle memory keeps its slots. */
-        val wheelOrder = listOf(PEN, DASHED, CALLIGRAPHY, SPEED, TAPER, HIGHLIGHTER, NEON, RAINBOW, PENCIL, ERASER, SELECT, LASSO, SCREENSHOT, SHAPE, FILL, TEXT, MARKUP, PAN)
+        val wheelOrder = listOf(PEN, DASHED, CALLIGRAPHY, SPEED, TAPER, HIGHLIGHTER, NEON, RAINBOW, PENCIL, ERASER, SELECT, LASSO, SCREENSHOT, SHAPE, FILL, MEASURE, TEXT, MARKUP, PAN)
     }
 }

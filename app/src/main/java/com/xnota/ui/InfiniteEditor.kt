@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.xnota.canvas.InteractionController
 import com.xnota.core.canvas.DuplicateArrays
+import com.xnota.core.canvas.Measure
 import com.xnota.core.geometry.AlignMode
 import com.xnota.core.geometry.AlignOps
 import com.xnota.core.geometry.Pt
@@ -214,6 +215,14 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
 
     /** Whether the debug HUD is up; toggled by a four-finger tap, as on the paged canvas. */
     var debugVisible by mutableStateOf(false)
+
+    /**
+     * The measure tool's live readout and where its pill sits (viewport px), or null when idle.
+     * Small state the canvas chrome reads: it recomposes only while a measure run is moving, and
+     * nothing else in the tree observes it.
+     */
+    var measureHud by mutableStateOf<MeasureHud?>(null)
+        private set
 
     /** The layers panel (the fork): open over the canvas, closing on any pick. */
     var layersOpen by mutableStateOf(false)
@@ -1465,6 +1474,22 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         interaction.bandRect?.let {
             parts += OverlayTessellator.band(it, zoom, accent, StrokeTessellator.DEFAULT_TOLERANCE, devicePxPerDp)
             bounds = it.outset(4.0 / zoom)
+        }
+        // The measure tool's live run: a dashed line between its two ends, in the same buffer the
+        // marquee uses, plus the readout state the HUD composable above the surface reads.
+        val run = interaction.measureRun
+        if (run != null) {
+            val (from, to) = run
+            parts += OverlayTessellator.lasso(listOf(from, to), zoom, accent, StrokeTessellator.DEFAULT_TOLERANCE, devicePxPerDp)
+            bounds = (bounds ?: Rect(from.x, from.y, 0.0, 0.0)).union(Rect(to.x, to.y, 0.0, 0.0)).outset(4.0 / zoom)
+            val v = viewport.contentToViewport(to)
+            measureHud = MeasureHud(
+                Measure.readout(Measure.distanceMm(from, to, document.dpi), Measure.angleDeg(from, to)),
+                (v.x + 12.0).toFloat(),
+                (v.y - 64.0).toFloat(),
+            )
+        } else {
+            measureHud = null
         }
         val margin = OverlayTessellator.FRAME_MARGIN_PX / zoom
         interaction.connectorChrome()?.let { cc ->

@@ -6,6 +6,7 @@ import android.view.Choreographer
 import android.view.KeyEvent
 import android.view.MotionEvent
 import com.xnota.core.canvas.DuplicateArrays
+import com.xnota.core.canvas.Measure
 import com.xnota.core.canvas.SnapEngine
 import com.xnota.core.geometry.Affine
 import com.xnota.core.geometry.AlignMode
@@ -97,7 +98,7 @@ import kotlin.math.sin
 enum class PointerMode {
     IDLE, DRAW, ERASE, BAND, LASSO_DRAW, SHOT, SHAPE, MOVE, RESIZE, TRANSFORM, PAN, PINCH, FLOW_TEXT,
     TEXT_DRAG, RULER_MOVE, RULER_TRANSFORM, RULER_ROTATE, PDF_TEXT, VERTEX, POLYGON, CONNECT, JOINT, SLIDE,
-    FILL,
+    FILL, MEASURE,
 }
 
 /**
@@ -888,6 +889,7 @@ class InteractionController(
             effectiveTool == Tool.LASSO -> beginLasso(content)
             effectiveTool == Tool.SCREENSHOT -> beginScreenshot(content)
             effectiveTool == Tool.FILL -> beginFill(content)
+            effectiveTool == Tool.MEASURE -> beginMeasure(content)
             effectiveTool == Tool.SHAPE && shapeConfig.placesCorners -> beginPolygonTap(content)
             effectiveTool == Tool.SHAPE && shapeConfig.connector != null -> beginConnector(content)
             effectiveTool == Tool.SHAPE -> beginShape(content)
@@ -899,7 +901,7 @@ class InteractionController(
         // The flow caret owns its own long press (word selection), mid text-drag it is suppressed so
         // a hold-then-drag still sizes a box, and a markup drag held still is just a slow drag.
         if (mode != PointerMode.FLOW_TEXT && mode != PointerMode.TEXT_DRAG && mode != PointerMode.PDF_TEXT &&
-            mode != PointerMode.POLYGON && mode != PointerMode.FILL
+            mode != PointerMode.POLYGON && mode != PointerMode.FILL && mode != PointerMode.MEASURE
         ) {
             armLongPress(Pt(vx, vy), content, isFinger, free)
         }
@@ -975,6 +977,43 @@ class InteractionController(
         return emptyList()
     }
 
+    // --- MEASURE (the fork's rule tool) ---
+
+    /** Where the measure run began, and where the pointer now is — content px, null when idle. */
+    private var measureFrom: Pt? = null
+    private var measureTo: Pt? = null
+
+    /** The measure tool's press: a live run starts here. No ink, no undo — only the overlay. */
+    private fun beginMeasure(content: Pt) {
+        measureFrom = content
+        measureTo = content
+        mode = PointerMode.MEASURE
+        requestRender()
+    }
+
+    private fun extendMeasure(content: Pt) {
+        if (measureTo == content) return
+        measureTo = content
+        requestRender()
+    }
+
+    /** The finger lifting clears everything the run had shown. */
+    private fun endMeasure() {
+        measureFrom = null
+        measureTo = null
+        mode = PointerMode.IDLE
+        requestRender()
+    }
+
+    /** The measure run as text: millimetres at the document's own DPI (the ruler's arithmetic)
+     *  and the run's angle, exactly what [Measure.readout] formats. */
+    private fun measureReadoutText(): String? {
+        val from = measureFrom ?: return null
+        val to = measureTo ?: return null
+        if (mode != PointerMode.MEASURE) return null
+        return Measure.readout(Measure.distanceMm(from, to, document.dpi), Measure.angleDeg(from, to))
+    }
+
     private fun handlePointerDown(e: MotionEvent) {
         cancelLongPress()
         // A second finger turns a PDF text drag into a pinch; the selection stays, a mark in the making goes.
@@ -1021,6 +1060,7 @@ class InteractionController(
             PointerMode.TRANSFORM -> extendTransform(content)
             PointerMode.VERTEX -> extendVertex(content)
             PointerMode.POLYGON -> showPolygonDraft(content)
+            PointerMode.MEASURE -> extendMeasure(content)
             PointerMode.SHAPE -> extendShape(content)
             PointerMode.CONNECT -> extendConnector(content)
             PointerMode.JOINT -> extendJoint(content)
@@ -1093,6 +1133,7 @@ class InteractionController(
             PointerMode.PINCH -> endPinch()
             PointerMode.ERASE -> { endErase(); maybeSwitchBackAfterErase() }
             PointerMode.FILL -> endFill(content)
+            PointerMode.MEASURE -> endMeasure()
             PointerMode.BAND -> endBand()
             PointerMode.LASSO_DRAW -> endLasso()
             PointerMode.SHOT -> endScreenshot()
@@ -4605,6 +4646,13 @@ class InteractionController(
             // Screenshot capture region: the live drag rect, kept frozen until "copy as image" is used.
             screenshotRect?.let { r.strokeRect(it, chromePen(1.6)) }
 
+            // The measure tool's live run, dashed like every other marquee (content space).
+            if (mode == PointerMode.MEASURE) {
+                val from = measureFrom
+                val to = measureTo
+                if (from != null && to != null) r.strokePolyline(listOf(from, to), chromePen(1.4))
+            }
+
             // Selection chrome.
             val accent = chromePen(1.3)
             // Search matches, then the flow caret + selection highlight, under the selection chrome; then the PDF's.
@@ -4659,6 +4707,13 @@ class InteractionController(
 
         // Ruler (viewport space; floats above all content and the live stroke).
         if (ruler.visible) drawRuler(r)
+
+        // The measure run's readout (viewport space, beside the pointer where it cannot cover it).
+        measureReadoutText()?.let { text ->
+            val to = measureTo ?: return@let
+            val at = state.contentToViewport(to) + Pt(28.0, -34.0) * state.devicePxPerDp
+            drawReadout(r, text, at, state.devicePxPerDp, state.palette)
+        }
     }
 
     /**

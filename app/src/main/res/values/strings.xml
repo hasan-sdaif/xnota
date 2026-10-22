@@ -1430,6 +1430,7 @@
 
     <!-- XNota: duplicate array, measure, image corners (the fork) -->
     <string name="duplicate_array">Duplicate array…</string>
+    <string name="tool_measure">Measure</string>
     <string name="array_apply">Apply</string>
     <string name="array_radial">Radial</string>
     <string name="array_grid">Grid</string>
