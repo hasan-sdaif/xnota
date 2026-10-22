@@ -68,4 +68,36 @@ class ListMarkersTest {
         // A non-number comes back as itself.
         assertEquals("x", ListMarkers.step("x", 1))
     }
+
+    // --- continuation (the fork's auto-continue) ---
+
+    @Test fun aPlainLineContinuesToNothing() {
+        assertNull(ListMarkers.continuation("hello"))
+        assertNull(ListMarkers.continuation("-word"))
+        assertNull(ListMarkers.continuation("-"))
+        assertNull(ListMarkers.continuation(""))
+    }
+
+    @Test fun aBulletedItemContinuesItsBullet() {
+        assertEquals("- ", ListMarkers.continuation("- hello"))
+        assertEquals("* ", ListMarkers.continuation("* hello"))
+        assertEquals("• ", ListMarkers.continuation("• hello"))
+    }
+
+    @Test fun anOrderedItemStepsItsNumberUp() {
+        assertEquals("2. ", ListMarkers.continuation("1. hello"))
+        assertEquals("4. ", ListMarkers.continuation("3. hello"))
+        assertEquals("13) ", ListMarkers.continuation("12) hello"))
+    }
+
+    @Test fun aCheckedItemContinuesUnchecked() {
+        assertEquals("[ ] ", ListMarkers.continuation("[ ] hello"))
+        assertEquals("[ ] ", ListMarkers.continuation("[x] hello"))
+    }
+
+    @Test fun aBareMarkerDropsOutInsteadOfContinuing() {
+        assertEquals("", ListMarkers.continuation("- "))
+        assertEquals("", ListMarkers.continuation("1. "))
+        assertEquals("", ListMarkers.continuation("[x] "))
+    }
 }

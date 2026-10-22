@@ -23,6 +23,8 @@ object ListMarkers {
     private val BULLETS = listOf("- ", "* ", "+ ", "• ", "– ")
     private val ORDERED = Regex("^(\\d{1,9})[.)] $")
     private val CHECK = Regex("^\\[( |x|X)] $")
+    private val ORDERED_PREFIX = Regex("^(\\d{1,9}[.)] )")
+    private val CHECK_PREFIX = Regex("^\\[( |x|X)] ")
 
     /**
      * The marker [line] begins with, or null. The marker must be the whole prefix up to and
@@ -62,6 +64,26 @@ object ListMarkers {
     fun step(number: String, delta: Int): String {
         val n = number.toIntOrNull() ?: return number
         return (n + delta).coerceAtLeast(1).toString()
+    }
+
+    /**
+     * What Enter at the end of [line] should land (the fork's auto-continue): the next line's
+     * marker ("2. " after "1. "), the empty string when [line] is a bare marker (Enter drops it
+     * and stays put), or null when [line] starts no marker (a plain Enter). The marker must be
+     * typed text, not a model list property — the model's own continuation is the paragraph's
+     * [com.xnota.core.text.ListKind] split.
+     */
+    fun continuation(line: String): String? {
+        BULLETS.firstOrNull { line.startsWith(it) }?.let { return if (line == it) "" else it }
+        ORDERED_PREFIX.find(line)?.let { m ->
+            if (line == m.value) return ""
+            return detect(m.value)?.let(::next)
+        }
+        CHECK_PREFIX.find(line)?.let { m ->
+            if (line == m.value) return ""
+            return "[ ] "
+        }
+        return null
     }
 
     private fun increment(number: String): String = step(number, 1)
