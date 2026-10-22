@@ -1,0 +1,707 @@
+package com.xnota.ui
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.xnota.R
+import com.xnota.core.tools.Tool
+import com.xnota.core.tools.ToolbarItem
+import com.xnota.platform.ImageDecoder
+import com.xnota.ui.icons.NotaIcons
+import com.xnota.ui.theme.LocalPalette
+import com.xnota.ui.theme.toComposeColor
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.sin
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@Composable
+fun Toolbar(
+    editor: Editor,
+    onToggleFullscreen: () -> Unit,
+    onOpenBackstage: () -> Unit,
+    onInsertImage: () -> Unit,
+    onAddStickers: () -> Unit,
+    onClosePane: (() -> Unit)? = null,
+    onImportTemplate: () -> Unit = {},
+) {
+    // The five stroke tools use the designed vector drawables (res/drawable/ic_stroke_*),
+    // tinted at the call site like every other icon; the rest use the built-in line set.
+    val toolIcons: Map<Tool, ImageVector> = mapOf(
+        Tool.PEN to ImageVector.vectorResource(R.drawable.ic_stroke_regular),
+        Tool.DASHED to ImageVector.vectorResource(R.drawable.ic_stroke_dashed),
+        Tool.CALLIGRAPHY to ImageVector.vectorResource(R.drawable.ic_stroke_calligraphy),
+        Tool.SPEED to ImageVector.vectorResource(R.drawable.ic_stroke_speed),
+        Tool.TAPER to ImageVector.vectorResource(R.drawable.ic_stroke_taper),
+        Tool.HIGHLIGHTER to ImageVector.vectorResource(R.drawable.ic_stroke_highlighter),
+        Tool.ERASER to NotaIcons.eraser,
+        Tool.PAN to NotaIcons.pan,
+        Tool.SELECT to NotaIcons.select,
+        Tool.LASSO to NotaIcons.lasso,
+        Tool.SCREENSHOT to NotaIcons.scissors,
+        Tool.SHAPE to NotaIcons.shape,
+        Tool.TEXT to NotaIcons.text,
+        Tool.TEXT_BOX to NotaIcons.textBox,
+        Tool.MARKUP to NotaIcons.markup,
+    )
+    var configForTool by remember { mutableStateOf<Tool?>(null) }
+    var switcherIndex by remember { mutableStateOf<Int?>(null) }
+    var renaming by remember { mutableStateOf(false) }
+    // Pinned outside the scrolling strip so closing a split pane is always one tap away.
+    ToolbarFrame(armed = editor.tool, trailing = onClosePane?.let { { ClosePaneButton(it) } }) {
+        // The bar is driven by the user-customisable layout; separators sit between non-empty
+        // sections, and each item dispatches to its renderer (see ToolbarItemView).
+        editor.toolbarLayout.visibleSections.forEachIndexed { si, section ->
+            if (si > 0) Separator()
+            section.visibleEntries.forEach { entry ->
+                ToolbarItemView(
+                    editor = editor,
+                    item = entry.item,
+                    toolIcons = toolIcons,
+                    configForTool = configForTool,
+                    setConfigForTool = { configForTool = it },
+                    switcherIndex = switcherIndex,
+                    setSwitcherIndex = { switcherIndex = it },
+                    onRename = { renaming = true },
+                    onOpenBackstage = onOpenBackstage,
+                    onInsertImage = onInsertImage,
+                    onAddStickers = onAddStickers,
+                    onToggleFullscreen = onToggleFullscreen,
+                    onImportTemplate = onImportTemplate,
+                )
+            }
+        }
+    }
+
+    if (renaming) {
+        val renameFailed = stringResource(R.string.err_rename_note)
+        RenameDialog(
+            initial = editor.title,
+            onConfirm = { name ->
+                renaming = false
+                if (!editor.renameCurrentDocument(name)) editor.message = renameFailed
+            },
+            onDismiss = { renaming = false },
+        )
+    }
+}
+
+/** Renders one toolbar item by id, reusing the same controls/popups the bar has always used. */
+@Composable
+private fun ToolbarItemView(
+    editor: Editor,
+    item: ToolbarItem,
+    toolIcons: Map<Tool, ImageVector>,
+    configForTool: Tool?,
+    setConfigForTool: (Tool?) -> Unit,
+    switcherIndex: Int?,
+    setSwitcherIndex: (Int?) -> Unit,
+    onRename: () -> Unit,
+    onOpenBackstage: () -> Unit,
+    onInsertImage: () -> Unit,
+    onAddStickers: () -> Unit,
+    onToggleFullscreen: () -> Unit,
+    onImportTemplate: () -> Unit,
+) {
+    when (item) {
+        // Canvas-only items; a stored paged layout can never hold one, so nothing is drawn.
+        ToolbarItem.WAYPOINTS, ToolbarItem.MINIMAP -> Unit
+
+        ToolbarItem.HOME -> ToolbarIcon(NotaIcons.prev, stringResource(R.string.toolbar_home), mirrored = true) { onOpenBackstage() }
+        // A name has no room down a side rail.
+        ToolbarItem.TITLE -> if (!LocalBar.current.vertical) Tooltip(stringResource(R.string.rename_note)) {
+            Label(
+                if (editor.state.document.displayName == null && editor.state.document.path == null) stringResource(R.string.untitled) else editor.title,
+                modifier = Modifier
+                    .widthIn(max = 160.dp)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .clickable { onRename() },
+            )
+        }
+        ToolbarItem.SIDEBAR ->
+            ToolbarIcon(NotaIcons.sidebar, stringResource(R.string.side_panel), active = editor.sidebarVisible, shortcut = Keys.SIDEBAR) { editor.toggleSidebar() }
+
+        ToolbarItem.PEN, ToolbarItem.DASHED, ToolbarItem.CALLIGRAPHY, ToolbarItem.SPEED,
+        ToolbarItem.TAPER, ToolbarItem.HIGHLIGHTER, ToolbarItem.ERASER, ToolbarItem.PAN,
+        ToolbarItem.SELECT, ToolbarItem.LASSO, ToolbarItem.SCREENSHOT, ToolbarItem.SHAPE,
+        ToolbarItem.TEXT, ToolbarItem.TEXT_BOX -> {
+            val tool = Tool.fromId(item.id)
+            if (tool != null) ToolButton(editor, tool, toolIcons[tool], configForTool, setConfigForTool)
+        }
+
+        // Marks a PDF's text, so a note without a PDF has no use for it.
+        ToolbarItem.MARKUP ->
+            if (editor.hasPdf) ToolButton(editor, Tool.MARKUP, toolIcons[Tool.MARKUP], configForTool, setConfigForTool)
+
+        ToolbarItem.WAND ->
+            ToolbarIcon(NotaIcons.magicWand, stringResource(R.string.tool_wand), active = editor.wandEnabled) { editor.toggleWand() }
+        ToolbarItem.RULER ->
+            ToolbarIcon(NotaIcons.ruler, stringResource(R.string.tool_ruler), active = editor.rulerVisible) { editor.toggleRuler() }
+
+        ToolbarItem.IMAGE -> ImageMenu(editor, onInsertImage, onAddStickers)
+
+        ToolbarItem.UNDO -> ToolbarIcon(NotaIcons.undo, stringResource(R.string.undo), enabled = editor.canUndo, shortcut = Keys.UNDO, mirrored = true) { editor.undo() }
+        ToolbarItem.REDO -> ToolbarIcon(NotaIcons.redo, stringResource(R.string.redo), enabled = editor.canRedo, shortcut = Keys.REDO, mirrored = true) { editor.redo() }
+
+        ToolbarItem.PAGE_NAV -> {
+            ToolbarIcon(NotaIcons.prev, stringResource(R.string.previous_page), shortcut = Keys.PREV_PAGE, mirrored = true) { editor.prevPage() }
+            var jumpOpen by remember { mutableStateOf(false) }
+            Box {
+                Tooltip(stringResource(R.string.title_go_to_page)) {
+                    PageCounter(
+                        editor.pageIndex + 1,
+                        editor.pageCount,
+                        Modifier
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .clickable { jumpOpen = true },
+                    )
+                }
+                if (jumpOpen) PageJumpPopup(editor) { jumpOpen = false }
+            }
+            ToolbarIcon(NotaIcons.next, stringResource(R.string.next_page), shortcut = Keys.NEXT_PAGE, mirrored = true) { editor.nextPage() }
+        }
+        ToolbarItem.STYLES -> StylesButton(editor, onImportTemplate)
+        ToolbarItem.MARGINS -> MarginsButton(editor)
+        ToolbarItem.VIEW -> ViewButton(editor)
+
+        ToolbarItem.ZOOM -> {
+            ToolbarIcon(NotaIcons.zoomOut, stringResource(R.string.zoom_out), enabled = !editor.zoomLocked, shortcut = Keys.ZOOM_OUT) { editor.zoomOut() }
+            var zoomMenuOpen by remember { mutableStateOf(false) }
+            Box {
+                Tooltip(stringResource(R.string.title_zoom)) {
+                    Label(
+                        "${editor.zoomPercent}%",
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .clickable { zoomMenuOpen = true },
+                    )
+                }
+                if (zoomMenuOpen) ZoomMenuPopup(editor) { zoomMenuOpen = false }
+            }
+            ToolbarIcon(NotaIcons.zoomIn, stringResource(R.string.zoom_in), enabled = !editor.zoomLocked, shortcut = Keys.ZOOM_IN) { editor.zoomIn() }
+        }
+        ToolbarItem.FIT -> FitMenu(editor)
+        ToolbarItem.ZOOM_LOCK -> ToolbarIcon(
+            if (editor.zoomLocked) NotaIcons.lock else NotaIcons.unlock,
+            stringResource(if (editor.zoomLocked) R.string.unlock_zoom else R.string.lock_zoom),
+            active = editor.zoomLocked,
+        ) { editor.toggleZoomLock() }
+
+        ToolbarItem.FULLSCREEN -> ToolbarIcon(NotaIcons.fullscreen, stringResource(R.string.toolbar_fullscreen), shortcut = Keys.FULLSCREEN) { onToggleFullscreen() }
+
+        ToolbarItem.COLORS -> editor.toolbarColors.take(editor.toolbarColorCount).forEachIndexed { i, color ->
+            Box {
+                Swatch(
+                    color = color.toComposeColor(),
+                    active = i == editor.activeColorIndex,
+                    onClick = { if (i == editor.activeColorIndex) setSwitcherIndex(i) else editor.pickColor(i) },
+                )
+                if (switcherIndex == i) ColorSwitcherPopup(editor, i) { setSwitcherIndex(null) }
+            }
+        }
+    }
+}
+
+/** A stroke/edit tool button: arms the tool, and re-clicking an armed config tool opens its popup. */
+@Composable
+private fun ToolButton(
+    editor: Editor,
+    tool: Tool,
+    icon: ImageVector?,
+    configForTool: Tool?,
+    setConfigForTool: (Tool?) -> Unit,
+) {
+    if (icon == null) return
+    val armed = editor.tool == tool
+    val configurable = tool.isStroke || tool == Tool.SHAPE || tool == Tool.ERASER || tool == Tool.SELECT || tool == Tool.TEXT || tool == Tool.MARKUP
+    Box {
+        ToolbarIcon(
+            icon,
+            stringResource(tool.labelRes),
+            active = armed,
+            glideKey = tool,
+            hint = if (armed && configurable) stringResource(R.string.tip_tap_for_settings) else null,
+            shortcut = PAGED_TOOL_KEYS[tool],
+        ) {
+            if (armed && configurable) {
+                setConfigForTool(tool)
+            } else {
+                editor.selectTool(tool)
+                setConfigForTool(null)
+            }
+        }
+        if (configForTool == tool) {
+            when {
+                tool == Tool.SHAPE -> ShapeConfigPopup(editor) { setConfigForTool(null) }
+                tool == Tool.ERASER -> EraserConfigPopup(editor) { setConfigForTool(null) }
+                tool == Tool.SELECT -> SelectConfigPopup(editor) { setConfigForTool(null) }
+                tool == Tool.TEXT -> TextToolConfigPopup(editor) { setConfigForTool(null) }
+                tool == Tool.MARKUP -> MarkupToolPopup(editor) { setConfigForTool(null) }
+                else -> ToolConfigPopup(editor, tool) { setConfigForTool(null) }
+            }
+        }
+    }
+}
+
+/** The single keys that arm a tool in a note (see [Editor.handleKeyDown]). */
+private val PAGED_TOOL_KEYS = mapOf(
+    Tool.PEN to "P",
+    Tool.CALLIGRAPHY to "C",
+    Tool.HIGHLIGHTER to "H",
+    Tool.ERASER to "E",
+    Tool.SELECT to "V",
+    Tool.LASSO to "L",
+    Tool.SHAPE to "S",
+    Tool.TEXT to "T",
+)
+
+/** Renames the open note: a small prefilled text field; the ".xnote" suffix is implicit. */
+@Composable
+private fun RenameDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.rename_note)) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = true,
+                modifier = Modifier.focusRequester(focus),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { if (text.isBlank()) onDismiss() else onConfirm(text) }) { Text(stringResource(R.string.rename)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** Opens the page-styles popup (paper colour + ruling) for the document and the current page. */
+@Composable
+private fun StylesButton(editor: Editor, onImportTemplate: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    PrewarmTemplateThumbs(editor, open)
+    Box {
+        ToolbarIcon(NotaIcons.sliders, stringResource(R.string.toolbar_styles)) { open = true }
+        if (open) StylesPopup(editor, onImportTemplate) { open = false }
+    }
+}
+
+/** Opens the page-margins popup (extra paper on any edge, for the document or the current page). */
+@Composable
+private fun MarginsButton(editor: Editor) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        ToolbarIcon(NotaIcons.margins, stringResource(R.string.toolbar_margins)) { open = true }
+        if (open) MarginsPopup(editor) { open = false }
+    }
+}
+
+/** Opens the view menu (viewing mode, scroll direction, PDF filters, rotation, scrollbar). */
+@Composable
+private fun ViewButton(editor: Editor) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        ToolbarIcon(NotaIcons.view, stringResource(R.string.toolbar_view)) { open = true }
+        if (open) ViewMenuPopup(editor) { open = false }
+    }
+}
+
+private const val SELECT_FADE_MS = 150
+
+/**
+ * The armed-tool circle of one bar, drawn once behind the row so it can glide from the old tool to
+ * the new one. Tool buttons report their centres here and the row paints the circle.
+ */
+internal class ToolGlide {
+    val centers = mutableStateMapOf<Any, Offset>()
+    var row: LayoutCoordinates? = null
+}
+
+internal val LocalToolGlide = staticCompositionLocalOf<ToolGlide?> { null }
+
+/** One hop of the glide along the bar: where it set out from and is headed, and how far it may stretch. */
+private class GlideTrip {
+    var from = 0f
+    var to = 0f
+    /** Where the circle sits across the bar. */
+    var across = 0f
+    var stretch = 0f
+    /** Stretch left over from a hop cut short, let go of over the new one. */
+    var carry = 0f
+
+    /** Where the circle's centre is at [t] of the way: eased in and out along a half cosine. */
+    fun x(t: Float) = from + (to - from) * (1 - cos(PI * t).toFloat()) / 2
+
+    /** How drawn out it is at [t]: in step with its speed, so it swells and settles smoothly. */
+    fun drawnOut(t: Float) = stretch * sin(PI * t).toFloat() + carry * (1 + cos(PI * t).toFloat()) / 2
+}
+
+/**
+ * Paints [glide]'s circle under the button keyed [armed]. On a change it eases across to the new
+ * tool, drawn out in proportion to its speed: the stretch builds slowly, peaks midway and gathers
+ * back into a circle as it lands.
+ */
+@Composable
+internal fun Modifier.toolGlide(glide: ToolGlide, armed: Any?): Modifier {
+    val target = glide.centers[armed]
+    val density = LocalDensity.current
+    val bar = LocalBar.current
+    val r = with(density) { bar.circle.toPx() / 2 }
+    val trip = remember { GlideTrip() }
+    val progress = remember { Animatable(1f) }
+    val shown = remember { Animatable(0f) }
+    LaunchedEffect(target) {
+        if (target == null) {
+            shown.animateTo(0f, tween(SELECT_FADE_MS))
+            return@LaunchedEffect
+        }
+        val t = progress.value
+        val along = if (bar.vertical) target.y else target.x
+        trip.carry = if (shown.value == 0f) 0f else trip.drawnOut(t)
+        trip.from = if (shown.value == 0f) along else trip.x(t)
+        trip.to = along
+        trip.across = if (bar.vertical) target.x else target.y
+        val hopDp = abs(trip.to - trip.from) / density.density
+        // Longer hops stretch further, levelling off towards the cap rather than hitting it.
+        trip.stretch = with(density) { GLIDE_MAX_STRETCH.toPx() } * (1 - exp(-hopDp / GLIDE_REACH_DP))
+        launch { shown.animateTo(1f, tween(SELECT_FADE_MS)) }
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween((GLIDE_BASE_MS + hopDp * GLIDE_MS_PER_DP).toInt().coerceAtMost(GLIDE_MAX_MS), easing = LinearEasing))
+    }
+    val fill = LocalPalette.current.selectionBackground.toComposeColor()
+    return onPlaced { glide.row = it }.drawBehind {
+        if (shown.value == 0f) return@drawBehind
+        val t = progress.value
+        val x = trip.x(t)
+        val s = trip.drawnOut(t)
+        // The leading side takes most of the stretch, so the tail seems to trail behind.
+        val ahead = if (trip.to >= trip.from) GLIDE_LEAD else 1 - GLIDE_LEAD
+        val start = x - r - s * (1 - ahead)
+        drawRoundRect(
+            fill.copy(alpha = fill.alpha * shown.value),
+            topLeft = if (bar.vertical) Offset(trip.across - r, start) else Offset(start, trip.across - r),
+            size = if (bar.vertical) Size(2 * r, 2 * r + s) else Size(2 * r + s, 2 * r),
+            cornerRadius = CornerRadius(r),
+        )
+    }
+}
+
+private val GLIDE_MAX_STRETCH = 48.dp
+private const val GLIDE_REACH_DP = 120f
+private const val GLIDE_LEAD = 0.65f
+private const val GLIDE_MS_PER_DP = 0.6f
+private const val GLIDE_BASE_MS = 80f
+private const val GLIDE_MAX_MS = 300
+
+/**
+ * A toolbar button, named by a tooltip when the pen hovers it. With a [glideKey] it is one of the
+ * bar's tools and its selection is the bar's gliding circle; otherwise [active] fades in a circle
+ * of its own.
+ */
+@Composable
+internal fun ToolbarIcon(
+    icon: ImageVector,
+    contentDescription: String,
+    active: Boolean = false,
+    enabled: Boolean = true,
+    glideKey: Any? = null,
+    hint: String? = null,
+    shortcut: String? = null,
+    /** xnota: the glyph points somewhere on the reading line (undo/redo, page chevrons,
+     *  the home arrow) and must mirror in RTL, unlike pens and other direction-neutral tools. */
+    mirrored: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val palette = LocalPalette.current
+    val bar = LocalBar.current
+    val glide = if (glideKey != null) LocalToolGlide.current else null
+    // xnota: captured outside the graphicsLayer lambda, which is not a composable scope.
+    val mirrorGlyph = mirrored && LocalLayoutDirection.current == LayoutDirection.Rtl
+    val tint by animateColorAsState(
+        when {
+            !enabled -> palette.disabled.toComposeColor()
+            active -> palette.selectionForeground.toComposeColor()
+            else -> palette.textDim.toComposeColor()
+        },
+        // A gliding circle takes a moment to arrive, so the icon turns with it rather than ahead of it.
+        tween(if (glide != null) 2 * SELECT_FADE_MS else SELECT_FADE_MS), label = "toolTint",
+    )
+    val fill by animateFloatAsState(if (active && glide == null) 1f else 0f, tween(SELECT_FADE_MS), label = "toolFill")
+    if (glide != null) DisposableEffect(glide, glideKey) { onDispose { glide.centers.remove(glideKey) } }
+    val circle = palette.selectionBackground.toComposeColor()
+    // No ripple: the circle is the feedback, and a white flash over it reads as a glitch.
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val press by animateFloatAsState(if (pressed) 0.85f else 1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium), label = "toolPress")
+    Tooltip(contentDescription, hint = hint, shortcut = shortcut) {
+        Box(
+            Modifier.size(bar.button).clickable(interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .size(bar.circle)
+                    .then(
+                        if (glide == null || glideKey == null) Modifier
+                        else Modifier.onGloballyPositioned { c ->
+                            glide.row?.let { glide.centers[glideKey] = it.localPositionOf(c, Offset(c.size.width / 2f, c.size.height / 2f)) }
+                        },
+                    )
+                    .drawBehind { if (fill > 0f) drawCircle(circle.copy(alpha = circle.alpha * fill)) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(bar.icon).graphicsLayer { scaleX = if (mirrorGlyph) -press else press; scaleY = press })
+            }
+        }
+    }
+}
+
+/** Closes this pane of a split, leaving the other one to fill the window. Shown on both toolbars. */
+@Composable
+internal fun ClosePaneButton(onClose: () -> Unit) {
+    Rule()
+    ToolbarIcon(NotaIcons.close, stringResource(R.string.close_pane), onClick = onClose)
+}
+
+@Composable
+internal fun Swatch(color: androidx.compose.ui.graphics.Color, active: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .then(if (LocalBar.current.vertical) Modifier.padding(vertical = 3.dp) else Modifier.padding(horizontal = 3.dp))
+            .size(LocalBar.current.swatch)
+            // The selection ring takes the swatch's own colour, not the theme accent.
+            .then(if (active) Modifier.border(2.dp, color, CircleShape) else Modifier)
+            .padding(4.dp)
+            .clip(CircleShape)
+            .background(color)
+            .clickable(onClick = onClick),
+    )
+}
+
+@Composable
+internal fun Label(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        color = LocalPalette.current.textDim.toComposeColor(),
+        fontSize = LocalBar.current.label,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier.padding(horizontal = 4.dp),
+    )
+}
+
+@Composable
+internal fun Separator() {
+    Box(Modifier.padding(if (LocalBar.current.vertical) PaddingValues(vertical = 4.dp) else PaddingValues(horizontal = 4.dp))) { Rule() }
+}
+
+/** A hairline across the bar. */
+@Composable
+private fun Rule() {
+    val bar = LocalBar.current
+    Box(
+        Modifier
+            .then(if (bar.vertical) Modifier.height(1.dp).width(bar.rule) else Modifier.width(1.dp).height(bar.rule))
+            .background(LocalPalette.current.border.toComposeColor()),
+    )
+}
+
+/** "3 / 12" along the bar; down a side rail, where that is too wide, the two numbers stack. */
+@Composable
+private fun PageCounter(current: Int, count: Int, modifier: Modifier) {
+    if (!LocalBar.current.vertical) {
+        Label("$current / $count", modifier)
+        return
+    }
+    Column(modifier.padding(vertical = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Label("$current")
+        Rule()
+        Label("$count")
+    }
+}
+
+@Composable
+private fun ImageMenu(editor: Editor, onInsertImage: () -> Unit, onAddStickers: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    var stickersOpen by remember { mutableStateOf(false) }
+    Box {
+        ToolbarIcon(NotaIcons.image, stringResource(R.string.tool_image)) { expanded = true }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.paste_image)) }, onClick = { editor.pasteImage(); expanded = false })
+            DropdownMenuItem(text = { Text(stringResource(R.string.insert_image_ellipsis)) }, onClick = { onInsertImage(); expanded = false })
+            DropdownMenuItem(text = { Text(stringResource(R.string.stickers)) }, onClick = { expanded = false; stickersOpen = true })
+        }
+        if (stickersOpen) StickersMenu(editor, onAddStickers) { stickersOpen = false }
+    }
+}
+
+/**
+ * The sticker library popup: a grid of saved images that insert with one tap, so a
+ * recurring image never needs the gallery round trip. Stickers live on disk (see
+ * [Editor.stickers]); each tile decodes its own small preview off the main thread.
+ */
+@Composable
+private fun StickersMenu(editor: Editor, onAddStickers: () -> Unit, onDismiss: () -> Unit) {
+    val palette = LocalPalette.current
+    DropdownMenu(expanded = true, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.add_stickers)) },
+            leadingIcon = { Icon(NotaIcons.plus, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            onClick = onAddStickers,
+        )
+        if (editor.stickers.isEmpty()) {
+            Text(
+                stringResource(R.string.no_stickers),
+                color = palette.textDim.toComposeColor(),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+        } else {
+            // Both dimensions must be fixed: the menu measures its content by intrinsics, which a
+            // lazy grid cannot answer (it crashes) — a fixed size short-circuits the query.
+            val rows = ((editor.stickers.size + 2) / 3).coerceAtMost(3)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .width(72.dp * 3 + 6.dp * 2)
+                    .height(72.dp * rows + 6.dp * (rows - 1)),
+            ) {
+                items(editor.stickers, key = { it.name }) { file ->
+                    StickerTile(
+                        file = file,
+                        onInsert = { editor.insertSticker(file); onDismiss() },
+                        onRemove = { editor.removeSticker(file) },
+                    )
+                }
+            }
+            Text(
+                stringResource(R.string.stickers_hint),
+                color = palette.textDim.toComposeColor(),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun StickerTile(file: java.io.File, onInsert: () -> Unit, onRemove: () -> Unit) {
+    val palette = LocalPalette.current
+    val thumbPx = with(LocalDensity.current) { 72.dp.roundToPx() }
+    val thumb by produceState<ImageBitmap?>(null, file) {
+        value = withContext(Dispatchers.IO) {
+            ImageDecoder.decodeSampledFile(file.path, thumbPx, thumbPx)?.asImageBitmap()
+        }
+    }
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .clip(MaterialTheme.shapes.small)
+            .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.small)
+            .combinedClickable(onClick = onInsert, onLongClick = onRemove),
+        contentAlignment = Alignment.Center,
+    ) {
+        thumb?.let {
+            Image(
+                bitmap = it,
+                contentDescription = stringResource(R.string.sticker),
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(3.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FitMenu(editor: Editor) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        ToolbarIcon(NotaIcons.fit, stringResource(R.string.toolbar_fit)) { expanded = true }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.fit_page)) }, onClick = { editor.fitPage(); expanded = false })
+            DropdownMenuItem(text = { Text(stringResource(R.string.fit_width)) }, onClick = { editor.fitWidth(); expanded = false })
+            DropdownMenuItem(text = { Text(stringResource(R.string.fit_height)) }, onClick = { editor.fitHeight(); expanded = false })
+        }
+    }
+}
+

@@ -1,0 +1,80 @@
+package com.xnota.canvas
+
+import com.xnota.core.FakeSurfaceFactory
+import com.xnota.core.FakeTextMeasurer
+import com.xnota.core.history.History
+import com.xnota.core.model.Document
+import com.xnota.core.model.Page
+import com.xnota.core.model.Stroke
+import com.xnota.core.stroke.Sample
+import com.xnota.core.tools.Tool
+import com.xnota.core.tools.ToolDefaults
+import com.xnota.ui.theme.Palette
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/**
+ * Guards the select-tool flicker fix: a selection edit must repair the page's ink cache
+ * **in place** (the eraser's path) rather than dropping it for an async rebuild, and a
+ * delete must never flush the (PDF/template) background cache. Both used to blank the whole
+ * layer for a frame. We assert it at the cache-map level through [CanvasState.cacheSnapshot]:
+ * dropping a cache makes its page count fall to 0; an in-place repair leaves it standing.
+ */
+class SelectionCacheRepairTest {
+
+    private fun dot(x: Double, y: Double): Stroke =
+        Stroke(Tool.PEN, ToolDefaults.configFor(Tool.PEN), mutableListOf(Sample(x, y, 1.0)))
+
+    private fun state(background: Boolean = false): CanvasState {
+        val page = Page(200.0, 200.0, mutableListOf(dot(20.0, 20.0), dot(120.0, 120.0)))
+        if (background) page.pdfPage = 0 // a real PDF-backed page, so a background cache is built and kept
+        val doc = Document(mutableListOf(page))
+        return CanvasState(doc, FakeSurfaceFactory(), Palette.DEFAULT).apply {
+            viewportW = 800
+            viewportH = 1000
+            relayout()
+            if (background) paintPageBackground = { _, _, _, _ -> } // a non-null background painter (stands in for a PDF)
+        }
+    }
+
+    private fun controller(st: CanvasState) =
+        InteractionController(st, History(), FakeTextMeasurer(), requestRender = {})
+
+    @Test fun selectingThenDismissingKeepsInkCacheLive() {
+        val st = state()
+        val ctrl = controller(st)
+        st.cacheFor(st.document.pages[0]) // warm the ink cache, as a draw frame would
+        assertEquals(1, st.cacheSnapshot().inkPages)
+
+        ctrl.selectAll() // lifts every item out of the cache
+        assertEquals(
+            "selecting must repair in place, not drop the page's ink cache",
+            1, st.cacheSnapshot().inkPages,
+        )
+
+        ctrl.escape() // dismiss the selection (clearSelection)
+        assertEquals(
+            "dismissing must repair in place, not drop the page's ink cache",
+            1, st.cacheSnapshot().inkPages,
+        )
+    }
+
+    @Test fun deletingSelectionLeavesBackgroundCacheIntact() {
+        val st = state(background = true)
+        val ctrl = controller(st)
+        val page = st.document.pages[0]
+        st.cacheFor(page)
+        st.backgroundFor(page)
+        assertEquals(1, st.cacheSnapshot().inkPages)
+        assertEquals(1, st.cacheSnapshot().bgPages)
+
+        ctrl.selectAll()
+        ctrl.deleteSelection()
+
+        // The expensive PDF/template background must survive a delete — it used to be flushed by
+        // invalidateAllCaches(), which is precisely what made the PDF layer flicker on delete/cut.
+        assertEquals("delete must not flush the background/PDF cache", 1, st.cacheSnapshot().bgPages)
+        // The ink layer stays cached too (repaired in place), never dropped to bare paper.
+        assertEquals(1, st.cacheSnapshot().inkPages)
+    }
+}

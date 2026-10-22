@@ -1,0 +1,32 @@
+{
+  "xtemplate": 1,
+  "id": "hijri-monthly",
+  "name": "Hijri monthly · تقويم هجري",
+  "description": "A month grid reading right to left: Saturday leads at the right edge, an empty cell for every day, under a header band for the month's name.",
+  "license": "MIT",
+  "tags": ["planner", "arabic", "calendar"],
+  "params": {
+    "rows": { "type": "integer", "default": 5, "min": 4, "max": 6, "label": "Week rows" },
+    "head": { "type": "length", "default": "20mm", "min": "14mm", "max": "34mm", "label": "Header height" }
+  },
+  "items": [
+    { "type": "group", "inset": ["12mm", "10mm"], "children": [
+      { "type": "group", "h": "head", "children": [
+        { "type": "rect", "rx": "2mm", "fill": "accent", "opacity": 0.12, "stroke": "accent", "strokeWidth": "0.3mm" },
+        { "type": "text", "text": "الشهر", "x": "100% - 5mm", "y": "6mm", "size": "3.2mm", "fill": "accent", "weight": "bold", "align": "end" },
+        { "type": "hline", "y": "8mm", "x1": "5mm", "x2": "100% - 24mm", "strokeWidth": "0.35mm" }
+      ]},
+      { "type": "group", "y": "head + 2mm", "h": "7mm", "children": [
+        { "type": "repeat", "axis": "x", "count": 7, "children": [
+          { "type": "text", "text": ["الجمعة", "الخميس", "الأربعاء", "الثلاثاء", "الاثنين", "الأحد", "السبت"],
+            "select": "i", "x": "50%", "y": "5.5mm", "size": "3mm", "fill": "accent", "weight": "bold", "align": "middle" }
+        ]}
+      ]},
+      { "type": "group", "y": "head + 10mm", "h": "100% - head - 10mm", "children": [
+        { "type": "repeat", "axis": "xy", "count": [7, "rows"], "children": [
+          { "type": "rect", "x": "1mm", "y": "1mm", "w": "100% - 2mm", "h": "100% - 2mm", "rx": "1.5mm", "stroke": "#9aa0a6", "strokeWidth": "0.2mm", "opacity": 0.8 }
+        ]}
+      ]}
+    ]}
+  ]
+}

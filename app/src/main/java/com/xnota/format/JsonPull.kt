@@ -1,0 +1,461 @@
+package com.xnota.format
+
+import java.io.Reader
+
+/** Thrown when the stream is not well-formed JSON. */
+internal class JsonPullException(message: String) : Exception(message)
+
+/**
+ * Minimal streaming JSON pull parser (android.util.JsonReader-style API, usable in
+ * plain-JVM tests). Exists so a dense note's manifest is decoded token-by-token
+ * straight off the zip stream: the old org.json DOM held a boxed wrapper for every
+ * number, which cost a 58 MB manifest ~150 MB of heap and tens of seconds to open.
+ */
+internal class JsonPull(private val reader: Reader) {
+
+    enum class Token { BEGIN_OBJECT, END_OBJECT, BEGIN_ARRAY, END_ARRAY, NAME, STRING, NUMBER, BOOLEAN, NULL, END_DOCUMENT }
+
+    private val buf = CharArray(16 * 1024)
+    private var pos = 0
+    private var limit = 0
+    private var eof = false
+
+    private var stack = BooleanArray(32) // true = object, false = array
+    private var had = BooleanArray(32) // container has parsed at least one entry
+    private var depth = 0
+    private var afterName = false
+    private var rootConsumed = false
+    private var peeked: Token? = null
+    private val sb = StringBuilder()
+
+    fun peek(): Token = peeked ?: doPeek().also { peeked = it }
+
+    fun hasNext(): Boolean {
+        val t = peek()
+        return t != Token.END_OBJECT && t != Token.END_ARRAY && t != Token.END_DOCUMENT
+    }
+
+    fun beginObject() {
+        expect(Token.BEGIN_OBJECT)
+        pos++
+        startValue()
+        push(true)
+    }
+
+    fun endObject() {
+        expect(Token.END_OBJECT)
+        pos++
+        depth--
+    }
+
+    fun beginArray() {
+        expect(Token.BEGIN_ARRAY)
+        pos++
+        startValue()
+        push(false)
+    }
+
+    fun endArray() {
+        expect(Token.END_ARRAY)
+        pos++
+        depth--
+    }
+
+    fun nextName(): String {
+        expect(Token.NAME)
+        val name = readStringBody()
+        skipWs()
+        if (!ensure() || buf[pos] != ':') throw JsonPullException("Expected ':'")
+        pos++
+        afterName = true
+        return name
+    }
+
+    fun nextString(): String {
+        expect(Token.STRING)
+        val s = readStringBody()
+        startValue()
+        return s
+    }
+
+    fun nextDouble(): Double {
+        expect(Token.NUMBER)
+        // Fast path: the number lies whole inside the buffer and is plain fixed point, which is
+        // what every coordinate and pressure in a manifest is. Reading it straight out of the
+        // buffer skips a String per number and the general parser behind it; a dense note holds
+        // millions of them. Anything else (an exponent, a mantissa too long to stay exact, a
+        // number straddling the buffer edge) falls through to the general path below.
+        var i = pos
+        while (i < limit && isNumberChar(buf[i])) i++
+        if (i < limit) {
+            val v = fixedPoint(pos, i)
+            if (v != null) {
+                pos = i
+                startValue()
+                return v
+            }
+        }
+        val t = scanNumber()
+        startValue()
+        return try {
+            t.toDouble()
+        } catch (_: NumberFormatException) {
+            throw JsonPullException("Malformed number")
+        }
+    }
+
+    /**
+     * `buf[from until to]` as a double, or null when that is not a plain fixed-point number this
+     * can read exactly.
+     *
+     * Exactly is the whole point: an integer mantissa under 2^53 and a power of ten up to 1e22 are
+     * both exact doubles, so one IEEE division of the two is correctly rounded, which is the same
+     * double [String.toDouble] returns. Outside that range it declines rather than approximate.
+     */
+    private fun fixedPoint(from: Int, to: Int): Double? {
+        var i = from
+        if (i >= to) return null
+        var negative = false
+        if (buf[i] == '-') {
+            negative = true
+            i++
+        }
+        var mantissa = 0L
+        var digits = 0
+        var decimals = -1
+        while (i < to) {
+            val c = buf[i]
+            when {
+                c in '0'..'9' -> {
+                    if (digits >= 17) return null // past where a Long stays exact
+                    mantissa = mantissa * 10 + (c - '0')
+                    digits++
+                    if (decimals >= 0) decimals++
+                }
+                c == '.' -> {
+                    if (decimals >= 0) return null
+                    decimals = 0
+                }
+                else -> return null // an exponent, a sign in the middle, anything unexpected
+            }
+            i++
+        }
+        if (digits == 0) return null
+        if (mantissa > MAX_EXACT_MANTISSA) return null
+        val k = if (decimals < 0) 0 else decimals
+        if (k >= POW10.size) return null
+        if (mantissa == 0L) return if (negative) -0.0 else 0.0
+        val v = if (k == 0) mantissa.toDouble() else mantissa.toDouble() / POW10[k]
+        return if (negative) -v else v
+    }
+
+    /**
+     * One stroke sample, `[x,y,p]` or `[x,y,p,t]`, into [out], returning how many numbers it held.
+     * Slots that held nothing readable come back as NaN, so the caller can tell an absent channel
+     * from a zero one.
+     *
+     * Its own method for the same reason [JsonWrite.samplePoint] is: samples are nearly all of a
+     * manifest, and reading one through the general token machinery costs about fifteen calls per
+     * point. The fast path takes the whole element in one scan of the buffer, and declines (having
+     * consumed nothing) whenever it is not the plain shape or does not lie whole in the buffer,
+     * leaving the general path below to read it.
+     */
+    fun nextSample(out: DoubleArray): Int {
+        expect(Token.BEGIN_ARRAY)
+        for (i in out.indices) out[i] = Double.NaN
+        val fast = scanTuple(out)
+        if (fast >= 0) {
+            startValue()
+            return fast
+        }
+        pos++ // what beginArray does after its own expect
+        startValue()
+        push(false)
+        var n = 0
+        while (hasNext()) {
+            if (n >= out.size) {
+                skipValue()
+                continue
+            }
+            // One value consumed per slot whatever its type, so a null cannot shift the rest along.
+            when (peek()) {
+                Token.NUMBER -> out[n] = nextDouble()
+                Token.STRING -> out[n] = nextString().toDoubleOrNull() ?: Double.NaN
+                else -> skipValue()
+            }
+            n++
+        }
+        endArray()
+        return n
+    }
+
+    /**
+     * `[` number (`,` number)* `]` starting at [pos], read straight into [out]. Returns how many
+     * numbers it read and leaves [pos] past the `]`, or -1 having touched nothing: whitespace,
+     * anything but plain fixed-point numbers, or an element running past what is buffered.
+     */
+    private fun scanTuple(out: DoubleArray): Int {
+        var i = pos
+        if (i >= limit || buf[i] != '[') return -1
+        i++
+        var n = 0
+        while (true) {
+            if (i >= limit) return -1
+            var c = buf[i]
+            if (c == ']') {
+                pos = i + 1
+                return n
+            }
+            if (n > 0) {
+                if (c != ',') return -1
+                i++
+                if (i >= limit) return -1
+                c = buf[i]
+            }
+            if (n >= out.size) return -1
+            val start = i
+            while (i < limit && isNumberChar(buf[i])) i++
+            if (i >= limit || i == start) return -1 // ran off the buffer, or was not a number
+            out[n++] = fixedPoint(start, i) ?: return -1
+        }
+    }
+
+    fun nextInt(): Int {
+        expect(Token.NUMBER)
+        val t = scanNumber()
+        startValue()
+        return t.toIntOrNull() ?: try {
+            t.toDouble().toInt()
+        } catch (_: NumberFormatException) {
+            throw JsonPullException("Malformed number")
+        }
+    }
+
+    fun nextBoolean(): Boolean {
+        expect(Token.BOOLEAN)
+        val v = buf[pos] == 't'
+        literal(if (v) "true" else "false")
+        startValue()
+        return v
+    }
+
+    fun nextNull() {
+        expect(Token.NULL)
+        literal("null")
+        startValue()
+    }
+
+    fun skipValue() {
+        when (peek()) {
+            Token.BEGIN_OBJECT -> {
+                beginObject()
+                while (hasNext()) {
+                    nextName()
+                    skipValue()
+                }
+                endObject()
+            }
+            Token.BEGIN_ARRAY -> {
+                beginArray()
+                while (hasNext()) skipValue()
+                endArray()
+            }
+            Token.STRING -> nextString()
+            Token.NUMBER -> {
+                expect(Token.NUMBER)
+                scanNumber()
+                startValue()
+            }
+            Token.BOOLEAN -> nextBoolean()
+            Token.NULL -> nextNull()
+            Token.NAME -> {
+                nextName()
+                skipValue()
+            }
+            else -> throw JsonPullException("Nothing to skip")
+        }
+    }
+
+    private fun expect(t: Token) {
+        if (peek() != t) throw JsonPullException("Expected $t but was $peeked")
+        peeked = null
+    }
+
+    private fun literal(text: String) {
+        for (c in text) {
+            if (!ensure() || buf[pos] != c) throw JsonPullException("Malformed literal")
+            pos++
+        }
+    }
+
+    /** Records that a value began: the enclosing container now needs a ',' before its next entry. */
+    private fun startValue() {
+        if (depth > 0) {
+            had[depth - 1] = true
+            afterName = false
+        } else {
+            rootConsumed = true
+        }
+    }
+
+    private fun push(isObject: Boolean) {
+        if (depth == stack.size) {
+            stack = stack.copyOf(depth * 2)
+            had = had.copyOf(depth * 2)
+        }
+        stack[depth] = isObject
+        had[depth] = false
+        depth++
+    }
+
+    private fun doPeek(): Token {
+        skipWs()
+        if (depth == 0) {
+            if (rootConsumed || !ensure()) return Token.END_DOCUMENT
+            return valueTokenAt(buf[pos])
+        }
+        if (!ensure()) throw JsonPullException("Unexpected end of input")
+        val inObject = stack[depth - 1]
+        if (inObject && !afterName) {
+            var c = buf[pos]
+            if (c == '}') return Token.END_OBJECT
+            if (had[depth - 1]) {
+                if (c != ',') throw JsonPullException("Expected ','")
+                pos++
+                skipWs()
+                if (!ensure()) throw JsonPullException("Unexpected end of input")
+                c = buf[pos]
+                if (c == '}') throw JsonPullException("Trailing comma")
+            }
+            if (c != '"') throw JsonPullException("Expected a name")
+            return Token.NAME
+        }
+        if (!inObject) {
+            var c = buf[pos]
+            if (c == ']') return Token.END_ARRAY
+            if (had[depth - 1]) {
+                if (c != ',') throw JsonPullException("Expected ','")
+                pos++
+                skipWs()
+                if (!ensure()) throw JsonPullException("Unexpected end of input")
+                c = buf[pos]
+                if (c == ']') throw JsonPullException("Trailing comma")
+            }
+            return valueTokenAt(c)
+        }
+        return valueTokenAt(buf[pos])
+    }
+
+    private fun valueTokenAt(c: Char): Token = when {
+        c == '{' -> Token.BEGIN_OBJECT
+        c == '[' -> Token.BEGIN_ARRAY
+        c == '"' -> Token.STRING
+        c == 't' || c == 'f' -> Token.BOOLEAN
+        c == 'n' -> Token.NULL
+        c == '-' || c in '0'..'9' -> Token.NUMBER
+        else -> throw JsonPullException("Unexpected character '$c'")
+    }
+
+    /** Reads a string literal whose opening quote is at [pos]. */
+    private fun readStringBody(): String {
+        pos++
+        sb.setLength(0)
+        while (true) {
+            var i = pos
+            while (i < limit) {
+                val c = buf[i]
+                if (c == '"' || c == '\\') break
+                i++
+            }
+            sb.append(buf, pos, i - pos)
+            pos = i
+            if (pos < limit) {
+                if (buf[pos] == '"') {
+                    pos++
+                    return sb.toString()
+                }
+                pos++
+                sb.append(readEscape())
+            } else if (!ensure()) {
+                throw JsonPullException("Unterminated string")
+            }
+        }
+    }
+
+    private fun readEscape(): Char {
+        val c = readChar()
+        return when (c) {
+            '"', '\\', '/' -> c
+            'b' -> '\b'
+            'f' -> '\u000C'
+            'n' -> '\n'
+            'r' -> '\r'
+            't' -> '\t'
+            'u' -> {
+                var v = 0
+                repeat(4) {
+                    val h = readChar()
+                    v = (v shl 4) or when (h) {
+                        in '0'..'9' -> h - '0'
+                        in 'a'..'f' -> h - 'a' + 10
+                        in 'A'..'F' -> h - 'A' + 10
+                        else -> throw JsonPullException("Malformed \\u escape")
+                    }
+                }
+                v.toChar()
+            }
+            else -> throw JsonPullException("Malformed escape")
+        }
+    }
+
+    private fun scanNumber(): String {
+        sb.setLength(0)
+        while (true) {
+            var i = pos
+            while (i < limit && isNumberChar(buf[i])) i++
+            sb.append(buf, pos, i - pos)
+            pos = i
+            if (i < limit || !ensure()) break
+        }
+        if (sb.isEmpty()) throw JsonPullException("Malformed number")
+        return sb.toString()
+    }
+
+    private companion object {
+        /** Largest integer every double can hold exactly, 2^53. */
+        private const val MAX_EXACT_MANTISSA = 9007199254740992L
+
+        /** Powers of ten that are themselves exact doubles; past 1e22 they are not. */
+        private val POW10 = DoubleArray(23) { java.math.BigDecimal.TEN.pow(it).toDouble() }
+    }
+
+    private fun isNumberChar(c: Char): Boolean =
+        c in '0'..'9' || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E'
+
+    private fun readChar(): Char {
+        if (!ensure()) throw JsonPullException("Unexpected end of input")
+        return buf[pos++]
+    }
+
+    private fun skipWs() {
+        while (ensure()) {
+            val c = buf[pos]
+            if (c == ' ' || c == '\n' || c == '\r' || c == '\t') pos++ else return
+        }
+    }
+
+    private fun ensure(): Boolean {
+        if (pos < limit) return true
+        if (eof) return false
+        var n = reader.read(buf)
+        while (n == 0) n = reader.read(buf)
+        pos = 0
+        if (n < 0) {
+            limit = 0
+            eof = true
+            return false
+        }
+        limit = n
+        return true
+    }
+}

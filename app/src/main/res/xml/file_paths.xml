@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Notes are written here transiently before an ACTION_SEND share. -->
+    <cache-path name="shared" path="share/" />
+    <!-- Screenshot-tool captures are written here before going on the system clipboard. -->
+    <cache-path name="clipboard" path="clipboard/" />
+</paths>

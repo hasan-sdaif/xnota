@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Nota" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_bg</item>
+        <item name="android:statusBarColor">@color/window_bg</item>
+        <item name="android:navigationBarColor">@color/window_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Launch theme: dark stage matching the loader so there's no logo/white flash
+         before the animation appears. Swapped for Theme.Nota in MainActivity.onCreate. -->
+    <style name="Theme.Nota.Splash" parent="Theme.Nota">
+        <item name="android:windowBackground">@color/loader_bg</item>
+    </style>
+</resources>

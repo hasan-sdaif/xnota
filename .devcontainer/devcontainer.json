@@ -1,0 +1,15 @@
+{
+  "name": "XNota Android",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": { "version": "17", "installMaven": false },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends wget unzip ca-certificates && wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdtools.zip && mkdir -p $HOME/android-sdk/cmdline-tools && unzip -q /tmp/cmdtools.zip -d $HOME/android-sdk/cmdline-tools && mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest && yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null && $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.0.12077973' 'cmake;3.22.1' > /dev/null && echo 'sdk.dir=$HOME/android-sdk' > local.properties && echo 'Android SDK ready'",
+  "customizations": {
+    "vscode": {
+      "extensions": ["mathiasfrohlich.Kotlin"]
+    }
+  },
+  "remoteEnv": { "ANDROID_HOME": "${containerEnv:HOME}/android-sdk" }
+}

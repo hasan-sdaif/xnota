@@ -1,0 +1,32 @@
+{
+  "xtemplate": 1,
+  "id": "cornell-arabic",
+  "name": "Cornell عربي",
+  "description": "Cornell notes mirrored for right-to-left: the ruled note area sits on the right, the cue column on the left, and a summary box at the foot under a date line that starts at the top right.",
+  "license": "MIT",
+  "tags": ["lines", "study", "arabic"],
+  "params": {
+    "spacing": { "type": "length", "default": "8mm", "min": "5mm", "max": "12mm", "label": "Line spacing", "role": "spacing" },
+    "cue": { "type": "number", "default": 0.25, "min": 0.15, "max": 0.4, "step": 0.05, "label": "Cue column width" },
+    "summary": { "type": "length", "default": "50mm", "min": "25mm", "max": "90mm", "label": "Summary height" }
+  },
+  "items": [
+    { "type": "text", "text": "التاريخ", "x": "100% - 4mm", "y": "16mm", "size": "3mm", "fill": "accent" },
+    { "type": "group", "stroke": "accent", "strokeWidth": "0.35mm", "children": [
+      { "type": "hline", "y": "22mm" },
+      { "type": "hline", "y": "100% - summary" },
+      { "type": "vline", "x": "W * (cue + 0.1)", "y1": "22mm", "y2": "100% - summary" }
+    ]},
+    { "type": "group", "x": "W * (cue + 0.1)", "y": "22mm", "w": "100% - W * (cue + 0.1)", "h": "100% - 22mm - summary", "children": [
+      { "type": "repeat", "axis": "y", "period": "spacing", "children": [ { "type": "hline", "y": "100%" } ] }
+    ]},
+    { "type": "group", "y": "100% - summary", "h": "summary", "children": [
+      { "type": "repeat", "axis": "y", "period": "spacing", "children": [ { "type": "hline", "y": "100%" } ] }
+    ]},
+    { "type": "group", "fill": "accent", "size": "3mm", "children": [
+      { "type": "text", "text": "الكلمات المفتاحية", "x": "4mm", "y": "28mm" },
+      { "type": "text", "text": "الملاحظات", "x": "100% - 4mm", "y": "28mm", "align": "end" },
+      { "type": "text", "text": "الملخص", "x": "100% - 4mm", "y": "100% - summary + 6mm", "align": "end" }
+    ]}
+  ]
+}

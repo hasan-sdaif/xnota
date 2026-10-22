@@ -1,0 +1,20 @@
+{
+  "xtemplate": 1,
+  "id": "ruqaa-practice",
+  "name": "Ruqaa practice · تمرين رقعة",
+  "description": "Calligraphy practice for Ruqaa and similar hands: a solid baseline with a dashed ascender line above it, every so many millimetres — sized to pair with the Aref Ruqaa font.",
+  "license": "MIT",
+  "tags": ["lettering", "calligraphy", "arabic"],
+  "params": {
+    "step": { "type": "length", "default": "14mm", "min": "10mm", "max": "24mm", "label": "Line pitch", "role": "spacing" },
+    "rise": { "type": "length", "default": "8mm", "min": "4mm", "max": "12mm", "label": "Ascender height" }
+  },
+  "items": [
+    { "type": "group", "inset": ["16mm", "12mm"], "children": [
+      { "type": "repeat", "axis": "y", "period": "step", "fit": "space", "children": [
+        { "type": "hline", "y": "100%", "stroke": "#9aa0a6", "strokeWidth": "0.3mm", "opacity": 0.9 },
+        { "type": "hline", "y": "100% - rise", "dash": ["2mm", "1.5mm"], "opacity": 0.55 }
+      ]}
+    ]}
+  ]
+}

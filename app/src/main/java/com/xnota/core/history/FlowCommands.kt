@@ -1,0 +1,148 @@
+package com.xnota.core.history
+
+import com.xnota.core.model.Document
+import com.xnota.core.model.Page
+import com.xnota.core.text.FlowTable
+import com.xnota.core.text.ListKind
+import com.xnota.core.text.ParaAlign
+import com.xnota.core.text.Paragraph
+import com.xnota.core.text.Run
+import com.xnota.core.text.TableSnapshot
+import com.xnota.core.text.TextFlow
+
+/**
+ * A full value snapshot of one flow paragraph (runs deep-copied). Applying it
+ * restores content and paragraph properties on the identity-stable [Paragraph],
+ * so a snapshot pair makes an idempotent undo/redo swap.
+ */
+class ParaSnapshot private constructor(
+    private val runs: List<Run>,
+    private val align: ParaAlign,
+    private val indent: Int,
+    private val list: ListKind,
+    private val checked: Boolean,
+    private val codeLang: String?,
+    private val table: FlowTable?,
+    private val cellStart: Boolean,
+    private val headingLevel: Int,
+) {
+    fun applyTo(para: Paragraph) {
+        para.runs.clear()
+        // Install copies so this snapshot survives later mutation of the live runs.
+        runs.mapTo(para.runs) { it.deepCopy() }
+        para.align = align
+        para.indent = indent
+        para.list = list
+        para.checked = checked
+        para.codeLang = codeLang
+        para.table = table
+        para.cellStart = cellStart
+        para.headingLevel = headingLevel
+        para.touch()
+    }
+
+    /** True when applying this snapshot to [para] would change nothing. */
+    fun matches(para: Paragraph): Boolean =
+        align == para.align && indent == para.indent && list == para.list &&
+            checked == para.checked && codeLang == para.codeLang &&
+            table === para.table && cellStart == para.cellStart &&
+            headingLevel == para.headingLevel &&
+            runs.size == para.runs.size &&
+            runs.indices.all { runs[it].text == para.runs[it].text && runs[it].style == para.runs[it].style }
+
+    companion object {
+        fun of(para: Paragraph): ParaSnapshot = ParaSnapshot(
+            para.runs.map { it.deepCopy() },
+            para.align, para.indent, para.list, para.checked, para.codeLang, para.table, para.cellStart,
+            para.headingLevel,
+        )
+    }
+}
+
+/**
+ * An in-place edit of one identity-stable paragraph (a typing burst, a restyle,
+ * a checkbox toggle), recorded as before/after snapshots.
+ */
+class FlowEditParagraph(
+    private val para: Paragraph,
+    private val before: ParaSnapshot,
+    private val after: ParaSnapshot,
+) : Command {
+    override fun redo() = after.applyTo(para)
+    override fun undo() = before.applyTo(para)
+}
+
+/**
+ * Replace the [count] = `removed.size` paragraphs at [index] with [inserted]
+ * (split, merge, paste, multi-paragraph delete). Undo restores the original
+ * paragraph objects, so other commands' references to them stay valid. Built
+ * un-applied; the flow editor applies it with the first [redo].
+ */
+class FlowSplice(
+    private val flow: TextFlow,
+    private val index: Int,
+    private val removed: List<Paragraph>,
+    private val inserted: List<Paragraph>,
+) : Command {
+    private var applied = false
+
+    override fun redo() {
+        if (applied) return
+        replace(removed.size, inserted)
+        applied = true
+    }
+
+    override fun undo() {
+        if (!applied) return
+        replace(inserted.size, removed)
+        applied = false
+    }
+
+    private fun replace(count: Int, with: List<Paragraph>) {
+        repeat(count.coerceAtMost(flow.paragraphs.size - index)) { flow.paragraphs.removeAt(index) }
+        flow.paragraphs.addAll(index.coerceIn(0, flow.paragraphs.size), with)
+        flow.touch()
+    }
+}
+
+/** A table's geometry or look changed (widths, row heights, style), as before/after snapshots. */
+class FlowTableEdit(
+    private val flow: TextFlow,
+    private val table: FlowTable,
+    private val before: TableSnapshot,
+    private val after: TableSnapshot,
+) : Command {
+    override fun redo() {
+        after.applyTo(table)
+        flow.touch()
+    }
+
+    override fun undo() {
+        before.applyTo(table)
+        flow.touch()
+    }
+}
+
+/**
+ * A page appended automatically because the flow overflowed while typing. Undo
+ * removes the page only while it is still empty — ink drawn on it afterwards
+ * must never be silently destroyed by undoing the text edit that created it.
+ */
+class AddPageAuto(
+    private val document: Document,
+    private val page: Page,
+    private val index: Int,
+) : Command {
+    override fun redo() {
+        if (document.pages.none { it === page }) {
+            document.pages.add(index.coerceIn(0, document.pages.size), page)
+        }
+    }
+
+    override fun undo() {
+        if (page.items.isEmpty()) {
+            val i = document.pages.indexOfFirst { it === page }
+            if (i >= 0) document.pages.removeAt(i)
+        }
+    }
+}

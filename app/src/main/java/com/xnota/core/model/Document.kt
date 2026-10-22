@@ -1,0 +1,104 @@
+package com.xnota.core.model
+
+import com.xnota.core.text.TextFlow
+import com.xnota.core.util.Paths
+
+/** A user bookmark into a document (spec 02 §3). */
+data class Bookmark(var page: Int, var label: String)
+
+/**
+ * An ordered collection of pages plus on-disk identity (spec 02 §3). New notes
+ * open with one blank page at the user's default page size/orientation.
+ */
+class Document(
+    val pages: MutableList<Page> = mutableListOf(),
+    var dpi: Int = PageSize.DEFAULT_DPI,
+    var path: String? = null,
+    /** Real file name from the storage provider, when known (overrides [path]-derived title). */
+    var displayName: String? = null,
+    var dirty: Boolean = false,
+    /**
+     * Embedded source PDF (for PDF-imported notes), so the note stays self-contained. Held as a
+     * **file** on disk, not bytes in RAM: the file is memory-mapped by the renderer and streamed
+     * into/out of the `.xnote` bundle, so even a very large PDF never has to fit in the heap. The
+     * file lives in a private cache dir owned by the platform layer (which manages its lifetime).
+     */
+    var pdfFile: java.io.File? = null,
+    val bookmarks: MutableList<Bookmark> = mutableListOf(),
+    /** Document-wide ("all pages") style override; per-page [Page.style] layers on top. */
+    var style: PageStyle = PageStyle(),
+    /** Document-wide ("all pages") margin override; per-page [Page.margins] layers on top. */
+    var margins: PageMargins = PageMargins(),
+    /** The document-wide flowing rich text (empty until typed into; persisted only when non-empty). */
+    val flow: TextFlow = TextFlow(),
+    /** When the note was created (epoch ms), or null for files written before this was recorded. */
+    var created: Long? = null,
+    /**
+     * The `.xtemplate` files this note's styles name, by key, carried inside the bundle so the note
+     * draws the same on any device. Built-in rulings are never here. Replaced whole, never mutated.
+     */
+    var templates: Map<String, String> = emptyMap(),
+    /**
+     * The packaged templates (zips holding pictures) this note's styles name, by key, as files on
+     * disk so their pictures never sit in the heap. Like [templates], replaced whole.
+     */
+    var templatePackages: Map<String, java.io.File> = emptyMap(),
+    /** The size of each page added from now on, or null to give it the size of the page before it. */
+    var newPageSize: PageSizeChoice? = null,
+) {
+    /** Transient: set by the codec when legacy ink was compacted at load (debug overlay readout). */
+    var compactedOnLoad = false
+
+    /** Derived: the storage display name (or path) base name without extension, or "Untitled". */
+    val title: String
+        get() = displayName?.let { Paths.stem(it) }
+            ?: path?.let { Paths.stem(it) }
+            ?: "Untitled"
+
+    val hasPdf: Boolean get() = pdfFile != null
+
+    /**
+     * Appends a blank page sized [width] × [height] and marks the document
+     * dirty. The UI passes the current page's dimensions so a note stays uniform.
+     */
+    fun addPage(width: Double, height: Double, pdfPage: Int? = null): Page {
+        val page = Page(width, height, pdfPage = pdfPage)
+        pages.add(page)
+        dirty = true
+        return page
+    }
+
+    /** The size of a blank page added after [previous]: [newPageSize] if set, else [previous]'s, else A4 portrait. */
+    fun blankPageSize(previous: Page?): Pair<Double, Double> =
+        newPageSize?.pixels(dpi)
+            ?: previous?.let { it.width to it.height }
+            ?: PageSize.A4.pixels(Orientation.PORTRAIT, dpi)
+
+    companion object {
+        const val DEFAULT_NEW_PAGES = 1
+
+        /** A blank document of [count] pages of the given size/orientation. */
+        fun blank(
+            count: Int = DEFAULT_NEW_PAGES,
+            size: PageSize = PageSize.A4,
+            orientation: Orientation = Orientation.PORTRAIT,
+            dpi: Int = PageSize.DEFAULT_DPI,
+        ): Document {
+            val doc = Document(dpi = dpi)
+            repeat(count) { doc.pages.add(Page.blank(size, orientation, dpi)) }
+            return doc
+        }
+
+        /** A blank document of [count] pages measured in document pixels, for a custom size. */
+        fun blankPixels(
+            count: Int = DEFAULT_NEW_PAGES,
+            width: Double,
+            height: Double,
+            dpi: Int = PageSize.DEFAULT_DPI,
+        ): Document {
+            val doc = Document(dpi = dpi)
+            repeat(count) { doc.pages.add(Page(width, height)) }
+            return doc
+        }
+    }
+}

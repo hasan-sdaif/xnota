@@ -1,0 +1,32 @@
+{
+  "xtemplate": 1,
+  "id": "dua-tracker",
+  "name": "Dhikr tracker · جدول الأذكار",
+  "description": "A daily dhikr tally sheet reading right to left: the remembrance in the wide right column, the count beside it, and a tick box on the left.",
+  "license": "MIT",
+  "tags": ["planner", "lists", "arabic"],
+  "params": {
+    "rows": { "type": "integer", "default": 7, "min": 3, "max": 12, "label": "Rows" }
+  },
+  "items": [
+    { "type": "text", "text": "الأذكار اليومية", "x": "100% - 12mm", "y": "15mm", "size": "5mm", "weight": "bold", "align": "end" },
+    { "type": "hline", "y": "20mm", "x1": "12mm", "x2": "100% - 12mm", "stroke": "accent", "strokeWidth": "0.4mm" },
+    { "type": "group", "x": "12mm", "y": "28mm", "w": "100% - 24mm", "h": "100% - 40mm", "children": [
+      { "type": "group", "h": "10mm", "fill": "accent", "size": "3.5mm", "weight": "bold", "children": [
+        { "type": "rect", "fill": "accent", "opacity": 0.12, "stroke": "none" },
+        { "type": "text", "text": "الذكر", "x": "100% - 4mm", "y": "6.5mm", "align": "end" },
+        { "type": "text", "text": "العدد", "x": "27.5%", "y": "6.5mm", "align": "middle" },
+        { "type": "text", "text": "✓", "x": "7.5%", "y": "6.5mm", "align": "middle" }
+      ]},
+      { "type": "hline", "y": "10mm", "stroke": "accent", "strokeWidth": "0.4mm" },
+      { "type": "group", "y": "10mm", "h": "100% - 10mm", "children": [
+        { "type": "repeat", "axis": "y", "count": "rows", "children": [
+          { "type": "hline", "y": "100%", "stroke": "#9aa0a6", "strokeWidth": "0.2mm", "opacity": 0.8 },
+          { "type": "rect", "x": "4mm", "y": "50% - 2mm", "w": "4mm", "h": "4mm", "rx": "0.6mm", "stroke": "#9aa0a6", "strokeWidth": "0.2mm" }
+        ]},
+        { "type": "vline", "x": "15%", "stroke": "#9aa0a6", "strokeWidth": "0.2mm", "opacity": 0.6 },
+        { "type": "vline", "x": "40%", "stroke": "#9aa0a6", "strokeWidth": "0.2mm", "opacity": 0.6 }
+      ]}
+    ]}
+  ]
+}

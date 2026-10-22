@@ -1,0 +1,23 @@
+{
+  "xtemplate": 1,
+  "id": "quran-study",
+  "name": "Quran study · درس قرآني",
+  "description": "Mushaf-style note taking: a thin double frame around dense 6 mm rules, with a reference line for the surah and ayah at the head.",
+  "license": "MIT",
+  "tags": ["lines", "study", "arabic", "quran"],
+  "params": {
+    "spacing": { "type": "length", "default": "6mm", "min": "4mm", "max": "10mm", "label": "Line spacing", "role": "spacing" },
+    "head": { "type": "length", "default": "22mm", "min": "14mm", "max": "40mm", "label": "Header height" }
+  },
+  "items": [
+    { "type": "rect", "x": "7mm", "y": "7mm", "w": "100% - 14mm", "h": "100% - 14mm", "fill": "none", "stroke": "accent", "strokeWidth": "0.4mm" },
+    { "type": "rect", "x": "9mm", "y": "9mm", "w": "100% - 18mm", "h": "100% - 18mm", "fill": "none", "stroke": "accent", "strokeWidth": "0.15mm", "opacity": 0.7 },
+    { "type": "text", "text": "السورة والآية", "x": "100% - 13mm", "y": "15mm", "size": "3mm", "fill": "accent", "align": "end" },
+    { "type": "hline", "y": "head", "x1": "13mm", "x2": "100% - 13mm", "stroke": "#9aa0a6", "strokeWidth": "0.25mm", "opacity": 0.8 },
+    { "type": "group", "x": "13mm", "y": "head + 4mm", "w": "100% - 26mm", "h": "100% - head - 13mm", "children": [
+      { "type": "repeat", "axis": "y", "period": "spacing", "children": [
+        { "type": "hline", "y": 0, "stroke": "#9aa0a6", "strokeWidth": "0.18mm", "opacity": 0.75 }
+      ]}
+    ]}
+  ]
+}

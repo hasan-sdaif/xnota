@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- xnota: enforce translation health on lint runs.
+     StringFormatMatches is fatal so release builds (lintVital) fail on any
+     placeholder mismatch; MissingTranslation/ExtraTranslation are errors for
+     full `lint` runs (zh-Hans upstream gaps are pre-existing and tracked in
+     docs/fork/FEATURES.md). -->
+<lint>
+    <issue id="StringFormatMatches" severity="fatal" />
+    <issue id="MissingTranslation" severity="error" />
+    <issue id="ExtraTranslation" severity="error" />
+</lint>

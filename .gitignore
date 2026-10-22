@@ -1,0 +1,29 @@
+# --- Planning / spec / AI artifacts (never commit) ---
+CLAUDE.md
+.claude/
+
+# --- Gradle ---
+.gradle/
+build/
+**/build/
+# PDFium's build/ headers are vendored sources, not build output.
+!app/src/main/cpp/pdfium/build/
+
+# --- Android Studio / IntelliJ ---
+.idea/
+*.iml
+*.iws
+*.ipr
+captures/
+.cxx/
+output.json
+
+# --- Local machine config (SDK path, secrets) ---
+local.properties
+*.jks
+*.keystore
+keystore.properties
+
+# --- Misc ---
+.DS_Store
+*.log

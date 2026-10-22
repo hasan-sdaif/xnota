@@ -1,0 +1,21 @@
+{
+  "xtemplate": 1,
+  "id": "arabic-ruled",
+  "name": "Arabic ruled · سطور عربية",
+  "description": "Ruled paper for right-to-left writing: the margin line runs down the right side, with grey rules and a subtle red margin.",
+  "license": "MIT",
+  "tags": ["lines", "writing", "arabic"],
+  "params": {
+    "spacing": { "type": "length", "default": "8mm", "min": "5mm", "max": "12mm", "label": "Line spacing", "role": "spacing" },
+    "header": { "type": "length", "default": "24mm", "min": "0mm", "max": "60mm", "label": "Header height" },
+    "margin": { "type": "length", "default": "18mm", "min": "0mm", "max": "60mm", "label": "Margin width" }
+  },
+  "items": [
+    { "type": "group", "y": "header", "h": "100% - header", "children": [
+      { "type": "repeat", "axis": "y", "period": "spacing", "children": [
+        { "type": "hline", "y": 0, "stroke": "#9aa0a6", "strokeWidth": "0.2mm", "opacity": 0.8 }
+      ]}
+    ]},
+    { "type": "vline", "x": "W - margin", "stroke": "#c65a52", "strokeWidth": "0.35mm", "opacity": 0.75 }
+  ]
+}
