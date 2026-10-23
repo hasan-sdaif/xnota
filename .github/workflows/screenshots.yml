@@ -80,7 +80,10 @@ jobs:
           test -f "$AVD_INI" || AVD_INI="$(find "$HOME" -path '*test.avd/config.ini' 2>/dev/null | head -1)"
           echo "AVD config: $AVD_INI"
           test -n "$AVD_INI"
-          sed -i 's/^disk\.dataPartition\.size=.*/disk.dataPartition.size=2G/' "$AVD_INI"
+          # A '<temp>' data-partition path makes the emulator size a throwaway partition by its
+          # own default (6G) and ignore the size line — the FATAL every run died on. Drop the
+          # path line so the AVD's own 2G partition is used.
+          sed -i -e '/^disk\.dataPartition\.path=<temp>$/d' -e 's/^disk\.dataPartition\.size=.*/disk.dataPartition.size=2G/' "$AVD_INI"
           grep -n 'disk.dataPartition' "$AVD_INI"
 
       - name: Boot emulator, walk the app, capture screens
