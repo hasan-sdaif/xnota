@@ -2,14 +2,28 @@
 
 This brand system is implemented in the Android app itself with Kotlin and Jetpack Compose. It is not a web mock-up. It merges two independent brand passes — the reference-studio chrome (1.8.0's identity foundation and presentation) and the native-brand mark/navigation pass — into one system.
 
+<p align="center">
+  <img src="../brand/lockup-primary.png" width="420" alt="The XNota primary lockup" />
+</p>
+
 ## Identity
 
-- **Primary mark:** the X + fountain-pen nib cropped from `app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png`, stored as `app/src/main/res/drawable-nodpi/xnota_brand_mark.png`.
+- **Primary mark:** the X + fountain-pen nib cropped from `app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png`, stored as `app/src/main/res/drawable-nodpi/xnota_brand_mark.png` (a trimmed copy is kept in `docs/brand/brand-mark.png`).
 - **Wordmark:** the mark paired with "Nota", so the icon supplies the X without duplicating it.
-- **Arabic tagline:** `اكتب أفكارك… في أي وقت`.
-- **English tagline:** `Write your ideas — anytime`.
+- **Arabic tagline:** `اكتب أفكارك … في مكان واحد`.
+- **English tagline:** "Write your ideas — in one place".
+
+The wordmark in its three lockup forms, with the Arabic tagline under each:
+
+<p align="center">
+  <img src="../brand/lockups.png" width="640" alt="The three XNota lockups" />
+</p>
 
 ## Colour tokens
+
+<p align="center">
+  <img src="../brand/palette.png" width="220" alt="The brand colour palette" />
+</p>
 
 The chrome's colour source is `com.xnota.ui.theme.XNotaIdentity` (the reference design's tokens: the ink surface ladder, the emerald accent `#00E676`, sage hairlines) applied unconditionally by `Editor.buildPalette` — a user's re-picked accent and the appearance mode (dark/light/OLED) are the only colour choices that reach the chrome. The brand mark's tile gradient (forest → ink) is artwork, held in `com.xnota.ui.brand.XNotaBrand` alongside the reusable composables.
 
@@ -31,6 +45,12 @@ The **Material seed** — the scheme the Material widgets (switches, chips, slid
 - `app/src/main/java/com/xnota/settings/Settings.kt` — right-edge navigation default and one-time migration of the old automatic position.
 - `app/src/main/java/com/xnota/ui/PreferencesPane.kt` — immediate left/right/bottom navigation choices.
 - `app/src/main/java/com/xnota/ui/AboutPane.kt` — the shared logo lockup crowning the About hero.
+
+The full identity board (primary lockup, the five launcher icon tiles, the three lockups, the palette) is archived at [`docs/brand/identity-board.png`](../brand/identity-board.png), and the app icon tiles it derives from:
+
+<p align="center">
+  <img src="../brand/app-icons.png" width="560" alt="The five launcher icon tiles" />
+</p>
 
 ## Verification
 
