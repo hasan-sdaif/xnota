@@ -65,9 +65,9 @@ jobs:
           heap-size: 512M
           ram-size: 4096M
           disk-size: 2G
-          emulator-boot-timeout: 900
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none -camera-front none
+          emulator-boot-timeout: 1800
           script: |
             set -x
             adb install -r app/build/outputs/apk/debug/app-debug.apk
@@ -88,14 +88,10 @@ jobs:
             sys.exit(1)
             PY
 
-            # Arabic, RTL: stamp the locale both ways, then reboot so the system server picks it up.
-            adb root
-            adb shell "setprop persist.sys.locale ar && setprop persist.sys.country SA"
-            adb shell "settings put system system_locales ar"
-            adb reboot
-            adb wait-for-device
-            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 2; done'
-            sleep 5
+            # Arabic, RTL — the app's own per-app locale (API 33+), no reboot dance: the app
+            # ships generateLocaleConfig, so the locale follows it across every launch after this.
+            adb shell cmd locale set-app-locales com.xnota --locales ar || true
+            sleep 2
 
             mkdir -p shots
             shot() { adb exec-out screencap -p > "shots/$1.png"; sleep 1; }
