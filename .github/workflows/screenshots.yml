@@ -121,86 +121,50 @@ jobs:
             set -x
             adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-            cat > /tmp/tap.py <<'PY'
-            import re, subprocess, sys
-            want = sys.argv[1]
-            try:
-                xml = open('/tmp/ui.xml', encoding='utf-8').read()
-            except OSError:
-                sys.exit(1)
-            for m in re.finditer(r'<node[^>]*?(?:text|content-desc)="([^"]+)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
-                if want in m.group(1):
-                    x = (int(m.group(2)) + int(m.group(4))) // 2
-                    y = (int(m.group(3)) + int(m.group(5))) // 2
-                    subprocess.run(['adb', 'shell', 'input', 'tap', str(x), str(y)], check=False)
-                    sys.exit(0)
-            sys.exit(1)
-            PY
+            # The tap helper, base64'd whole: the runner executes this script LINE BY LINE, so a
+            # heredoc can never survive (each line becomes its own sh -c — the heredoc's body
+            # ran as commands and died on 'import: not found').
+            echo 'aW1wb3J0IHJlLCBzdWJwcm9jZXNzLCBzeXMKdHJ5OgogICAgeG1sID0gb3BlbignL3RtcC91aS54bWwnLCBlbmNvZGluZz0ndXRmLTgnKS5yZWFkKCkKZXhjZXB0IE9TRXJyb3I6CiAgICBzeXMuZXhpdCgxKQpmb3IgbSBpbiByZS5maW5kaXRlcihyJzxub2RlW14+XSo/KD86dGV4dHxjb250ZW50LWRlc2MpPSIoW14iXSspIltePl0qP2JvdW5kcz0iXFsoXGQrKSwoXGQrKVxdXFsoXGQrKSwoXGQrKVxdIiwgeG1sKToKICAgIGlmIHN5cy5hcmd2WzFdIGluIG0uZ3JvdXAoMSk6CiAgICAgICAgeCA9IChpbnQobS5ncm91cCgyKSkgKyBpbnQobS5ncm91cCg0KSkpIC8vIDIKICAgICAgICB5ID0gKGludChtLmdyb3VwKDMpKSArIGludChtLmdyb3VwKDUpKSkgLy8gMgogICAgICAgIHN1YnByb2Nlc3MucnVuKFsnYWRiJywgJ3NoZWxsJywgJ2lucHV0JywgJ3RhcCcsIHN0cih4KSwgc3RyKHkpXSwgY2hlY2s9RmFsc2UpCiAgICAgICAgc3lzLmV4aXQoMCkKc3lzLmV4aXQoMSkK' | base64 -d > /tmp/tap.py
 
-            # Arabic, RTL — the app's own per-app locale (API 33+), no reboot dance: the app
-            # ships generateLocaleConfig, so the locale follows it across every launch after this.
+            # Arabic, RTL — the app's own per-app locale (API 33+), no reboot dance.
             adb shell cmd locale set-app-locales com.xnota --locales ar || true
-            sleep 2
 
             mkdir -p shots
-            shot() { adb exec-out screencap -p > "shots/$1.png"; sleep 1; }
-
-            # Tap by visible label: Compose semantics surface as text/content-desc in the dump.
-            tap_text() {
-              adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
-              adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1 || true
-              python3 /tmp/tap.py "$1"
-            }
 
             # 1. First run: the folder picker wears the identity chrome.
-            adb shell am start -n com.xnota/.MainActivity
-            sleep 10
-            shot 01-first-run
+            adb shell am start -n com.xnota/.MainActivity; sleep 10; adb exec-out screencap -p > shots/01-first-run.png; sleep 1
 
-            # 2. Internal storage: the home shelves (recent cards, pins, the folder's files).
-            tap_text "تخزين التطبيق" || tap_text "app storage" || true
-            sleep 6
-            shot 02-home
-            adb shell input swipe 540 1700 540 700 400
-            sleep 2
-            shot 03-home-scrolled
+            # 2. Internal storage: the home presentation.
+            adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'تخزين التطبيق' || python3 /tmp/tap.py 'app storage' || true
+            sleep 6; adb exec-out screencap -p > shots/02-home.png; sleep 1
 
-            # 3. The new-note screen (template cards, format chips), via the create menu.
-            tap_text "إنشاء" || tap_text "New" || true
-            sleep 2
-            tap_text "ملاحظة جديدة" || true
-            sleep 5
-            shot 04-new-note
+            # 3. The home, scrolled to the shelf.
+            adb shell input swipe 540 1700 540 700 400; sleep 2; adb exec-out screencap -p > shots/03-home-scrolled.png; sleep 1
 
-            # 4. Create the note: the writing room (toolbar pill, paper, side panel).
-            tap_text "إنشاء" || true
-            sleep 8
-            shot 05-editor
+            # 4. The new-note screen: the hero's start, the quick card, or the create button.
+            adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'ابدأ دفترا' || python3 /tmp/tap.py 'ملاحظة جديدة' || python3 /tmp/tap.py 'إنشاء' || true
+            sleep 5; adb exec-out screencap -p > shots/04-new-note.png; sleep 1
 
-            # 5. Back to home; open the phone's navigation drawer.
-            adb shell input keyevent 4
-            sleep 3
-            shot 06-back-home
-            tap_text "إظهار الشريط" || true
-            sleep 3
-            shot 07-drawer
+            # 5. Create the note: the writing room.
+            adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'إنشاء' || true
+            sleep 8; adb exec-out screencap -p > shots/05-editor.png; sleep 1
 
-            # 6. Preferences (the hub cards), scrolled too.
-            tap_text "التفضيلات" || true
-            sleep 5
-            shot 08-preferences
-            adb shell input swipe 540 1500 540 700 400
-            sleep 2
-            shot 09-preferences-scrolled
+            # 6. Back to home, then the navigation drawer from the right edge.
+            adb shell input keyevent 4; sleep 3; adb exec-out screencap -p > shots/06-back-home.png; sleep 1
+            adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'إظهار الشريط' || true
+            sleep 3; adb exec-out screencap -p > shots/07-drawer.png; sleep 1
 
-            # 7. About: the brand hero, version pill, the developer card.
-            adb shell input keyevent 4
-            sleep 3
-            tap_text "إظهار الشريط" || true
-            sleep 2
-            tap_text "حول التطبيق" || tap_text "عن XNota" || true
-            sleep 5
-            shot 10-about
+            # 7. Preferences: the hub cards.
+            adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'التفضيلات' || true
+            sleep 5; adb exec-out screencap -p > shots/08-preferences.png; sleep 1
+
+            # 8. Preferences, scrolled.
+            adb shell input swipe 540 1500 540 700 400; sleep 2; adb exec-out screencap -p > shots/09-preferences-scrolled.png; sleep 1
+
+            # 9. About: the brand lockup, version pill, changelog cards.
+            adb shell input keyevent 4; sleep 3; adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'إظهار الشريط' || true
+            sleep 2; adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'حول التطبيق' || python3 /tmp/tap.py 'عن XNota' || true
+            sleep 5; adb exec-out screencap -p > shots/10-about.png; sleep 1
 
             ls -la shots/
 
