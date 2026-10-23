@@ -70,8 +70,14 @@ jobs:
           AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" --install "system-images;android-34;default;x86_64" > /dev/null
+          # Pin the AVD home to the runner's own default ($HOME/.android/avd): avdmanager's
+          # bare default is the XDG ~/.config/.android path, and the runner — which looks only
+          # in its own home — would then re-create the AVD there with the 6G default back.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           echo no | "$AVDMANAGER" create avd --force -n test --package 'system-images;android-34;default;x86_64'
-          AVD_INI="$(find "$HOME" -path '*test.avd/config.ini' 2>/dev/null | head -1)"
+          AVD_INI="$ANDROID_AVD_HOME/test.avd/config.ini"
+          test -f "$AVD_INI" || AVD_INI="$(find "$HOME" -path '*test.avd/config.ini' 2>/dev/null | head -1)"
           echo "AVD config: $AVD_INI"
           test -n "$AVD_INI"
           sed -i 's/^disk\.dataPartition\.size=.*/disk.dataPartition.size=2G/' "$AVD_INI"
