@@ -621,7 +621,7 @@
     <string name="sponsor">赞助</string>
     <string name="enjoying_xnotes">喜欢 XNota？</string>
     <string name="star_on_github">在 GitHub 上加星</string>
-    <string name="mit_license">MIT 许可证</string>
+    <string name="open_source_license">开源 — XOL-1.0</string>
     <string name="version_n">版本 %1$s</string>
     <string name="version_copied">版本号已复制</string>
 

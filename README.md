@@ -12,7 +12,7 @@
   <a href="https://github.com/hasan-sdaif/xnota/releases/latest"><img src="https://img.shields.io/github/v/release/hasan-sdaif/xnota?color=00C878&label=%D8%A5%D8%B5%D8%AF%D8%A7%D8%B1" alt="الإصدار" /></a>
   <a href="https://github.com/hasan-sdaif/xnota/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/hasan-sdaif/xnota/build.yml?branch=main&label=%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1&color=00C878" alt="البناء" /></a>
   <a href="https://github.com/hasan-sdaif/xnota/releases"><img src="https://img.shields.io/github/downloads/hasan-sdaif/xnota/total?color=00C878&label=%D8%AA%D9%86%D8%B2%D9%8A%D9%84%D8%A7%D8%AA" alt="التنزيلات" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/%D8%B1%D8%AE%D8%B5%D8%A9-MIT-00C878" alt="الرخصة" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/%D8%B1%D8%AE%D8%B5%D8%A9-XOL--1.0%20%D9%85%D9%81%D8%AA%D9%88%D8%AD%20%D8%A7%D9%84%D9%85%D8%B5%D8%AF%D8%B1-00C878" alt="الرخصة" /></a>
   <a href="https://github.com/hasan-sdaif/xnota/releases/latest"><img src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white" alt="Android 8.0+" /></a>
   <a href="#الاختبارات"><img src="https://img.shields.io/badge/%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1%D8%A7%D8%AA-2434%20%E2%9C%93-00C878" alt="الاختبارات" /></a>
 </p>
@@ -164,8 +164,12 @@ app/src/main/java/com/xnota/
 
 ## 📜 الرخصة
 
-رخصة MIT — انظر [LICENSE](LICENSE). الخطوط المدمجة برخصة SIL OFL
-(يسردها التطبيق كاملةً في شاشة الرخص داخل التطبيق).
+**رخصة إكس نوتا المفتوحة (XOL-1.0)** — رخصة التطبيق الرسمية بقلم مطوّره: مفتوحة
+المصدر، حرّة الاستخدام والدراسة والتعديل والتوزيع للأفراد والشركات، بشرط حفظ
+الرخصة وإشعاراتها وتوثيق التغييرات وإتاحة المصدر عند التوزيع — بينما يبقى اسم
+«XNota» وشعارها وهويتها للمطوّر وحده. النص الكامل في [LICENSE](LICENSE)، ومعه
+إشعارات الأطراف الثالثة (أساس MIT الأصلي، والخطوط المدمجة برخصة SIL OFL
+ويسردها التطبيق كاملةً في شاشة الرخص داخل التطبيق).
 
 </div>
 
@@ -318,5 +322,11 @@ app/src/main/java/com/xnota/
 
 ## 📜 License
 
-MIT — see [LICENSE](LICENSE). Bundled fonts are SIL OFL (the in-app license screen
+**The XNota Open License (XOL-1.0)** — the app's own license, penned by its
+developer: open source, free to use, study, modify and distribute for personal
+and commercial purposes, provided the license and notices travel with every
+distribution, changes are documented, and source is made available — while the
+XNota name, logo and identity stay with their author. The full text is in
+[LICENSE](LICENSE), together with the third-party notices (the original MIT
+foundation, and the bundled fonts under SIL OFL — the in-app license screen
 lists every family).

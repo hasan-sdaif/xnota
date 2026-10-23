@@ -1,21 +1,160 @@
-MIT License
+# رخصة إكس نوتا المفتوحة — XNota Open License
 
-Copyright (c) 2026 Shardul Vikram Singh
+**النسخة 1.0 — XOL-1.0**
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Copyright (c) 2026 **Hasan Sdaif**. جميع الحقوق محفوظة وفق شروط هذه الرخصة.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+هذه رخصة التطبيق الرسمية، بقلم مطوّره. النص العربي أدناه هو **النص المعتمد**،
+ويليه ترجمة إنجليزية للإحاطة، ثم إشعارات الأطراف الثالثة التي يجب أن تبقى مع كل نسخة.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+---
+
+## النص العربي (المعتمد)
+
+### البند ١ — التعريفات
+- **«التطبيق»**: تطبيق «إكس نوتا» (XNota) بجميع ملفاته المصدريّة وبنياته وأصوله
+  وتوثيقه، في المستودع الرسمي وفي أي صورة مُجمَّعة أو موزَّعة منه.
+- **«أنت»** أو **«المستفيد»**: أي شخص طبيعي أو اعتباري يحصل على نسخة من التطبيق
+  ويتعامل معها بأي صورة.
+- **«التعديلات»**: أي تغيير أو إضافة أو حذف أو إعادة تنظيم في نصوص التطبيق أو أصوله.
+- **«التوزيع»**: تمكين الغير من الحصول على نسخة من التطبيق أو من تعديلاته، بأي وسيلة،
+  مجاناً أو مقابل أجر.
+- **«الهوية»**: اسم «XNota» و«إكس نوتا»، والشعار وعلامة القلم، والألوان والصيغ
+  اللفّية المرجعية، وما يُدرَج معها من عناصر العلامة في مجلد `docs/brand/`.
+
+### البند ٢ — المنح
+يمنحك صاحب الحقوق، مقابل الامتثال لهذه الرخصة، رخصةً عالميةً دائمةً **مجانيةً**
+غير قابلة للاستئثار، تخوّلك:
+1. استخدام التطبيق وتشغيله لأي غرض، شخصيٍّ كان أو تجارياً.
+2. دراسة نصوصه المصدريّة وفحصها وتحليلها.
+3. نسخه، وتعديله، ودمجه في أعمال أخرى، وإعداد أعمال مشتقة منه.
+4. توزيع التطبيق أو التعديلات أو الأعمال المشتقة، مجاناً أو مقابل أجر.
+
+### البند ٣ — الشروط
+يلتزم المستفيد عند أي توزيع بما يلي:
+1. **حفظ الرخصة والإشعارات**: تُرفق هذه الرخصة بنصّها الكامل — ومنها إشعارات
+   الأطراف الثالثة في نهايتها — مع كل نسخة أو جزء جوهري يوزَّع، وتُحفظ إشعارات
+   حقوق النشر كاملةً دون حذف أو تحريف.
+2. **توثيق التغييرات**: تُذكر التعديلاتُ الجوهرية التي أُدخلت على النسخة الموزَّعة
+   تمييزاً لها عن الأصل، بما لا يوحي بأنها صادرة عن المطوّر الأصلي.
+3. **إتاحة المصدر**: عند توزيع التطبيق أو جزءٍ جوهريٍّ منه أو عملٍ مشتقٍّ منه،
+   يُتاح للمستلمين النصُّ المصدريُّ المقابل لتلك النسخة (أو لذلك الجزء) بشروط
+   هذه الرخصة نفسها، أو تُبيَّن وسيلة الحصول عليه.
+4. **الوراثة**: توزَّع الأعمال المشتقة المبنية على التطبيق (أو على جزء جوهري منه)
+   تحت هذه الرخصة نفسها.
+
+### البند ٤ — العلامة والهوية
+اسم «XNota» وشعاره وهويته ملكٌ لصاحب الحقوق، وهذه الرخصة **لا** تمنح أي حق في
+استخدامها لتسمية تطبيقات أو خدمات أو منتجات مشتقة، ولا في ترويجها بها. من أراد
+توزيع نسخة معدَّلة فعليه تسميتها باسمٍ آخر لا يخلط بينها وبين الأصل، ويبقى الإذن
+الكتابي من صاحب الحقوق شرطاً لأي استثناء.
+
+### البند ٥ — براءات الاختراع
+يمنحك صاحب الحقوق، مع هذه الرخصة، ترخيصاً ببراءات الاختراع التي يملكها ويتحكم
+فيها ويغطيها مساهمته في التطبيق، بقدر ما تحتاجه ممارستُك للحقوق الممنوحة أعلاه.
+وبممارستك أياً من هذه الحقوق فأنت تقبل هذا الترخيص المشروط، وتقبل ألا تسعى ضد
+المساهمين ولا ضد من يستلم منهم، بمطالبات تزعم أن إحدى هذه المساهمات تنتهك براءةً
+من براءاتك.
+
+### البند ٦ — الخطوط المدمجة
+عائلات الخطوط المدمجة في التطبيق مرخَّصة برخصة **SIL Open Font License**، وتسرد
+شاشةُ الرخص داخل التطبيق كلَّ عائلة مع رخصتها. لا تغطي هذه الرخصة الخطوط، ولا
+يجوز فصلها عن رخصتها الأصلية.
+
+### البند ٧ — المكونات الأصلية المدمجة
+المكونات الأصلية المدمجة في التطبيق — ومنها محرك PDFium ومكتبة libjpeg-turbo
+ومحللات tree-sitter وكل ما في `app/src/main/cpp/` و`app/src/main/java/com/xnota/vendor/` —
+تبقى تحت رخصها الأصلية المرفقة معها، وهذه الرخصة لا تنزع عنها حقها.
+
+### البند ٨ — لا ضمان
+يُقدَّم التطبيق «كما هو»، دون ضمانٍ من أي نوع، صريحاً كان أو ضمنياً، بما في ذلك —
+على سبيل المثال لا الحصر — ضمانات القابلية للتسويق أو الملاءمة لغرضٍ بعينه.
+لا يتحمل صاحب الحقوق أي مسؤولية عن أي مطالبة أو أضرار أو خسائر، مهما كان سببها
+ونوعها، ناشئةً عن استخدام التطبيق أو عن التعامل معه أو عن عجزه، حتى لو نُبِّه إلى
+احتمالها.
+
+### البند ٩ — إنهاء الرخصة
+تُفسخ هذه الرخصة تلقائياً بحق المستفيد متى خالف أيَّ شرط من شروطها ولم يعالج
+المخالفة خلال ثلاثين يوماً من تنبيهه إليها كتابةً، وتظل الرخصة نافذة لمن يتلقى
+نسخاً أو حقوقاً منك ويلتزم بها.
+
+---
+
+## English Text (courtesy translation; the Arabic text above prevails)
+
+**The XNota Open License, version 1.0 (XOL-1.0)** — Copyright (c) 2026 Hasan Sdaif.
+
+1. **Grant.** Subject to your compliance with this license, the rights holder
+   grants you a perpetual, worldwide, royalty-free, non-exclusive license to use
+   the App for any purpose (personal or commercial), to study its source code,
+   to copy, modify and merge it and to prepare derivative works, and to
+   distribute the App, modifications and derivative works, free of charge or
+   for a fee.
+2. **Conditions.** Any distribution must (a) carry this license in full —
+   including the Third-Party Notices at the end — with every copy or
+   substantial portion, with copyright notices intact; (b) document
+   significant changes so they are not attributed to the original developer;
+   (c) make the corresponding source available to recipients under this same
+   license; and (d) distribute works built upon the App (or a substantial
+   portion of it) under this same license.
+3. **Trademark and identity.** The XNota name, logo and identity belong to the
+   rights holder; this license grants no right to use them to name or promote
+   derivative apps. Distributors of modified versions must use a distinct name,
+   and written permission is required for any exception.
+4. **Patents.** The rights holder grants a patent license for those patents he
+   owns and controls that are necessarily infringed by his contribution, to
+   the extent needed to exercise the rights above; by exercising these rights
+   you accept this license and agree not to assert such claims against
+   contributors or their recipients.
+5. **Bundled fonts** remain under the SIL Open Font License (each family is
+   listed with its license in the in-app license screen) and are not covered
+   by this license.
+6. **Vendored native components** — including the PDFium engine, libjpeg-turbo
+   and tree-sitter parsers, and everything under `app/src/main/cpp/` and
+   `app/src/main/java/com/xnota/vendor/` — remain under their own accompanying
+   licenses, which this license does not remove.
+7. **No warranty.** The App is provided “as is”, without warranty of any kind,
+   express or implied. The rights holder shall not be liable for any claims,
+   damages or losses arising from, out of, or in connection with the App or its
+   use.
+8. **Termination.** This license terminates automatically for anyone who
+   breaches its conditions and does not cure the breach within thirty days of
+   written notice, while remaining in force for compliant recipients.
+
+---
+
+## Third-Party Notices
+
+This App builds on an MIT-licensed foundation by Shardul Vikram Singh (the
+upstream “xnotes” project). As its license requires, its notice is preserved
+verbatim below; it applies to the portions of the code inherited from that
+foundation, together with `xnotes:*` file-format namespace identifiers retained
+for data compatibility:
+
+> MIT License
+>
+> Copyright (c) 2026 Shardul Vikram Singh
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+> of this software and associated documentation files (the "Software"), to deal
+> in the Software without restriction, including without limitation the rights
+> to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+> copies of the Software, and to permit persons to whom the Software is
+> furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all
+> copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+> SOFTWARE.
+
+The bundled fonts are licensed under the SIL Open Font License 1.1 (the in-app
+license screen lists every family). The vendored native components under
+`app/src/main/cpp/` (including PDFium and libjpeg-turbo) and the vendored
+libraries under `app/src/main/java/com/xnota/vendor/` (including tree-sitter)
+remain under their own accompanying licenses.

@@ -956,7 +956,7 @@
     <string name="sponsor">رعاية</string>
     <string name="enjoying_xnotes">"هل تستمتع باستخدام إكس نوتا؟ "</string>
     <string name="star_on_github">امنحه نجمة على GitHub</string>
-    <string name="mit_license">رخصة MIT</string>
+    <string name="open_source_license">مفتوح المصدر — XOL-1.0</string>
     <string name="version_n">الإصدار %1$s</string>
     <string name="version_copied">تم نسخ رقم الإصدار</string>
 
