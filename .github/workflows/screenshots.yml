@@ -98,7 +98,10 @@ jobs:
           # own default (6G) and ignore the size line — the FATAL every run died on. Drop the
           # path line so the AVD's own 2G partition is used.
           sed -i -e '/^disk\.dataPartition\.path=<temp>$/d' -e 's/^disk\.dataPartition\.size=.*/disk.dataPartition.size=2G/' "$AVD_INI"
-          grep -n 'disk.dataPartition' "$AVD_INI"
+          # A phone-sized 1080x2160 @480dpi panel: the default postage-stamp 320x640 makes the
+          # captures unreadable and the walkthrough's coordinates out of bounds.
+          printf 'hw.lcd.density=480\nhw.lcd.width=1080\nhw.lcd.height=2160\n' >> "$AVD_INI"
+          grep -n -e 'disk.dataPartition' -e 'hw.lcd' "$AVD_INI"
 
       - name: Boot emulator, walk the app, capture screens
         # The walkthrough itself is what matters; the runner's emulator teardown can flake
@@ -124,15 +127,15 @@ jobs:
             # The tap helper, base64'd whole: the runner executes this script LINE BY LINE, so a
             # heredoc can never survive (each line becomes its own sh -c — the heredoc's body
             # ran as commands and died on 'import: not found').
-            echo 'aW1wb3J0IHJlLCBzdWJwcm9jZXNzLCBzeXMKdHJ5OgogICAgeG1sID0gb3BlbignL3RtcC91aS54bWwnLCBlbmNvZGluZz0ndXRmLTgnKS5yZWFkKCkKZXhjZXB0IE9TRXJyb3I6CiAgICBzeXMuZXhpdCgxKQpmb3IgbSBpbiByZS5maW5kaXRlcihyJzxub2RlW14+XSo/KD86dGV4dHxjb250ZW50LWRlc2MpPSIoW14iXSspIltePl0qP2JvdW5kcz0iXFsoXGQrKSwoXGQrKVxdXFsoXGQrKSwoXGQrKVxdIiwgeG1sKToKICAgIGlmIHN5cy5hcmd2WzFdIGluIG0uZ3JvdXAoMSk6CiAgICAgICAgeCA9IChpbnQobS5ncm91cCgyKSkgKyBpbnQobS5ncm91cCg0KSkpIC8vIDIKICAgICAgICB5ID0gKGludChtLmdyb3VwKDMpKSArIGludChtLmdyb3VwKDUpKSkgLy8gMgogICAgICAgIHN1YnByb2Nlc3MucnVuKFsnYWRiJywgJ3NoZWxsJywgJ2lucHV0JywgJ3RhcCcsIHN0cih4KSwgc3RyKHkpXSwgY2hlY2s9RmFsc2UpCiAgICAgICAgc3lzLmV4aXQoMCkKc3lzLmV4aXQoMSkK' | base64 -d > /tmp/tap.py
+            echo 'aW1wb3J0IHJlLCBzdWJwcm9jZXNzLCBzeXMKdHJ5OgogICAgeG1sID0gb3BlbignL3RtcC91aS54bWwnLCBlbmNvZGluZz0ndXRmLTgnKS5yZWFkKCkKZXhjZXB0IE9TRXJyb3I6CiAgICBzeXMuZXhpdCgxKQpmb3IgbSBpbiByZS5maW5kaXRlcihyJzxub2RlW14+XSo/KD86dGV4dHxjb250ZW50LWRlc2MpPVwiKFteXCJdKylcIltePl0qP2JvdW5kcz1cIlxbKFxkKyksKFxkKylcXVxbKFxkKyksKFxkKylcXVwiJywgeG1sKToKICAgIGlmIHN5cy5hcmd2WzFdIGluIG0uZ3JvdXAoMSk6CiAgICAgICAgeCA9IChpbnQobS5ncm91cCgyKSkgKyBpbnQobS5ncm91cCg0KSkpIC8vIDIKICAgICAgICB5ID0gKGludChtLmdyb3VwKDMpKSArIGludChtLmdyb3VwKDUpKSkgLy8gMgogICAgICAgIHN1YnByb2Nlc3MucnVuKFsnYWRiJywgJ3NoZWxsJywgJ2lucHV0JywgJ3RhcCcsIHN0cih4KSwgc3RyKHkpXSwgY2hlY2s9RmFsc2UpCiAgICAgICAgc3lzLmV4aXQoMCkKc3lzLmV4aXQoMSkK' | base64 -d > /tmp/tap.py
 
             # Arabic, RTL — the app's own per-app locale (API 33+), no reboot dance.
-            adb shell cmd locale set-app-locales com.xnota --locales ar || true
+            adb shell cmd locale set-app-locales com.xnota.debug --locales ar || true
 
             mkdir -p shots
 
             # 1. First run: the folder picker wears the identity chrome.
-            adb shell am start -n com.xnota/.MainActivity; sleep 10; adb exec-out screencap -p > shots/01-first-run.png; sleep 1
+            adb shell am start -n com.xnota.debug/com.xnota.MainActivity; sleep 12; adb exec-out screencap -p > shots/01-first-run.png; sleep 1
 
             # 2. Internal storage: the home presentation.
             adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1; python3 /tmp/tap.py 'تخزين التطبيق' || python3 /tmp/tap.py 'app storage' || true
