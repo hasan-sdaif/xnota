@@ -62,7 +62,8 @@ jobs:
           # the Gradle build, and the runner appends (never replaces) the disk-size line — so the
           # 6G line wins and the emulator dies on its own space check. Create the AVD here and
           # REPLACE the line, then let the runner skip creation and use it as-is.
-          echo no | avdmanager create avd --force -n test --package 'system-images;android-34;default;x86_64'
+          # (avdmanager is not on the runner's PATH — it lives in the cmdline-tools.)
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n test --package 'system-images;android-34;default;x86_64'
           sed -i 's/^disk\.dataPartition\.size=.*/disk.dataPartition.size=2G/' "$HOME/.android/avd/test.avd/config.ini"
           grep -n 'disk.dataPartition' "$HOME/.android/avd/test.avd/config.ini"
 
