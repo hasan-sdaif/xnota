@@ -56,12 +56,23 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger
 
+      - name: Create AVD with a data partition that fits beside the build
+        run: |
+          # The image's default profile plans a 6G data partition; the runner has ~6G left after
+          # the Gradle build, and the runner appends (never replaces) the disk-size line — so the
+          # 6G line wins and the emulator dies on its own space check. Create the AVD here and
+          # REPLACE the line, then let the runner skip creation and use it as-is.
+          echo no | avdmanager create avd --force -n test --package 'system-images;android-34;default;x86_64'
+          sed -i 's/^disk\.dataPartition\.size=.*/disk.dataPartition.size=2G/' "$HOME/.android/avd/test.avd/config.ini"
+          grep -n 'disk.dataPartition' "$HOME/.android/avd/test.avd/config.ini"
+
       - name: Boot emulator, walk the app, capture screens
         uses: reactivecircus/android-emulator-runner@v2.38.0
         with:
           api-level: 34
           arch: x86_64
           target: default
+          force-avd-creation: false
           heap-size: 512M
           ram-size: 4096M
           disk-size: 2G
