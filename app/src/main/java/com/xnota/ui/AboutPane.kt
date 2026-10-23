@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -64,13 +65,15 @@ import kotlinx.coroutines.launch
 private const val REPO_URL = "https://github.com/hasan-sdaif/xnota"
 private const val ISSUES_URL = "https://github.com/hasan-sdaif/xnota/issues/new"
 private const val LICENSE_URL = "https://github.com/hasan-sdaif/xnota/blob/main/LICENSE"
+private const val DEVELOPER_URL = "https://github.com/hasan-sdaif"
+private const val DEVELOPER_NAME = "Hasan Sdaif"
 private const val MIN_FILL_MS = 120L
 
 /**
- * The About backstage pane: app identity + the one place that points users back at the
- * project. Since the app ships with no accounts or telemetry, these links are the only
- * feedback channel. The bug/feature links open GitHub's new-issue form with the body
- * pre-filled (app version + device + OS for bug reports). Back from here returns to Home.
+ * The About backstage pane: app identity, the one place that points users back at the
+ * project, and the maker's own credit. Since the app ships with no accounts or telemetry, these
+ * links are the only feedback channel. The bug/feature links open GitHub's new-issue form with
+ * the body pre-filled (app version + device + OS for bug reports). Back from here returns to Home.
  */
 @Composable
 fun AboutPane() {
@@ -140,6 +143,53 @@ fun AboutPane() {
             }
 
             Spacer(Modifier.height(26.dp))
+            // The maker's credit, worn as the reference design's card: the GitHub mark on its
+            // tinted tile, the quiet "Developer" label under the name, a chevron at the far
+            // end. One tap opens the developer's personal GitHub — the app's home, its history
+            // and its future all live there.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.large)
+                    .background(palette.menuBg.toComposeColor())
+                    .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.large)
+                    .clickable { open(DEVELOPER_URL) }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(palette.accentAlpha(30).toComposeColor())
+                        .border(1.dp, palette.accentAlpha(41).toComposeColor(), MaterialTheme.shapes.medium),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        NotaIcons.github, stringResource(R.string.about_developer),
+                        tint = palette.accent.toComposeColor(), modifier = Modifier.size(22.dp),
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.about_developer),
+                        color = palette.textDim.toComposeColor(),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                    )
+                    Text(
+                        DEVELOPER_NAME,
+                        color = palette.text.toComposeColor(),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.W800,
+                        maxLines = 1,
+                    )
+                }
+                DirectionalIcon(NotaIcons.next, null, tint = palette.textDim.toComposeColor(), modifier = Modifier.size(16.dp))
+            }
+
+            Spacer(Modifier.height(26.dp))
             // Quiet, single-line growth nudge (a link, never a popup).
             Row(
                 Modifier.clickable { open(REPO_URL) },
@@ -172,117 +222,8 @@ fun AboutPane() {
                     onClose = { openLicenses = false; shownLicense = null },
                 )
             }
-
-            // The fork's own release ledger: what each wave brought, newest first.
-            Spacer(Modifier.height(6.dp))
-            var openChangelog by remember { mutableStateOf(false) }
-            Text(
-                stringResource(R.string.whats_new),
-                color = palette.textDim.toComposeColor(), fontSize = 11.sp,
-                modifier = Modifier.clickable { openChangelog = true },
-            )
-            if (openChangelog) {
-                WhatsNewDialog(onClose = { openChangelog = false })
-            }
         }
     }
-}
-
-/** The changelog entry ids the ledger holds, onto the string resources that word them. */
-private val CHANGELOG_TEXT = mapOf(
-    "native_brand" to R.string.changelog_native_brand,
-    "right_edge_navigation" to R.string.changelog_right_edge_navigation,
-    "brand_green_seed" to R.string.changelog_brand_green_seed,
-    "brand_relaunch" to R.string.changelog_brand_relaunch,
-    "reference_home" to R.string.changelog_reference_home,
-    "room_chrome" to R.string.changelog_room_chrome,
-    "secondary_cards" to R.string.changelog_secondary_cards,
-    "emerald_identity" to R.string.changelog_emerald_identity,
-    "home_dashboard" to R.string.changelog_home_dashboard,
-    "floating_toolbar" to R.string.changelog_floating_toolbar,
-    "joined_stroke_fix" to R.string.changelog_joined_stroke_fix,
-    "settings_hub" to R.string.changelog_settings_hub,
-    "menu_icons" to R.string.changelog_menu_icons,
-    "rounded_image_corners" to R.string.changelog_rounded_image_corners,
-    "prefs_search" to R.string.changelog_prefs_search,
-    "reader_brightness" to R.string.changelog_reader_brightness,
-    "page_number_stamps" to R.string.changelog_page_number_stamps,
-    "sticky_preset" to R.string.changelog_sticky_preset,
-    "search_history" to R.string.changelog_search_history,
-    "pin_lock" to R.string.changelog_pin_lock,
-    "encrypted_backups" to R.string.changelog_encrypted_backups,
-    "app_imports" to R.string.changelog_app_imports,
-    "text_exports" to R.string.changelog_text_exports,
-    "version_history" to R.string.changelog_version_history,
-    "duplicate_arrays" to R.string.changelog_duplicate_arrays,
-    "measure_tool" to R.string.changelog_measure_tool,
-    "ink_engine" to R.string.changelog_ink_engine,
-    "brush_studio" to R.string.changelog_brush_studio,
-    "layers_panel" to R.string.changelog_layers_panel,
-    "align_mirror" to R.string.changelog_align_mirror,
-    "arrowheads_patterns" to R.string.changelog_arrowheads_patterns,
-    "reading_mode" to R.string.changelog_reading_mode,
-    "focus_timer" to R.string.changelog_focus_timer,
-    "find_replace" to R.string.changelog_find_replace,
-    "organization" to R.string.changelog_organization,
-    "smart_folders" to R.string.changelog_smart_folders,
-    "calligraphy_rulings" to R.string.changelog_calligraphy_rulings,
-    "hijri_dates" to R.string.changelog_hijri_dates,
-    "arabic_digits" to R.string.changelog_arabic_digits,
-    "loose_arabic_search" to R.string.changelog_loose_arabic_search,
-    "arabic_first" to R.string.changelog_arabic_first,
-    "any_folder_backups" to R.string.changelog_any_folder_backups,
-    "no_accounts" to R.string.changelog_no_accounts,
-)
-
-/**
- * "What's new": the fork's releases, newest first, each under its version header with its headline
- * lines — the pure [com.xnota.core.util.ForkChangelog] ledger rendered straight through the string
- * table above, so a missing word is a compile error rather than a blank line.
- */
-@Composable
-private fun WhatsNewDialog(onClose: () -> Unit) {
-    val palette = LocalPalette.current
-    val ctx = LocalContext.current
-    AlertDialog(
-        onDismissRequest = onClose,
-        title = { Text(stringResource(R.string.whats_new)) },
-        text = {
-            Column(
-                Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                for (release in com.xnota.core.util.ForkChangelog.releases) {
-                    // One card per release, the reference design's card recipe: rounded, panel-
-                    // backed, hairline-bordered — the version at 13sp W700 over 11.5sp dim entries.
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.large)
-                            .background(palette.menuBg.toComposeColor())
-                            .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.large)
-                            .padding(14.dp),
-                    ) {
-                        Text(
-                            stringResource(R.string.changelog_version, release.version),
-                            color = palette.accent.toComposeColor(), fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                        )
-                        for (entry in release.entries) {
-                            val res = CHANGELOG_TEXT[entry.id]
-                            if (res != null) {
-                                Text(
-                                    "•  " + ctx.getString(res),
-                                    color = palette.textDim.toComposeColor(), fontSize = 11.5.sp, lineHeight = 17.sp,
-                                    modifier = Modifier.padding(vertical = 1.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.done)) } },
-    )
 }
 
 /** xnota: the bundled fonts' license notices, read straight from the assets. */

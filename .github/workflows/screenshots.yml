@@ -143,7 +143,7 @@ jobs:
             sleep 10
             shot 01-first-run
 
-            # 2. Internal storage: the home presentation (hero, stats, quick cards, shelf).
+            # 2. Internal storage: the home shelves (recent cards, pins, the folder's files).
             tap_text "تخزين التطبيق" || tap_text "app storage" || true
             sleep 6
             shot 02-home
@@ -151,8 +151,10 @@ jobs:
             sleep 2
             shot 03-home-scrolled
 
-            # 3. The new-note screen (template cards, format chips).
-            tap_text "ابدأ دفترا" || tap_text "ابدأ" || true
+            # 3. The new-note screen (template cards, format chips), via the create menu.
+            tap_text "إنشاء" || tap_text "New" || true
+            sleep 2
+            tap_text "ملاحظة جديدة" || true
             sleep 5
             shot 04-new-note
 
@@ -177,7 +179,7 @@ jobs:
             sleep 2
             shot 09-preferences-scrolled
 
-            # 7. About: the brand hero, version pill, changelog cards.
+            # 7. About: the brand hero, version pill, the developer card.
             adb shell input keyevent 4
             sleep 3
             tap_text "إظهار الشريط" || true

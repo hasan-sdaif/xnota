@@ -613,6 +613,7 @@
 
     <!-- About -->
     <string name="app_tagline">随时记录你的灵感</string>
+    <string name="about_developer">开发者</string>
     <string name="copy_version">复制版本号</string>
     <string name="help_make_better">帮助改进 XNota</string>
     <string name="report_bug">报告问题</string>

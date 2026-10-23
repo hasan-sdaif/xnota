@@ -521,20 +521,6 @@
     <string name="sidebar_workspace">Your private writing space</string>
     <string name="files_are_yours">Your files are yours</string>
     <string name="privacy_local">Local and private by design</string>
-    <string name="hero_eyebrow">Your digital creative space</string>
-    <string name="hero_title_a">Your ideas deserve</string>
-    <string name="hero_title_b">a finer space.</string>
-    <string name="hero_copy">Notebooks, pen-written notes and PDF files in one calm place. Start writing and let XNota handle the order.</string>
-    <string name="hero_start">Start a notebook</string>
-    <string name="stat_files">Notebooks and notes</string>
-    <string name="stat_pdfs">PDF files</string>
-    <string name="stat_pages">Pages written</string>
-    <string name="stat_items">Items</string>
-    <string name="stat_last_activity">Last activity</string>
-    <string name="quick_sub_note">Write with pen or keyboard</string>
-    <string name="quick_sub_canvas">Free infinite canvas</string>
-    <string name="quick_sub_import">Annotate and highlight pages</string>
-    <string name="quick_sub_folder">Organize your space</string>
     <string name="new_note">New note</string>
     <string name="new_note_in">New note in %1$s</string>
     <string name="close_new_note">Close without creating</string>
@@ -881,6 +867,7 @@
 
     <!-- About -->
     <string name="app_tagline">Write your ideas — anytime</string>
+    <string name="about_developer">Developer</string>
     <string name="copy_version">Copy version</string>
     <string name="help_make_better">Help make XNota better</string>
     <string name="report_bug">Report a bug</string>
@@ -1485,51 +1472,6 @@
     </plurals>
 
     <!-- The fork's release ledger (About → What's new) -->
-        <string name="changelog_version">Version %1$s</string>
-    <string name="whats_new">What\'s new</string>
     <!-- The 1.9.0 native brand: the X-nib mark everywhere, the right-edge navigation, the brand-green seed. -->
-    <string name="changelog_native_brand">The native brand: the X-nib mark leads the sidebar, the rail, the lock screen and About — one reusable logo everywhere</string>
-    <string name="changelog_right_edge_navigation">Navigation lives on the right edge by default (the phone drawer too); left and bottom stay one tap away in Preferences</string>
-    <string name="changelog_brand_green_seed">The Material seed is XNota\'s own green now: #00C878 with a safe one-time upgrade from the old defaults</string>
     <!-- The 1.8.0 relaunch: the identity forced, the reference home, the room chrome, the card pass. -->
-    <string name="changelog_brand_relaunch">The brand relaunch: the XNota identity now renders unconditionally — every install upgrades to it, whatever it had picked before</string>
-    <string name="changelog_reference_home">The reference design\'s home: the hero card, real counts of your files, and the recent shelf as proper document cards</string>
-    <string name="changelog_room_chrome">The writing room and the PDF reader wear the reference chrome: toolbar pills, panel cards and the reader stage</string>
-    <string name="changelog_secondary_cards">Settings, About, Trash and the new-note screen are real cards now, with the accent-pill category row</string>
-    <string name="changelog_emerald_identity">The emerald identity: the whole interface\'s colours rebuilt from the reference design — neon green over deep teal</string>
-    <string name="changelog_home_dashboard">The home screen is a dashboard now: a welcome header, quick-action cards and the recent shelf</string>
-    <string name="changelog_floating_toolbar">The editor toolbar floats as a rounded pill over the page by default</string>
-    <string name="changelog_joined_stroke_fix">Fix: the crash when strokes join (length=142)</string>
-    <string name="changelog_settings_hub">The settings hub — five browsable categories with icons</string>
-    <string name="changelog_menu_icons">SVG line-icons across every menu and section title</string>
-    <string name="changelog_rounded_image_corners">Rounded corners on placed pictures</string>
-    <string name="changelog_prefs_search">Search inside preferences</string>
-    <string name="changelog_reader_brightness">Reading brightness control</string>
-    <string name="changelog_page_number_stamps">Page number stamps</string>
-    <string name="changelog_sticky_preset">Sticky-note preset for quick notes</string>
-    <string name="changelog_search_history">Recent searches</string>
-    <string name="changelog_pin_lock">App lock with PIN</string>
-    <string name="changelog_encrypted_backups">Passphrase-encrypted backups</string>
-    <string name="changelog_app_imports">Import from Evernote, Keep and Joplin</string>
-    <string name="changelog_text_exports">Export notes as Markdown, text and HTML</string>
-    <string name="changelog_version_history">Per-note version history with restore</string>
-    <string name="changelog_duplicate_arrays">Radial and grid duplicate arrays</string>
-    <string name="changelog_measure_tool">The measure tool</string>
-    <string name="changelog_ink_engine">Ink Engine 2.0 — one-euro filter, pressure shaping, new pens</string>
-    <string name="changelog_brush_studio">Brush studio — symmetry, presets, fill</string>
-    <string name="changelog_layers_panel">Layers panel with hide and lock</string>
-    <string name="changelog_align_mirror">Align, distribute, mirror</string>
-    <string name="changelog_arrowheads_patterns">Arrowheads, dash and fill patterns</string>
-    <string name="changelog_reading_mode">Reading mode with comfortable typography</string>
-    <string name="changelog_focus_timer">Focus timer</string>
-    <string name="changelog_find_replace">Find &amp; replace with diacritic-insensitive search</string>
-    <string name="changelog_organization">Favorites, tags and stats</string>
-    <string name="changelog_smart_folders">Smart folders</string>
-    <string name="changelog_calligraphy_rulings">Khatt, naskh and ruqaa calligraphy rulings</string>
-    <string name="changelog_hijri_dates">Hijri dates and stamps</string>
-    <string name="changelog_arabic_digits">Arabic-Indic digits everywhere</string>
-    <string name="changelog_loose_arabic_search">Loose Arabic search — hamza and tashkeel fold</string>
-    <string name="changelog_arabic_first">Arabic-first interface, fonts and templates</string>
-    <string name="changelog_any_folder_backups">Backups to any folder, Drive included</string>
-    <string name="changelog_no_accounts">No accounts, no tracking</string>
 </resources>

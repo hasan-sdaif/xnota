@@ -2061,18 +2061,9 @@ private fun ExplorerSection(
                 ),
         ) {
             val shelfBlock: (@Composable () -> Unit)? = if (!shelves) null else ({
-                // The home root's whole presentation: hero, the shelf's real numbers, the quick cards.
-                // Counts and the last-activity line come off the very list the Recent shelf renders.
-                HomePresentation(
-                    onCreateMode = onCreateMode,
-                    onImportPdf = calls.importPdf,
-                    recents = recents.orEmpty(),
-                    kindOf = kindOf,
-                    pagesOf = { editor.cachedMeta(it)?.pages ?: 0 },
-                    lastActivity = recents.orEmpty().firstOrNull()?.let { entryDate(it.entry) } ?: "",
-                    digits = words::digits,
-                )
-                Spacer(Modifier.height(8.dp))
+                // The home root, exactly as 1.6.1 dealt it: the Recent shelf first, the pinned
+                // folders, then the folder's own heading — the files own the screen from the top,
+                // with no dashboard presentation stacked above them.
                 HomeShelves(
                     body, recents.orEmpty(), editor.sidebarPins, rootName ?: stringResource(R.string.folder),
                     counts = countsLabel(words, arranged.orEmpty().count { it.isDir }, arranged.orEmpty().count { !it.isDir }),

@@ -128,7 +128,7 @@ private val tapGestureOptions = listOf(
  * each chip carrying its line icon. Which sections belong to which category is decided at each
  * section's own gate (see [PreferencesPane]); a non-empty search bypasses the selection.
  */
-private enum class SettingsCategory(val labelRes: Int, val icon: ImageVector) {
+internal enum class SettingsCategory(val labelRes: Int, val icon: ImageVector) {
     ALL(R.string.settings_cat_all, NotaIcons.layoutGrid),
     INTERFACE(R.string.settings_cat_interface, NotaIcons.palette),
     WRITING(R.string.settings_cat_writing, NotaIcons.penTool),
@@ -136,6 +136,14 @@ private enum class SettingsCategory(val labelRes: Int, val icon: ImageVector) {
     DATA(R.string.settings_cat_data, NotaIcons.shield),
     ADVANCED(R.string.settings_cat_advanced, NotaIcons.sliders),
 }
+
+/**
+ * The hub's category gate, as data: the All chip unfolds every section, a picked category shows
+ * its own, and an active search spans them all regardless of the selection — the search's reach
+ * predates the hub and stays untouched. Pure so the gate's shape is testable like any other layer.
+ */
+internal fun sectionInCategory(selected: SettingsCategory, section: SettingsCategory, searching: Boolean): Boolean =
+    searching || selected == SettingsCategory.ALL || selected == section
 
 /**
  * Preferences as a backstage pane (spec 10 §8). Edits apply live — each change is
@@ -180,9 +188,10 @@ fun PreferencesPane(
     }
     // The settings hub's selected category (the chip row under the search field). While a search
     // is active the category is ignored: the query spans every section exactly as it did before
-    // the hub, so the pane's search behaviour is untouched.
+    // the hub, so the pane's search behaviour is untouched. The All chip unfolds every section —
+    // the gate itself lives in sectionInCategory, pure and tested.
     var category by remember { mutableStateOf(SettingsCategory.ALL) }
-    fun inCategory(cat: SettingsCategory): Boolean = foldedQuery.isNotEmpty() || category == cat
+    fun inCategory(cat: SettingsCategory): Boolean = sectionInCategory(category, cat, foldedQuery.isNotEmpty())
     // Follow out-of-pane preference changes too (the .scm import round-trips a picker).
     LaunchedEffect(editor.prefsVersion) { prefs = editor.preferences }
 

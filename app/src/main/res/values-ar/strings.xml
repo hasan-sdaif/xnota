@@ -538,20 +538,6 @@
     <string name="sidebar_workspace">مساحة كتابتك الخاصة</string>
     <string name="files_are_yours">ملفاتك ملكك</string>
     <string name="privacy_local">يعمل محلياً واحتراماً للخصوصية</string>
-    <string name="hero_eyebrow">مساحة إبداعك الرقمية</string>
-    <string name="hero_title_a">أفكارك تستحق</string>
-    <string name="hero_title_b">مساحة أجمل.</string>
-    <string name="hero_copy">دفاترك وملاحظاتك المكتوبة بالقلم وملفات PDF في مكان واحد هادئ. ابدأ الكتابة ودع XNota يتولى التنظيم.</string>
-    <string name="hero_start">ابدأ دفتراً جديداً</string>
-    <string name="stat_files">دفاتر وملاحظات</string>
-    <string name="stat_pdfs">ملفات PDF</string>
-    <string name="stat_pages">صفحات مكتوبة</string>
-    <string name="stat_items">عناصر</string>
-    <string name="stat_last_activity">آخر نشاط</string>
-    <string name="quick_sub_note">اكتب بالقلم أو لوحة المفاتيح</string>
-    <string name="quick_sub_canvas">لوحة رسم حرة بلا حدود</string>
-    <string name="quick_sub_import">ظلل وعلق فوق الصفحات</string>
-    <string name="quick_sub_folder">نظم مساحتك</string>
     <string name="new_note">ملاحظة جديدة</string>
     <string name="new_note_in">ملاحظة جديدة في %1$s</string>
     <string name="close_new_note">إغلاق دون إنشاء</string>
@@ -962,6 +948,7 @@
 
     <!-- About -->
     <string name="app_tagline">اكتب أفكارك… في أي وقت</string>
+    <string name="about_developer">المطور</string>
     <string name="copy_version">نسخ رقم الإصدار</string>
     <string name="help_make_better">ساعد في تحسين إكس نوتا</string>
     <string name="report_bug">الإبلاغ عن مشكلة</string>
@@ -1620,51 +1607,6 @@
     </plurals>
 
     <!-- The fork's release ledger (About → What's new) -->
-        <string name="changelog_version">الإصدار %1$s</string>
-    <string name="whats_new">ما الجديد</string>
     <!-- العلامة الأصلية ١.٩.٠: شعار ريشة الحرف في كل مكان، التنقل من اليمين، بذرة أخضر العلامة. -->
-    <string name="changelog_native_brand">العلامة الأصلية: شعار ريشة الحرف يقود الشريط الجانبي والشريط وشاشة القفل و«عن التطبيق» — شعار واحد يعاد استخدامه في كل مكان</string>
-    <string name="changelog_right_edge_navigation">التنقل من الحافة اليمنى افتراضيًا (ودرج الهاتف أيضًا)؛ واليسار والأسفل يبقيان على بُعد لمسة واحدة من الإعدادات</string>
-    <string name="changelog_brand_green_seed">بذرة Material هي أخضر XNota نفسه الآن: ‎#00C878 مع ترقية آمنة لمرة واحدة من الإعدادات القديمة</string>
     <!-- إعادة إطلاق ١.٨.٠: الهوية تُطبَّق دائماً، الرئيسية المرجعية، كروم الكتابة، البطاقات. -->
-    <string name="changelog_brand_relaunch">إعادة إطلاق الهوية: هوية XNota تُعرض بلا شروط — كل تثبيت يُرقَّى إليها مهما كان اختياره السابق</string>
-    <string name="changelog_reference_home">الرئيسية كما في التصميم المرجعي: بطاقة البطل، وأرقام ملفاتك الحقيقية، ورفّ أحدث الملفات كبطاقات مستندات حقيقية</string>
-    <string name="changelog_room_chrome">مساحة الكتابة وقارئ PDF بكروم التصميم المرجعي: حبوب شريط الأدوات وبطاقات اللوحات ومسرح القارئ</string>
-    <string name="changelog_secondary_cards">الإعدادات وعن التطبيق والمحذوفات وشاشة الملاحظة الجديدة بطاقات حقيقية الآن مع صف الفئات ذي الحبوب الخضراء</string>
-    <string name="changelog_emerald_identity">هوية الزمرد: ألوان الواجهة كلها مبنية من التصميم المرجعي — أخضر نيوني فوق تركوازي عميق</string>
-    <string name="changelog_home_dashboard">الشاشة الرئيسية لوحة معلومات الآن: ترويسة ترحيب وبطاقات إجراءات سريعة ورفّ أحدث الملاحظات</string>
-    <string name="changelog_floating_toolbar">شريط أدوات المحرر يطفو كحبة مستديرة فوق الصفحة افتراضيًا</string>
-    <string name="changelog_joined_stroke_fix">إصلاح انهيار وصل الخطوط المتلاصقة (خطأ الطول ١٤٢)</string>
-    <string name="changelog_settings_hub">مركز الإعدادات — خمس فئات مصوّرة للتصفّح</string>
-    <string name="changelog_menu_icons">أيقونات خطّية في كل القوائم وعناوين الأقسام</string>
-    <string name="changelog_rounded_image_corners">زوايا دائرية للصور المُدرجة</string>
-    <string name="changelog_prefs_search">البحث داخل التفضيلات</string>
-    <string name="changelog_reader_brightness">تحكم بسطوع القراءة</string>
-    <string name="changelog_page_number_stamps">أرقام الصفحات</string>
-    <string name="changelog_sticky_preset">قالب الملاحظة اللاصقة السريعة</string>
-    <string name="changelog_search_history">عمليات البحث الأخيرة</string>
-    <string name="changelog_pin_lock">قفل التطبيق برمز PIN</string>
-    <string name="changelog_encrypted_backups">نسخ احتياطية مشفّرة بعبارة مرور</string>
-    <string name="changelog_app_imports">استيراد من Evernote وKeep وJoplin</string>
-    <string name="changelog_text_exports">تصدير الملاحظات Markdown ونص وHTML</string>
-    <string name="changelog_version_history">سجل إصدارات لكل ملاحظة مع الاستعادة</string>
-    <string name="changelog_duplicate_arrays">تكرار مصفوفي شعاعي وشبكي</string>
-    <string name="changelog_measure_tool">أداة القياس</string>
-    <string name="changelog_ink_engine">محرك الحبر 2.0 — مرشّح One-Euro وتشكيل الضغط وأقلام جديدة</string>
-    <string name="changelog_brush_studio">استوديو الفرش — التناظر والإعدادات والتعبئة</string>
-    <string name="changelog_layers_panel">لوحة الطبقات مع الإخفاء والقفل</string>
-    <string name="changelog_align_mirror">محاذاة وتوزيع وانعكاس</string>
-    <string name="changelog_arrowheads_patterns">رؤوس السهوم وأنماط الشرطات والتعبئة</string>
-    <string name="changelog_reading_mode">وضع القراءة بتايبوغرافيا مريحة</string>
-    <string name="changelog_focus_timer">مؤقّت التركيز</string>
-    <string name="changelog_find_replace">البحث والاستبدال بتجاهل التشكيل</string>
-    <string name="changelog_organization">المفضلة والوسوم والإحصاءات</string>
-    <string name="changelog_smart_folders">المجلدات الذكية</string>
-    <string name="changelog_calligraphy_rulings">مساطر الخط: خط ونسخ ورقعة</string>
-    <string name="changelog_hijri_dates">التواريخ والأختام الهجرية</string>
-    <string name="changelog_arabic_digits">الأرقام العربية الهندية في كل مكان</string>
-    <string name="changelog_loose_arabic_search">بحث عربي مرن — طيّ الهمزة والتشكيل</string>
-    <string name="changelog_arabic_first">واجهة وخطوط وقوالب عربية أولاً</string>
-    <string name="changelog_any_folder_backups">نسخ احتياطية لأي مجلد بما فيه Drive</string>
-    <string name="changelog_no_accounts">بلا حسابات وبلا تتبّع</string>
 </resources>
