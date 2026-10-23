@@ -1,8 +1,10 @@
 name: build
 
 # Signed release builds for XNota.
-# - Tag pushes (v*)  -> full multi-ABI APK + GitHub Release (APK + SHA256SUMS + Arabic notes).
-# - Branch pushes / manual dispatch -> arm64-v8a APK artifact only (saves Actions minutes).
+# - Tag pushes (v*)  -> full multi-ABI APK + GitHub Release (APK + SHA256SUMS + Arabic notes),
+#                      and a Play Store .aab (all ABIs) as a short-lived, auth-guarded artifact.
+# - Branch pushes   -> arm64-v8a APK artifact only (saves Actions minutes).
+# - Manual dispatch -> same as branch pushes; tick build_aab to also cut the Play .aab.
 #
 # Signing comes from GitHub Secrets (never stored in the repo):
 #   AR_KEYSTORE_BASE64, AR_KEYSTORE_PASSWORD, AR_KEY_ALIAS, AR_KEY_PASSWORD
@@ -21,6 +23,11 @@ on:
         description: 'ABIs to build (comma-separated) or "all"'
         required: false
         default: 'arm64-v8a'
+      build_aab:
+        description: 'Also build the Play Store .aab (all ABIs) as an artifact'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -127,11 +134,48 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+      - name: Build Play Store AAB (tag builds, or on request)
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_aab)
+        # No -ParAbis here on purpose: the bundle always carries every ABI so
+        # Play's own split delivery can thin it per device.
+        run: ./gradlew :app:bundleRelease --stacktrace --no-daemon
+
+      - name: Collect AAB for the Play artifact
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_aab)
+        run: |
+          mkdir -p dist-play
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ -z "$VERSION" || "$VERSION" == "$GITHUB_REF_NAME" ]]; then VERSION="run${GITHUB_RUN_NUMBER}"; fi
+          AAB_BASE="xnota-v${VERSION}-play"
+          cp app/build/outputs/bundle/release/*.aab "dist-play/${AAB_BASE}.aab"
+          cd dist-play
+          sha256sum "${AAB_BASE}.aab" > SHA256SUMS
+          cat SHA256SUMS
+          echo "AAB_BASE=${AAB_BASE}" >> "$GITHUB_ENV"
+
+      # The signed AAB never enters the public repo or its releases — the
+      # artifact is auth-guarded and expires in a day, long enough to carry it
+      # to the private Play repository.
+      - name: Upload AAB artifact (private, 1-day retention)
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_aab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.AAB_BASE }}
+          path: dist-play/
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Create GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Idempotent: a re-run or a dispatch against the same tag must not
+          # fail the job (or clobber a release that is already live).
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists — leaving it untouched."
+            exit 0
+          fi
           NOTES="docs/fork/release-notes/${GITHUB_REF_NAME}.md"
           if [[ ! -f "$NOTES" ]]; then
             NOTES="$(mktemp -d)/fallback.md"
