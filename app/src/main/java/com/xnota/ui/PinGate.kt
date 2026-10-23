@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xnota.R
 import com.xnota.core.util.PinHash
+import com.xnota.ui.brand.XNotaBrandLockup
 import com.xnota.ui.icons.NotaIcons
 import com.xnota.ui.theme.LocalPalette
 import com.xnota.ui.theme.toComposeColor
@@ -108,21 +109,8 @@ fun PinGate(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // The wordmark, with the fork's mint leading X.
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                "X",
-                color = palette.accent.toComposeColor(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 36.sp,
-            )
-            Text(
-                "Nota",
-                color = palette.text.toComposeColor(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 36.sp,
-            )
-        }
+        // The brand lockup: the same X-nib mark the sidebar and About wear.
+        XNotaBrandLockup(markSize = 64.dp, showTagline = false)
         Spacer(Modifier.height(8.dp))
         Text(stringResource(R.string.pin_enter), color = palette.textDim.toComposeColor(), fontSize = 14.sp)
         Spacer(Modifier.height(28.dp))

@@ -13,13 +13,15 @@ This brand system is implemented in the Android app itself with Kotlin and Jetpa
 
 The chrome's colour source is `com.xnota.ui.theme.XNotaIdentity` (the reference design's tokens: the ink surface ladder, the emerald accent `#00E676`, sage hairlines) applied unconditionally by `Editor.buildPalette` — a user's re-picked accent and the appearance mode (dark/light/OLED) are the only colour choices that reach the chrome. The brand mark's tile gradient (forest → ink) is artwork, held in `com.xnota.ui.brand.XNotaBrand` alongside the reusable composables.
 
+The **Material seed** — the scheme the Material widgets (switches, chips, sliders, selected rows) read — is the brand's own green `#00C878` over a deep-green surface (`Preferences.DEFAULT_MATERIAL_*`, PREF_SCHEMA v5). Files carrying an earlier built-in seed (the pre-1.7 gold pair or the 1.8 emerald pair) upgrade once on load; anything the user re-picked afterwards is theirs and passes through.
+
 ## Layout and interaction principles
 
 - Navigation defaults to the **physical right edge** on tablets and the phone drawer, independent of the interface reading direction; an old stored "auto" value migrates once to the right edge (left and bottom remain available through Preferences).
 - Arabic content stays RTL and English content stays LTR inside navigation and content panes.
 - Active destinations get the emerald selected surface, mint icon/text and a slim accent edge marker; inactive destinations use quiet palette text.
 - Navigation rows target a comfortable 44 dp height; the compact rail keeps a recognizable brand mark while conserving width.
-- About, the sidebar, the rail and the folder-picker header share the same reusable brand composables (`XNotaBrandMark`, `XNotaBrandLockup`, `XNotaBrandDivider`), not separate hand-drawn copies of the logo.
+- About, the sidebar, the rail, the folder-picker header, the PIN lock screen and the sidebar's workspace card share the same reusable brand composables (`XNotaBrandMark`, `XNotaBrandLockup`, `XNotaBrandDivider`), not separate hand-drawn copies of the logo.
 
 ## Native implementation
 

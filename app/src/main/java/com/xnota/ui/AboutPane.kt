@@ -190,6 +190,9 @@ fun AboutPane() {
 
 /** The changelog entry ids the ledger holds, onto the string resources that word them. */
 private val CHANGELOG_TEXT = mapOf(
+    "native_brand" to R.string.changelog_native_brand,
+    "right_edge_navigation" to R.string.changelog_right_edge_navigation,
+    "brand_green_seed" to R.string.changelog_brand_green_seed,
     "brand_relaunch" to R.string.changelog_brand_relaunch,
     "reference_home" to R.string.changelog_reference_home,
     "room_chrome" to R.string.changelog_room_chrome,

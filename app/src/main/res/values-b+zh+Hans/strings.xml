@@ -34,6 +34,8 @@
     <string name="undo">撤销</string>
     <string name="redo">重做</string>
     <string name="toolbar_page_nav">页面导航</string>
+    <string name="pref_nav_side">导航位置</string>
+    <string name="pref_nav_side_help">导航栏在宽屏上的位置。默认在右侧，也可选择左侧或底部。</string>
     <string name="toolbar_styles">样式</string>
     <string name="toolbar_margins">页边距</string>
     <string name="toolbar_view">视图</string>

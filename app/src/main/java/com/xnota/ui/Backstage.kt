@@ -648,13 +648,8 @@ private fun SidebarProfileCard(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(palette.accent.toComposeColor()),
-            contentAlignment = Alignment.Center,
-        ) {
-            // The mark stays "X" — name-agnostic, the same letter the rail's logo carries.
-            Text("X", color = palette.onAccent.toComposeColor(), fontWeight = FontWeight.Black, fontSize = 16.sp)
-        }
+        // The workspace tile wears the real brand mark — the same artwork as the sidebar's header.
+        XNotaBrandMark(size = 40.dp)
         Column {
             Text(
                 stringResource(R.string.sidebar_greeting),

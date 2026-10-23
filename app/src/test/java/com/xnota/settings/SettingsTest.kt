@@ -360,14 +360,15 @@ class SettingsTest {
 
     @Test fun freshInstallBootsStraightIntoTheIdentity() {
         // A fresh install reads no file at all: the constructor's own defaults — dual mode with the
-        // emerald seeds and the vibrant style, so buildPalette lands on the brand accent immediately.
+        // brand seeds and the vibrant style, so buildPalette lands on the brand accent immediately.
         val fresh = Preferences()
         assertEquals(MaterialColourMode.DUAL, fresh.materialMode)
         assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, fresh.materialSingleSeed)
         assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, fresh.materialDualSeed)
         assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, fresh.materialSurfaceSeed)
-        assertEquals(Rgba(0, 230, 118), fresh.materialDualSeed)
-        assertEquals(Rgba(15, 91, 74), fresh.materialSurfaceSeed)
+        // The native brand identity: the #00C878 seed over the deep-green surface seed.
+        assertEquals(Rgba(0, 200, 120), fresh.materialDualSeed)
+        assertEquals(Rgba(31, 78, 60), fresh.materialSurfaceSeed)
         assertEquals(MaterialStyle.VIBRANT, fresh.materialStyle)
         assertTrue(fresh.toolbarLook.floating)
         assertEquals("shelves", fresh.homeOpensTo)
@@ -406,7 +407,7 @@ class SettingsTest {
         assertEquals(Rgba(64, 196, 255), repicked.materialSingleSeed)
     }
 
-    @Test fun preRedesignFileUpgradesOnceToEmeraldIdentity() {
+    @Test fun preRedesignFileUpgradesOnceToTheBrandIdentity() {
         // A settings file as the user's device carries it after 1.6.1: dual mode with the old default
         // seeds written verbatim (the dual-mode save writes them unconditionally), schema v2, the
         // old default home and strip toolbar — everything still at a pre-1.7 default upgrades once.
@@ -424,7 +425,7 @@ class SettingsTest {
         assertEquals(MaterialStyle.VIBRANT, upgraded.materialStyle)
         assertEquals("shelves", upgraded.homeOpensTo)
         assertTrue(upgraded.toolbarLook.floating)
-        // The upgrade sticks: reloading the saved file keeps the identity (schema is now v3).
+        // The upgrade sticks: reloading the saved file keeps the identity (schema is now v5).
         val saved = Preferences.fromJson(upgraded.toJson())
         assertEquals(upgraded, saved)
         assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, saved.materialDualSeed)
@@ -436,6 +437,29 @@ class SettingsTest {
         assertEquals(Rgba(154, 124, 66), repicked.materialDualSeed)
         assertEquals(Rgba(61, 117, 230), repicked.materialSurfaceSeed)
         assertEquals("top", repicked.homeOpensTo)
+    }
+
+    @Test fun emeraldFileUpgradesOnceToTheBrandGreen() {
+        // v5 (the native brand): a 1.8.0 file carries the emerald seeds the v4 reset wrote —
+        // values still equal to those defaults upgrade once to the brand green; a conscious
+        // re-pick made after this point is the user's own and survives.
+        val emerald = JSONObject()
+            .put("pref_schema", 4)
+            .put("material_mode", "dual")
+            .put("material_single_seed", "#00E676")
+            .put("material_dual_seed", "#00E676")
+            .put("material_surface_seed", "#0F5B4A")
+        val upgraded = Preferences.fromJson(emerald)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SINGLE, upgraded.materialSingleSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_DUAL, upgraded.materialDualSeed)
+        assertEquals(Preferences.DEFAULT_MATERIAL_SURFACE, upgraded.materialSurfaceSeed)
+        assertEquals(Rgba(0, 200, 120), upgraded.materialDualSeed)
+        assertEquals(Rgba(31, 78, 60), upgraded.materialSurfaceSeed)
+        // The upgrade sticks: the saved file (schema now v5) reloads to the brand identity.
+        assertEquals(upgraded, Preferences.fromJson(upgraded.toJson()))
+        // A post-v5 pick is fresh and explicit: it survives from v5 onward.
+        val repicked = Preferences.fromJson(upgraded.toJson().put("material_dual_seed", "#40C4FF"))
+        assertEquals(Rgba(64, 196, 255), repicked.materialDualSeed)
     }
 
     @Test fun legacySingleToneYieldsToTheIdentityOnce() {
@@ -706,6 +730,9 @@ class SettingsTest {
         assertEquals("right", Settings.fromJson(JSONObject().put("backstage_nav_side", "junk")).backstageNavSide)
         assertEquals("left", Settings.fromJson(JSONObject().put("backstage_nav_side", "left")).backstageNavSide)
         assertEquals("bottom", Settings.fromJson(JSONObject().put("backstage_nav_side", "bottom")).backstageNavSide)
+        // A round trip keeps the right edge (the whole-object compare doesn't apply here: toJson
+        // materialises every tool's config, by design, so a default Settings never equals its
+        // own round trip — the nav field is what this test locks).
         assertEquals("right", Settings.fromJson(Settings().toJson()).backstageNavSide)
     }
 }

@@ -1487,6 +1487,10 @@
     <!-- The fork's release ledger (About → What's new) -->
         <string name="changelog_version">Version %1$s</string>
     <string name="whats_new">What\'s new</string>
+    <!-- The 1.9.0 native brand: the X-nib mark everywhere, the right-edge navigation, the brand-green seed. -->
+    <string name="changelog_native_brand">The native brand: the X-nib mark leads the sidebar, the rail, the lock screen and About — one reusable logo everywhere</string>
+    <string name="changelog_right_edge_navigation">Navigation lives on the right edge by default (the phone drawer too); left and bottom stay one tap away in Preferences</string>
+    <string name="changelog_brand_green_seed">The Material seed is XNota\'s own green now: #00C878 with a safe one-time upgrade from the old defaults</string>
     <!-- The 1.8.0 relaunch: the identity forced, the reference home, the room chrome, the card pass. -->
     <string name="changelog_brand_relaunch">The brand relaunch: the XNota identity now renders unconditionally — every install upgrades to it, whatever it had picked before</string>
     <string name="changelog_reference_home">The reference design\'s home: the hero card, real counts of your files, and the recent shelf as proper document cards</string>
