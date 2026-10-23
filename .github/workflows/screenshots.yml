@@ -50,6 +50,20 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
+      - name: Free the runner's disk for the emulator
+        # The build leaves the NDK (~2.5G) and CMake behind, and the runner's preinstalled
+        # toolchains (dotnet, ghc, boost, docker images) squat on the disk the emulator
+        # needs: its userdata-partition space check wants ~7.4G available at the AVD home,
+        # and after the build only ~6.2G is left — every boot so far died on that first
+        # breath ("Not enough space to create userdata partition"). The emulator needs
+        # none of these, and the APK is already built.
+        run: |
+          sudo rm -rf "$ANDROID_HOME/ndk" "$ANDROID_HOME/cmake" || true
+          sudo rm -rf /usr/share/dotnet /usr/local/share/boost /opt/ghc /usr/local/.ghcup || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          sudo docker system prune -af >/dev/null 2>&1 || true
+          df -h / | tail -1
+
       - name: Grant KVM permissions
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -195,4 +209,7 @@ jobs:
         with:
           name: xnota-screenshots
           path: shots/
-          if-no-files-found: warn
+          # An empty shots/ means the emulator never booted and the walkthrough never
+          # ran — that must fail the workflow, not pass it hollow. A teardown flake
+          # still leaves the shots on disk, so the artifact survives exactly as before.
+          if-no-files-found: error
