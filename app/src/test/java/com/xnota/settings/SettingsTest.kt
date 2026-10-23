@@ -371,8 +371,10 @@ class SettingsTest {
         assertEquals(MaterialStyle.VIBRANT, fresh.materialStyle)
         assertTrue(fresh.toolbarLook.floating)
         assertEquals("shelves", fresh.homeOpensTo)
-        // The defaults write nothing material — a first save carries only the schema stamp.
-        for (key in listOf("material_mode", "material_seed", "material_single_seed", "material_dual_seed", "material_surface_seed", "material_style")) {
+        // The defaults write nothing optional — only the dual-mode compatibility block
+        // (material_seed/dual_tone/surface_seed, always written so older builds read the
+        // active colours) and the schema stamp ride along in a first save.
+        for (key in listOf("material_mode", "material_single_seed", "material_dual_seed", "material_style", "material_contrast")) {
             assertFalse(fresh.toJson().has(key))
         }
     }
